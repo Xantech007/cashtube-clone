@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cash Tube - Secure Login</title>
+    <title>Task Tube - Secure Login</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -331,7 +331,7 @@
     <header>
         <div class="header-container">
             <div class="logo">
-                <img src="img/palmpay.webp" alt="Cash Tube Logo">
+                <img src="img/palmpay.webp" alt="Task Tube Logo">
             </div>
             <button id="hamburger-menu" data-toggle="ham-navigation" class="hamburger-menu-button">
                 <span class="hamburger-menu-button-open">Menu</span>
@@ -347,7 +347,7 @@
     </header>
 
     <div class="login-container">
-        <h1>Welcome to <span>Cash Tube</span></h1>
+        <h1>Welcome to <span>Task Tube</span></h1>
         <p>Enter your 5-digit code</p>
         <input type="password" id="passcode" readonly style="font-size: 24px;" aria-label="Passcode input">
         <div class="keypad">
@@ -360,7 +360,7 @@
             <div class="key">7</div>
             <div class="key">8</div>
             <div class="key">9</div>
-            <div class="key action"><a href='https://cashtube-usd.netlify.app/buy' style='color: #fff;'>Sign Up</a></div>
+            <div class="key action"><a href='https://tasktube.app/buy' style='color: #fff;'>Sign Up</a></div>
             <div class="key action" id="clear">Clear</div>
             <div class="key action" id="enter">Login</div>
         </div>
@@ -377,15 +377,15 @@
 
     <div class="notice" id="notice">
         <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
-        <h2>Welcome to Cash Tube</h2>
+        <h2>Welcome to Task Tube</h2>
         <p>If you've been looking for a way to earn money by watching ad videos, you're in the right place!</p>
         <p>Get your 5-digit login code and start earning today.</p>
     </div>
 
     <footer>
-        <a href='https://cashtube-usd.netlify.app/buy'>Sign Up with Crypto</a>
-        <a href="https://cashtube-usd.netlify.app/terms.html">Terms of Service</a>
-        <a href="https://cashtube-usd.netlify.app/privacy.html">Privacy Policy</a>
+        <a href='https://tasktube.app/buy'>Sign Up with Crypto</a>
+        <a href="https://tasktube.app/terms.html">Terms of Service</a>
+        <a href="https://tasktube.app/privacy.html">Privacy Policy</a>
     </footer>
 
     <!-- LiveChat Script -->
@@ -449,7 +449,7 @@
                     icon: 'error',
                     title: 'Oops...',
                     text: 'Invalid Passcode!',
-                    footer: '<a href="buy.html">Buy Passcode?</a>'
+                    footer: '<a href="https://tasktube.app/buy">Buy Passcode?</a>'
                 });
                 passcodeInput.value = "";
             }
