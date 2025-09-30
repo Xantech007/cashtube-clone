@@ -1,0 +1,15 @@
+# Enable URL rewriting
+RewriteEngine On
+RewriteBase /
+
+# Prevent looping and check if the request is not for a directory or existing file
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# Redirect URLs without .html to the .html version (e.g., /about -> /about.html)
+RewriteRule ^(.*)$ $1.html [L,R=301]
+
+# Optional: Handle trailing slashes by redirecting /page/ to /page.html
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} /$
+RewriteRule ^(.*)/$ $1.html [L,R=301]
