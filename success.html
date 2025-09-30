@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Payment successful! Access your Task Tube passcode and start earning up to $1,000 daily by watching video ads." />
+  <meta name="keywords" content="Task Tube, payment success, passcode, cryptocurrency, earn money online" />
+  <meta name="author" content="Task Tube" />
+  <title>Payment Successful | Task Tube</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" />
+  <script src="https://kit.fontawesome.com/32bbba991c.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      padding: 20px;
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+    .modal {
+      max-width: 400px;
+      margin: auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.5s ease-out;
+      position: relative;
+    }
+    h3,
+    p {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    h3 {
+      color: #007bff;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    h3::before {
+      content: '✅';
+      font-size: 1.2rem;
+      margin-right: 8px;
+    }
+    p {
+      font-size: 1rem;
+      color: #4a5568;
+    }
+    .passcode-box {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .passcode-box input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      font-size: 16px;
+      text-align: center;
+      background-color: #f9f9f9;
+      color: #333;
+      font-weight: bold;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #007bff;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      text-align: center;
+      margin: 20px auto;
+      display: block;
+      width: fit-content;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .cta-button:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+    }
+    .footer-note {
+      text-align: center;
+      font-size: 13px;
+      margin-top: 10px;
+      color: #666;
+    }
+    .bottom-menu {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #1a1a1a;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 14px 0;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .bottom-menu a {
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 18px;
+      transition: color 0.3s ease;
+    }
+    .bottom-menu a.active,
+    .bottom-menu a:hover {
+      color: #22c55e;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (max-width: 768px) {
+      .modal {
+        padding: 20px;
+      }
+      h3 {
+        font-size: 1.3rem;
+      }
+      .cta-button {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+      }
+      .bottom-menu a {
+        font-size: 0.85rem;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="modal" role="main">
+    <h3>Payment Successful!</h3>
+    <p>Your $20 crypto payment has been confirmed via blockchain. Below is your unique 5-digit passcode to access Task Tube.</p>
+    <p>Use this passcode to log in and start earning up to $1,000 daily by watching video ads!</p>
+
+    <div class="passcode-box">
+      <input type="text" id="passcode" value="98776" readonly aria-label="Your 5-digit passcode" />
+      <i class="far fa-copy copy-btn" onclick="copyPasscode()" aria-label="Copy passcode" style="position: absolute; right: 35px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #007bff;"></i>
+    </div>
+
+    <a aria-label='Proceed to dashboard' class='cta-button' href='https://tasktube.app/'>Go to Dashboard</a>
+
+    <div class="footer-note">
+      Welcome to Task Tube! Start earning crypto today.
+    </div>
+  </div>
+
+  <div class="bottom-menu" role="navigation">
+    <a href="https://tasktube.app/home">Home</a>
+    <a href="https://tasktube.app/about">About</a>
+    <a href="https://tasktube.app/faq">FAQ</a>
+    <a href="https://tasktube.app/contact">Contact</a>
+    <a href="https://tasktube.app/terms">Terms</a>
+  </div>
+
+  <script>
+    // Copy Passcode Function
+    function copyPasscode() {
+      const passcode = document.getElementById('passcode').value;
+      navigator.clipboard.writeText(passcode).then(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Passcode Copied',
+          text: 'Your 5-digit passcode has been copied to your clipboard!',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      });
+    }
+  </script>
+</body>
+</html>
