@@ -1,78 +1,31 @@
 <?php
-// Start session if needed (optional, not used here)
-session_start();
-
-// Include database connection
+// register-finish.php
 require_once 'database/conn.php';
 
-// Set JSON header for AJAX response
-header('Content-Type: application/json');
+// Initialize variables
+$data = [];
+$error = '';
 
-// Debug: Log received POST data
-file_put_contents('debug.log', 'POST data: ' . print_r($_POST, true) . "\n", FILE_APPEND);
-
-// Function to generate a unique 5-digit passcode
-function generatePasscode($pdo) {
-    do {
-        $passcode = str_pad(mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
-        $stmt->execute([$passcode]);
-        $count = $stmt->fetchColumn();
-    } while ($count > 0); // Ensure passcode is unique
-    return $passcode;
-}
-
-// Process registration data
-$response = ['success' => false, 'error' => ''];
-
-$data = json_decode($_POST['registerData'] ?? '{}', true);
-if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) {
-    $name = trim($data['name']);
-    $email = trim($data['email']);
-    $gender = $data['gender'];
-
-    // Validate email format
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $response['error'] = "Invalid email format.";
-        file_put_contents('debug.log', 'Invalid email format: ' . $email . "\n", FILE_APPEND);
-    } else {
-        try {
-            // Check if email already exists
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            if ($stmt->fetchColumn() > 0) {
-                $response['error'] = "Email already registered.";
-                file_put_contents('debug.log', 'Duplicate email: ' . $email . "\n", FILE_APPEND);
-            } else {
-                // Generate unique passcode
-                $passcode = generatePasscode($pdo);
-
-                // Insert user into database
-                $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$name, $email, $gender, $passcode]);
-
-                // Store data for display
-                $response['success'] = true;
-                $response['data'] = ['name' => $name, 'email' => $email, 'gender' => $gender, 'passcode' => $passcode];
-            }
-        } catch (PDOException $e) {
-            $response['error'] = "Database error: " . $e->getMessage();
-            file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
+// Get email from query string
+$email = $_GET['email'] ?? '';
+if ($email) {
+    try {
+        // Retrieve user data from database
+        $stmt = $pdo->prepare("SELECT name, email, gender, passcode FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $data = $stmt->fetch();
+        if (!$data) {
+            $error = "No user found with email: " . htmlspecialchars($email);
+            file_put_contents('debug.log', 'No user found: ' . $email . "\n", FILE_APPEND);
         }
+    } catch (PDOException $e) {
+        $error = "Database error: " . $e->getMessage();
+        file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
     }
 } else {
-    $response['error'] = "Invalid registration data: " . (empty($_POST['registerData']) ? "No data received." : "Incomplete data - " . print_r($data, true));
-    file_put_contents('debug.log', 'Invalid data error: ' . print_r($data, true) . "\n", FILE_APPEND);
+    $error = "No email provided.";
+    file_put_contents('debug.log', 'No email in query string' . "\n", FILE_APPEND);
 }
-
-// Send JSON response for AJAX
-if (empty($response['success'])) {
-    echo json_encode($response);
-    exit;
-}
-
-// If successful, proceed to render HTML
-$data = $response['data'];
 ?>
 
 <!DOCTYPE html>
@@ -258,14 +211,19 @@ $data = $response['data'];
     <?php include 'inc/navbar.php'; ?>
 
     <div class="finish-container">
-        <h1>Welcome, <span><?php echo htmlspecialchars($data['name']); ?>!</span></h1>
-        <p>Your registration is complete.</p>
-        <p>Email: <span><?php echo htmlspecialchars($data['email']); ?></span></p>
-        <p>Gender: <span><?php echo htmlspecialchars($data['gender']); ?></span></p>
-        <p>Your unique passcode is:</p>
-        <div class="passcode-box"><?php echo htmlspecialchars($data['passcode']); ?></div>
-        <p>Please copy this passcode and keep it safe. You will need it to log in.</p>
-        <a href="index.php" class="proceed-btn">Proceed to Login</a>
+        <?php if ($error): ?>
+            <p class="error-message"><?php echo htmlspecialchars($error); ?></p>
+            <a href="register.php" style="color: #6e44ff; text-decoration: none;">Try Again</a>
+        <?php else: ?>
+            <h1>Welcome, <span><?php echo htmlspecialchars($data['name']); ?>!</span></h1>
+            <p>Your registration is complete.</p>
+            <p>Email: <span><?php echo htmlspecialchars($data['email']); ?></span></p>
+            <p>Gender: <span><?php echo htmlspecialchars($data['gender']); ?></span></p>
+            <p>Your unique passcode is:</p>
+            <div class="passcode-box"><?php echo htmlspecialchars($data['passcode']); ?></div>
+            <p>Please copy this passcode and keep it safe. You will need it to log in.</p>
+            <a href="login.php" class="proceed-btn">Proceed to Login</a>
+        <?php endif; ?>
     </div>
 
     <?php include 'inc/footer.php'; ?>
