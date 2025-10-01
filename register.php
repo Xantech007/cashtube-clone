@@ -1,6 +1,65 @@
 <?php
 // register.php
+require_once 'database/conn.php';
+
+// Function to generate a unique 5-digit passcode
+function generatePasscode($pdo) {
+    do {
+        $passcode = str_pad(mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
+        $stmt->execute([$passcode]);
+        $count = $stmt->fetchColumn();
+    } while ($count > 0);
+    return $passcode;
+}
+
+$response = ['success' => false, 'error' => ''];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
+    $data = json_decode($_POST['registerData'], true);
+    if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) {
+        $name = trim($data['name']);
+        $email = trim($data['email']);
+        $gender = $data['gender'];
+
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $response['error'] = "Invalid email format.";
+            file_put_contents('debug.log', 'Invalid email format: ' . $email . "\n", FILE_APPEND);
+        } else {
+            try {
+                // Check if email already exists
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
+                $stmt->execute([$email]);
+                if ($stmt->fetchColumn() > 0) {
+                    $response['error'] = "Email already registered.";
+                    file_put_contents('debug.log', 'Duplicate email: ' . $email . "\n", FILE_APPEND);
+                } else {
+                    // Generate unique passcode
+                    $passcode = generatePasscode($pdo);
+
+                    // Insert user into database
+                    $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$name, $email, $gender, $passcode]);
+
+                    $response['success'] = true;
+                    $response['email'] = $email;
+                }
+            } catch (PDOException $e) {
+                $response['error'] = "Database error: " . $e->getMessage();
+                file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
+            }
+        }
+    } else {
+        $response['error'] = "Incomplete registration data.";
+        file_put_contents('debug.log', 'Invalid data: ' . print_r($data, true) . "\n", FILE_APPEND);
+    }
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -275,11 +334,11 @@
 
             // Send data via AJAX
             $.ajax({
-                url: './register-finish.php', // Ensure correct path
+                url: './register.php', // Send to self
                 type: 'POST',
                 data: { registerData: JSON.stringify(data) },
                 contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-                dataType: 'json', // Expect JSON response
+                dataType: 'json',
                 success: function(response) {
                     console.log('AJAX success:', response);
                     if (response.success) {
@@ -290,7 +349,7 @@
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = './register-finish.php';
+                            window.location.href = './register-finish.php?email=' + encodeURIComponent(response.email);
                         });
                     } else {
                         Swal.fire({
