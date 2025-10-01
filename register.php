@@ -87,93 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             padding: 80px 20px 80px;
         }
 
-        .hamburger-menu-button {
-            width: 40px;
-            height: 40px;
-            background: #6e44ff;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            cursor: pointer;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .hamburger-menu-button span {
-            width: 20px;
-            height: 2px;
-            background: #fff;
-            position: absolute;
-            transition: all 0.3s ease;
-        }
-
-        .hamburger-menu-button span::before,
-        .hamburger-menu-button span::after {
-            content: '';
-            width: 20px;
-            height: 2px;
-            background: #fff;
-            position: absolute;
-            transition: all 0.3s ease;
-        }
-
-        .hamburger-menu-button span::before {
-            transform: translateY(-6px);
-        }
-
-        .hamburger-menu-button span::after {
-            transform: translateY(6px);
-        }
-
-        .hamburger-menu-button-close span {
-            background: transparent;
-        }
-
-        .hamburger-menu-button-close span::before {
-            transform: translateY(0) rotate(45deg);
-        }
-
-        .hamburger-menu-button-close span::after {
-            transform: translateY(0) rotate(-45deg);
-        }
-
-        .ham-menu {
-            position: absolute;
-            top: 70px;
-            left: 0;
-            width: 100%;
-            background: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-in-out;
-        }
-
-        .ham-menu.on {
-            transform: translateX(0);
-        }
-
-        .ham-menu ul {
-            list-style: none;
-            padding: 20px;
-        }
-
-        .ham-menu ul li {
-            margin: 10px 0;
-        }
-
-        .ham-menu ul li a {
-            color: #333;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 16px;
-            transition: color 0.3s ease;
-        }
-
-        .ham-menu ul li a:hover {
-            color: #6e44ff;
-        }
-
         .register-container {
             background: #fff;
             border-radius: 15px;
@@ -248,6 +161,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             background: #5a33cc;
         }
 
+        .login-link {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .login-link a {
+            color: #6e44ff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 768px) {
             .register-container {
                 padding: 20px;
@@ -272,6 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             </div>
             <button type="submit" class="submit-btn">Submit</button>
         </form>
+        <p class="login-link">Already have an account? <a href="signin.php">Login</a></p>
     </div>
 
     <?php include 'inc/footer.php'; ?>
@@ -284,20 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     </script>
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script>
-        // Hamburger Menu
-        const button = document.getElementById('hamburger-menu');
-        button.addEventListener('click', function() {
-            const span = button.getElementsByTagName('span')[0];
-            span.classList.toggle('hamburger-menu-button-close');
-            document.getElementById('ham-navigation').classList.toggle('on');
-        });
-
-        $('.menu li a').on('click', function() {
-            $('#hamburger-menu').click();
-        });
-
         // Form Submission
         document.getElementById('register-form').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -334,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
 
             // Send data via AJAX
             $.ajax({
-                url: './register.php', // Send to self
+                url: './register.php',
                 type: 'POST',
                 data: { registerData: JSON.stringify(data) },
                 contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
