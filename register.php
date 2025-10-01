@@ -203,7 +203,7 @@
     <div class="register-container">
         <h1>Register for <span>Task Tube</span></h1>
         <p>Create your account to start earning</p>
-        <form id="register-form" action="register-finish.php" method="POST">
+        <form id="register-form" method="POST">
             <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
             <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
             <div class="gender-options">
@@ -244,16 +244,29 @@
             e.preventDefault();
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
-            const gender = document.querySelector('input[name="gender"]:checked').value;
+            const gender = document.querySelector('input[name="gender"]:checked')?.value;
+
+            // Validate inputs
+            if (!name || !email || !gender) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Please fill out all fields and select a gender.',
+                });
+                return;
+            }
+
+            const data = { name, email, gender };
+            console.log('Sending data:', data); // Debugging
 
             // Send data to register-finish.php via AJAX
             $.ajax({
                 url: 'register-finish.php',
                 type: 'POST',
-                data: {
-                    registerData: JSON.stringify({ name, email, gender })
-                },
-                success: function() {
+                data: { registerData: JSON.stringify(data) },
+                contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+                success: function(response) {
+                    console.log('AJAX success:', response); // Debugging
                     Swal.fire({
                         icon: 'success',
                         title: 'Registration Successful!',
@@ -264,11 +277,12 @@
                         window.location.href = 'register-finish.php';
                     });
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', status, error, xhr.responseText); // Debugging
                     Swal.fire({
                         icon: 'error',
                         title: 'Oops...',
-                        text: 'Registration failed. Please try again.',
+                        text: 'Registration failed: ' + (xhr.responseText || 'Server error. Please try again.'),
                     });
                 }
             });
