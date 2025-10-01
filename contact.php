@@ -211,7 +211,7 @@
     <div class="contact-container">
         <h1>Contact Our Support Team</h1>
         <p>
-            We're here to help with any questions or issues you may have! At Task Tube, our dedicated support team is available to assist you 24/7. Whether you need help with your account, passcode, or have general inquiries, feel free to reach out.
+            We're here to help with any questions or issues you may have! At Task Tube, our dedicated support team is available to assist you 24/7. Whether you need help with your account, login, or have general inquiries, feel free to reach out.
         </p>
 
         <div class="contact-info">
@@ -224,9 +224,8 @@
         <div class="categories">
             <h2>We Can Help With:</h2>
             <ul>
-                <li>Inquiries about Passcode Purchases</li>
                 <li>Technical Support for Login/Access Issues</li>
-                <li>Order Verifications and Refund Requests</li>
+                <li>Verification Requests</li>
             </ul>
         </div>
 
