@@ -5,7 +5,9 @@
 <header>
     <div class="header-container">
         <div class="logo">
-            <img src="img/palmpay.webp" alt="Task Tube Logo">
+            <a href="index.php">
+                <img src="img/palmpay.webp" alt="Task Tube Logo">
+            </a>
         </div>
         <button id="hamburger-menu" data-toggle="ham-navigation" class="hamburger-menu-button">
             <span></span>
@@ -47,6 +49,11 @@
     .logo img {
         height: 50px;
         border-radius: 50%;
+    }
+
+    .logo a {
+        display: inline-block;
+        text-decoration: none;
     }
 
     .hamburger-menu-button {
