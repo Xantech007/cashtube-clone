@@ -1,3 +1,6 @@
+<?php
+// footer.php
+?>
 <footer>
     <a href="https://tasktube.app/terms.html">Terms of Service</a>
     <a href="https://tasktube.app/privacy.html">Privacy Policy</a>
