@@ -138,6 +138,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             background: #ff4d94;
         }
 
+        .signin-link {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .signin-link a {
+            color: #6e44ff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .signin-link a:hover {
+            text-decoration: underline;
+        }
+
         .notice {
             position: fixed;
             top: 50%;
@@ -209,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             <div class="key action" id="clear">Clear</div>
             <div class="key action" id="enter">Login</div>
         </div>
+        <p class="signin-link">Already have an account? <a href="signin.php">Sign In</a></p>
     </div>
 
     <div class="notice" id="notice">
@@ -228,7 +245,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     </script>
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script>
         // Passcode Logic
         const passcodeInput = document.getElementById("passcode");
