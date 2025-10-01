@@ -106,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
         .keypad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(5, auto);
             gap: 10px;
             margin-bottom: 20px;
         }
@@ -139,11 +140,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
         }
 
         .key.zero {
-            grid-column: 2 / 3; /* Center 0 in the middle column */
+            grid-column: 2 / 3;
+            grid-row: 4 / 5; /* Place 0 in row 4, middle column */
         }
 
-        .keypad .action-row {
-            display: contents; /* Allows action buttons to fill the last row */
+        .key.action.signup {
+            grid-column: 1 / 2;
+            grid-row: 5 / 6;
+        }
+
+        .key.action.clear {
+            grid-column: 2 / 3;
+            grid-row: 5 / 6;
+        }
+
+        .key.action.enter {
+            grid-column: 3 / 4;
+            grid-row: 5 / 6;
         }
 
         .signin-link {
@@ -193,11 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             <div class="key">8</div>
             <div class="key">9</div>
             <div class="key zero">0</div>
-            <div class="action-row">
-                <div class="key action"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
-                <div class="key action" id="clear">Clear</div>
-                <div class="key action" id="enter">Login</div>
-            </div>
+            <div class="key action signup"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
+            <div class="key action clear" id="clear">Clear</div>
+            <div class="key action enter" id="enter">Login</div>
         </div>
         <p class="signin-link">Already have an account? <a href="signin.php">Sign In</a></p>
     </div>
