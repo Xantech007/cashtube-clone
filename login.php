@@ -138,6 +138,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             background: #ff4d94;
         }
 
+        .key.zero {
+            grid-column: 2 / 3; /* Center 0 in the middle column */
+        }
+
+        .keypad .action-row {
+            display: contents; /* Allows action buttons to fill the last row */
+        }
+
         .signin-link {
             font-size: 14px;
             color: #666;
@@ -184,10 +192,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             <div class="key">7</div>
             <div class="key">8</div>
             <div class="key">9</div>
-            <div class="key">0</div>
-            <div class="key action"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
-            <div class="key action" id="clear">Clear</div>
-            <div class="key action" id="enter">Login</div>
+            <div class="key zero">0</div>
+            <div class="action-row">
+                <div class="key action"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
+                <div class="key action" id="clear">Clear</div>
+                <div class="key action" id="enter">Login</div>
+            </div>
         </div>
         <p class="signin-link">Already have an account? <a href="signin.php">Sign In</a></p>
     </div>
@@ -198,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
-        (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h,null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
+        (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h,null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechat.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
     </script>
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
@@ -273,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                         icon: 'error',
                         title: 'Oops...',
                         text: 'Server error. Please try again.',
-                        footer: '<a href="register.php">Sign Up'
+                        footer: '<a href="register.php">Sign Up</a>'
                     });
                     passcodeInput.value = "";
                 }
