@@ -1,35 +1,5 @@
 <?php
 // login.php
-require_once 'database/conn.php';
-
-$response = ['success' => false, 'error' => ''];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
-    $passcode = trim($_POST['passcode']);
-    
-    if (strlen($passcode) === 5) {
-        try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
-            $stmt->execute([$passcode]);
-            if ($stmt->fetchColumn() > 0) {
-                $response['success'] = true;
-            } else {
-                $response['error'] = "Invalid passcode.";
-                file_put_contents('debug.log', 'Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
-            }
-        } catch (PDOException $e) {
-            $response['error'] = "Database error: " . $e->getMessage();
-            file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
-        }
-    } else {
-        $response['error'] = "Passcode must be 5 digits.";
-        file_put_contents('debug.log', 'Invalid passcode length: ' . $passcode . "\n", FILE_APPEND);
-    }
-    
-    header('Content-Type: application/json');
-    echo json_encode($response);
-    exit;
-}
 ?>
 
 <!DOCTYPE html>
@@ -37,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Tube - Secure Login</title>
+    <title>Task Tube - Login</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -70,36 +40,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
         }
 
         .login-container h1 {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 10px;
-        }
-
-        .login-container p {
-            font-size: 16px;
-            color: #666;
             margin-bottom: 20px;
         }
 
-        .login-container p span {
-            color: #ff69b4;
+        .login-container .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .login-container label {
+            font-size: 14px;
             font-weight: 500;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
         }
 
-        #passcode {
+        .login-container input {
             width: 100%;
-            height: 50px;
-            font-size: 24px;
-            text-align: center;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
             outline: none;
             transition: border-color 0.3s ease;
         }
 
-        #passcode:focus {
+        .login-container input:focus {
             border-color: #6e44ff;
         }
 
@@ -107,50 +77,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            margin-bottom: 20px;
+            margin-top: 10px;
         }
 
-        .key {
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
+        .keypad-button {
+            background: #f0e9ff;
+            border: none;
             border-radius: 10px;
             padding: 15px;
             font-size: 18px;
             font-weight: 500;
-            text-align: center;
+            color: #6e44ff;
             cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
+            transition: background 0.3s ease;
         }
 
-        .key:hover {
+        .keypad-button:hover {
             background: #6e44ff;
             color: #fff;
-            transform: scale(1.05);
         }
 
-        .key.action {
+        .keypad-button.delete {
+            background: #ffe9ec;
+            color: #ff69b4;
+        }
+
+        .keypad-button.delete:hover {
             background: #ff69b4;
             color: #fff;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: #6e44ff;
+            color: #fff;
             border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
         }
 
-        .key.action:hover {
-            background: #ff4d94;
+        .submit-btn:hover {
+            background: #5a00b5;
         }
 
-        .signin-link {
+        .signup-link {
             font-size: 14px;
             color: #666;
-            margin-top: 10px;
+            margin-top: 20px;
         }
 
-        .signin-link a {
+        .signup-link a {
             color: #6e44ff;
             text-decoration: none;
             font-weight: 500;
         }
 
-        .signin-link a:hover {
+        .signup-link a:hover {
             text-decoration: underline;
         }
 
@@ -172,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
 
         .notice h2 {
             font-size: 20px;
-            color: #ff4d94;
+            color: #ff69b4;
             margin-bottom: 10px;
         }
 
@@ -196,9 +182,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 padding: 20px;
             }
 
-            .key {
-                padding: 10px;
+            .login-container h1 {
+                font-size: 24px;
+            }
+
+            .keypad-button {
+                padding: 12px;
                 font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 15px;
+            }
+
+            .login-container h1 {
+                font-size: 20px;
             }
         }
     </style>
@@ -208,31 +208,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <?php include 'inc/navbar.php'; ?>
 
     <div class="login-container">
-        <h1>Welcome to <span>Task Tube</span></h1>
-        <p>Enter your 5-digit code</p>
-        <input type="password" id="passcode" readonly style="font-size: 24px;" aria-label="Passcode input">
-        <div class="keypad">
-            <div class="key">1</div>
-            <div class="key">2</div>
-            <div class="key">3</div>
-            <div class="key">4</div>
-            <div class="key">5</div>
-            <div class="key">6</div>
-            <div class="key">7</div>
-            <div class="key">8</div>
-            <div class="key">9</div>
-            <div class="key action"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
-            <div class="key action" id="clear">Clear</div>
-            <div class="key action" id="enter">Login</div>
-        </div>
-        <p class="signin-link">Already have an account? <a href="signin.php">Sign In</a></p>
+        <h1>Login to Task Tube</h1>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label for="passcode">Passcode</label>
+                <input type="text" id="passcode" name="passcode" placeholder="Enter 5-digit passcode" maxlength="5" readonly required>
+                <div class="keypad" id="keypad"></div>
+            </div>
+            <button type="submit" class="submit-btn">Login</button>
+        </form>
+        <p class="signup-link">
+            Don't have an account? <a href="register.php">Sign Up</a>
+        </p>
     </div>
 
     <div class="notice" id="notice">
         <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
-        <h2>Welcome to Task Tube</h2>
-        <p>If you've been looking for a way to earn money by watching ad videos, you're in the right place!</p>
-        <p>Get your 5-digit login code and start earning today.</p>
+        <h2>Welcome Back</h2>
+        <p>Login to continue earning money by watching video ads!</p>
+        <p>Use your email and 5-digit passcode to access your account.</p>
     </div>
 
     <?php include 'inc/footer.php'; ?>
@@ -246,55 +244,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
     <script>
-        // Passcode Logic
-        const passcodeInput = document.getElementById("passcode");
-        const keys = document.querySelectorAll(".key:not(.action)");
-        const clearButton = document.getElementById("clear");
-        const enterButton = document.getElementById("enter");
+        // Keypad Generation
+        document.addEventListener('DOMContentLoaded', function() {
+            const keypad = document.getElementById('keypad');
+            const passcodeInput = document.getElementById('passcode');
 
-        keys.forEach(key => {
-            key.addEventListener("click", () => {
-                if (passcodeInput.value.length < 5) {
-                    passcodeInput.value += key.textContent;
+            // Create keypad buttons for digits 0-9
+            const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+            digits.forEach(digit => {
+                const button = document.createElement('button');
+                button.className = 'keypad-button';
+                button.textContent = digit;
+                button.addEventListener('click', () => {
+                    if (passcodeInput.value.length < 5) {
+                        passcodeInput.value += digit;
+                    }
+                });
+                keypad.appendChild(button);
+            });
+
+            // Add delete button
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'keypad-button delete';
+            deleteButton.innerHTML = '<i class="fas fa-backspace"></i>';
+            deleteButton.addEventListener('click', () => {
+                passcodeInput.value = passcodeInput.value.slice(0, -1);
+            });
+            keypad.appendChild(deleteButton);
+
+            // Set active navbar link
+            const currentPath = window.location.pathname.split('/').pop();
+            const links = document.querySelectorAll('.ham-menu ul li a');
+            links.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.parentElement.classList.add('active');
                 }
             });
-        });
 
-        clearButton.addEventListener("click", () => {
-            passcodeInput.value = "";
-        });
-
-        enterButton.addEventListener("click", validatePasscode);
-
-        passcodeInput.addEventListener("input", () => {
-            if (passcodeInput.value.length === 5) {
-                validatePasscode();
-            }
-        });
-
-        function validatePasscode() {
-            const passcode = passcodeInput.value;
-            if (passcode.length !== 5) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'Please enter a 5-digit passcode.',
-                });
-                return;
+            // Notice popup
+            function isNoticeShown() {
+                return localStorage.getItem('noticeShownLogin');
             }
 
-            $.ajax({
-                url: './login.php',
-                type: 'POST',
-                data: { passcode: passcode },
-                dataType: 'json',
-                success: function(response) {
-                    console.log('AJAX response:', response);
-                    if (response.success) {
+            function setNoticeShown() {
+                localStorage.setItem('noticeShownLogin', true);
+            }
+
+            function showNotice() {
+                if (!isNoticeShown()) {
+                    const notice = document.getElementById('notice');
+                    setTimeout(() => {
+                        notice.style.display = 'block';
+                        setNoticeShown();
+                    }, 1000);
+                }
+            }
+
+            function closeNotice() {
+                document.getElementById('notice').style.display = 'none';
+                setNoticeShown();
+            }
+
+            window.addEventListener('load', showNotice);
+
+            // Form submission
+            document.getElementById('login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const passcode = passcodeInput.value;
+
+                if (passcode.length !== 5) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Passcode',
+                        text: 'Please enter a 5-digit passcode.'
+                    });
+                    return;
+                }
+
+                // AJAX submission
+                fetch('database/login_process.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `email=${encodeURIComponent(email)}&passcode=${encodeURIComponent(passcode)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'Good job!',
-                            text: 'Login successful',
+                            title: 'Login Successful',
+                            text: 'Redirecting to your dashboard...',
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
@@ -303,54 +343,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                     } else {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Oops...',
-                            text: response.error || 'Invalid Passcode!',
-                            footer: '<a href="register.php">Sign Up</a>'
+                            title: 'Login Failed',
+                            text: data.message || 'Invalid email or passcode.'
                         });
-                        passcodeInput.value = "";
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX error:', status, error, xhr.responseText);
+                })
+                .catch(error => {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Oops...',
-                        text: 'Server error. Please try again.',
-                        footer: '<a href="register.php">Sign Up</a>'
+                        title: 'Error',
+                        text: 'Something went wrong. Please try again.'
                     });
-                    passcodeInput.value = "";
-                }
+                });
             });
-        }
 
-        // Notice Popup
-        function isNoticeShown() {
-            return localStorage.getItem('noticeShown');
-        }
-
-        function setNoticeShown() {
-            localStorage.setItem('noticeShown', true);
-        }
-
-        function showNotice() {
-            if (!isNoticeShown()) {
-                const notice = document.getElementById('notice');
-                setTimeout(() => {
-                    notice.style.display = 'block';
-                    setNoticeShown();
-                }, 1000);
-            }
-        }
-
-        function closeNotice() {
-            document.getElementById('notice').style.display = 'none';
-            setNoticeShown();
-        }
-
-        window.addEventListener('load', showNotice);
-
-        // Prevent right-click
-        document.addEventListener('contextmenu', e => e.preventDefault());
+            // Prevent right-click
+            document.addEventListener('contextmenu', e => e.preventDefault());
+        });
     </script>
 </body>
 </html>
