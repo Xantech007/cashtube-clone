@@ -138,44 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             background: #ff4d94;
         }
 
-        .notification-popup {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #28a745, #20c997);
-            border-radius: 12px;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-            padding: 15px 20px;
-            max-width: 320px;
-            width: 100%;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-20px);
-            transition: all 0.4s ease;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            color: #fff;
-        }
-
-        .notification-popup.notification-show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        .notification-content {
-            font-size: 15px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-        }
-
-        .notification-content i {
-            margin-right: 10px;
-            font-size: 20px;
-        }
-
         .notice {
             position: fixed;
             top: 50%;
@@ -222,11 +184,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 padding: 10px;
                 font-size: 16px;
             }
-
-            .notification-popup {
-                right: 10px;
-                max-width: 90%;
-            }
         }
     </style>
 </head>
@@ -248,18 +205,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             <div class="key">7</div>
             <div class="key">8</div>
             <div class="key">9</div>
-            <div class="key action"><a href='https://tasktube.app/buy' style='color: #fff;'>Sign Up</a></div>
+            <div class="key action"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
             <div class="key action" id="clear">Clear</div>
             <div class="key action" id="enter">Login</div>
-        </div>
-    </div>
-
-    <div id="notification-container">
-        <div id="notification-popup" class="notification-popup">
-            <div id="notification-content" class="notification-content">
-                <i class="fas fa-dollar-sign"></i>
-                <p id="notification-message"></p>
-            </div>
         </div>
     </div>
 
@@ -282,18 +230,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script>
-        // Hamburger Menu
-        const button = document.getElementById('hamburger-menu');
-        button.addEventListener('click', function() {
-            const span = button.getElementsByTagName('span')[0];
-            span.classList.toggle('hamburger-menu-button-close');
-            document.getElementById('ham-navigation').classList.toggle('on');
-        });
-
-        $('.menu li a').on('click', function() {
-            $('#hamburger-menu').click();
-        });
-
         // Passcode Logic
         const passcodeInput = document.getElementById("passcode");
         const keys = document.querySelectorAll(".key:not(.action)");
@@ -353,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                             icon: 'error',
                             title: 'Oops...',
                             text: response.error || 'Invalid Passcode!',
-                            footer: '<a href="https://tasktube.app/buy">Buy Passcode?</a>'
+                            footer: '<a href="register.php">Sign Up</a>'
                         });
                         passcodeInput.value = "";
                     }
@@ -364,60 +300,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                         icon: 'error',
                         title: 'Oops...',
                         text: 'Server error. Please try again.',
-                        footer: '<a href="https://tasktube.app/buy">Buy Passcode?</a>'
+                        footer: '<a href="register.php">Sign Up</a>'
                     });
                     passcodeInput.value = "";
                 }
             });
         }
-
-        // Notification Logic
-        const notificationQueue = [];
-        let isNotificationShowing = false;
-        const delay = 7000;
-        const messages = [
-            "@Alex earned $150.00 from video ads! 19min ago",
-            "@Jame earned $50.00 from video ads! 20min ago",
-            "@Gloria earned $200.00 from video ads! 53min ago",
-            "@Sophie earned $75.00 from video ads! 1hr ago",
-            "@Mark earned $120.00 from video ads! 2hrs ago"
-        ];
-
-        function showNotification(message) {
-            const notificationPopup = document.getElementById("notification-popup");
-            const messageElement = document.getElementById("notification-message");
-            messageElement.textContent = message;
-
-            notificationQueue.push(message);
-            if (!isNotificationShowing) {
-                showNextNotification();
-            }
-        }
-
-        function showNextNotification() {
-            if (notificationQueue.length === 0) {
-                isNotificationShowing = false;
-                return;
-            }
-
-            const message = notificationQueue.shift();
-            const notificationPopup = document.getElementById("notification-popup");
-            const messageElement = document.getElementById("notification-message");
-            messageElement.textContent = message;
-
-            notificationPopup.classList.add("notification-show");
-            isNotificationShowing = true;
-
-            setTimeout(() => {
-                notificationPopup.classList.remove("notification-show");
-                isNotificationShowing = false;
-                setTimeout(showNextNotification, 500);
-            }, 4000);
-        }
-
-        messages.forEach((message, i) => {
-            setTimeout(() => showNotification(message), (i + 1) * delay);
-        });
 
         // Notice Popup
         function isNoticeShown() {
