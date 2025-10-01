@@ -242,11 +242,13 @@
         // Form Submission
         document.getElementById('register-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
+
+            // Get form values
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
             const gender = document.querySelector('input[name="gender"]:checked')?.value;
 
-            // Validate inputs
+            // Client-side validation
             if (!name || !email || !gender) {
                 Swal.fire({
                     icon: 'error',
@@ -256,33 +258,54 @@
                 return;
             }
 
-            const data = { name, email, gender };
-            console.log('Sending data:', data); // Debugging
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Please enter a valid email address.',
+                });
+                return;
+            }
 
-            // Send data to register-finish.php via AJAX
+            // Prepare data
+            const data = { name, email, gender };
+            console.log('Form data prepared:', data);
+
+            // Send data via AJAX
             $.ajax({
-                url: 'register-finish.php',
+                url: './register-finish.php', // Ensure correct path
                 type: 'POST',
                 data: { registerData: JSON.stringify(data) },
                 contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+                dataType: 'json', // Expect JSON response
                 success: function(response) {
-                    console.log('AJAX success:', response); // Debugging
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Registration Successful!',
-                        text: 'Your account has been created.',
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.href = 'register-finish.php';
-                    });
+                    console.log('AJAX success:', response);
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Registration Successful!',
+                            text: 'Your account has been created.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = './register-finish.php';
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Oops...',
+                            text: response.error || 'Registration failed. Please try again.',
+                        });
+                    }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX error:', status, error, xhr.responseText); // Debugging
+                    console.error('AJAX error:', status, error, xhr.responseText);
                     Swal.fire({
                         icon: 'error',
                         title: 'Oops...',
-                        text: 'Registration failed: ' + (xhr.responseText || 'Server error. Please try again.'),
+                        text: 'Failed to send data: ' + (xhr.responseText || 'Server error. Please try again.'),
                     });
                 }
             });
