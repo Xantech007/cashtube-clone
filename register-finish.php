@@ -218,16 +218,13 @@ if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) 
     </style>
 </head>
 <body>
-    <!-- Include Header -->
-    <div id="header-placeholder"></div>
-
-    <!-- Include Navbar -->
-    <div id="navbar-placeholder"></div>
+    <?php include 'inc/header.php'; ?>
+    <?php include 'inc/navbar.php'; ?>
 
     <div class="finish-container">
         <?php if (isset($error)): ?>
             <p class="error-message"><?php echo htmlspecialchars($error); ?></p>
-            <a href="register.html" style="color: #6e44ff; text-decoration: none;">Try Again</a>
+            <a href="register.php" style="color: #6e44ff; text-decoration: none;">Try Again</a>
         <?php else: ?>
             <h1>Welcome, <span><?php echo htmlspecialchars($data['name']); ?>!</span></h1>
             <p>Your registration is complete.</p>
@@ -236,22 +233,14 @@ if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) 
             <p>Your unique passcode is:</p>
             <div class="passcode-box"><?php echo htmlspecialchars($passcode); ?></div>
             <p>Please copy this passcode and keep it safe. You will need it to log in.</p>
-            <a href="index.html" class="proceed-btn">Proceed to Login</a>
+            <a href="index.php" class="proceed-btn">Proceed to Login</a>
         <?php endif; ?>
     </div>
 
-    <!-- Include Footer -->
-    <div id="footer-placeholder"></div>
+    <?php include 'inc/footer.php'; ?>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script>
-        // Load Header, Navbar, and Footer
-        $(function() {
-            $("#header-placeholder").load("inc/header.html");
-            $("#navbar-placeholder").load("inc/navbar.html");
-            $("#footer-placeholder").load("inc/footer.html");
-        });
-
         // Hamburger Menu
         const button = document.getElementById('hamburger-menu');
         button.addEventListener('click', function() {
