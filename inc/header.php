@@ -8,7 +8,7 @@
             <img src="img/palmpay.webp" alt="Task Tube Logo">
         </div>
         <button id="hamburger-menu" data-toggle="ham-navigation" class="hamburger-menu-button">
-            <span class="hamburger-menu-button-open">Menu</span>
+            <span></span>
         </button>
     </div>
 </header>
