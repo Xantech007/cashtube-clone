@@ -33,43 +33,70 @@
             background: #fff;
             border-radius: 15px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            padding: 30px;
-            max-width: 600px;
+            padding: 40px;
+            max-width: 800px;
             width: 100%;
             text-align: center;
         }
 
         .about-container h1 {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .about-container h2 {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 500;
             color: #ff69b4;
-            margin-bottom: 20px;
+            margin: 30px 0 15px;
         }
 
         .about-container p {
             font-size: 16px;
             color: #666;
-            line-height: 1.6;
+            line-height: 1.8;
             margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .about-container ul {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .about-container ul li {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .about-container ul li::before {
+            content: '\f058';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: #6e44ff;
+            position: absolute;
+            left: 0;
+            top: 2px;
         }
 
         .signup-link {
-            font-size: 14px;
+            font-size: 16px;
             color: #666;
-            margin-top: 20px;
+            margin-top: 30px;
         }
 
         .signup-link a {
             color: #6e44ff;
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         .signup-link a:hover {
@@ -119,6 +146,25 @@
             }
 
             .about-container h1 {
+                font-size: 28px;
+            }
+
+            .about-container h2 {
+                font-size: 22px;
+            }
+
+            .about-container p,
+            .about-container ul li {
+                font-size: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .about-container {
+                padding: 15px;
+            }
+
+            .about-container h1 {
                 font-size: 24px;
             }
 
@@ -136,19 +182,52 @@
         <h1>About Us</h1>
         <h2>Welcome to Task Tube</h2>
         <p>
-            Task Tube is your gateway to earning money online effortlessly. Instead of spending time on social media, get paid in USD for watching video ads right from your smartphone.
+            Task Tube is an innovative platform designed to transform how you spend your time online. Instead of scrolling through social media, Task Tube empowers you to earn real money in USD by watching video advertisements directly from your smartphone or computer. Our mission is to make online earning accessible, seamless, and rewarding for everyone, anywhere in the world.
         </p>
         <p>
-            With minimal data, you can unlock earnings of up to $1,000 daily. Join our crypto-powered platform and start earning rewards instantly.
+            Built on a secure, crypto-powered rewards system, Task Tube allows users to unlock earnings of up to $1,000 daily with minimal data usage. Whether you’re looking to supplement your income or explore a new way to earn, Task Tube offers a straightforward and engaging opportunity to get paid for your time and attention.
         </p>
-        <p class="signup-link">Ready to start earning? <a href="register.php">Sign Up Now</a></p>
+
+        <h2>Our Mission</h2>
+        <p>
+            At Task Tube, we believe that everyone deserves the chance to earn money effortlessly. Our mission is to create a user-friendly platform that connects advertisers with viewers, rewarding you for engaging with content you already enjoy. By leveraging blockchain technology, we ensure secure, transparent, and instant reward distribution, making Task Tube a trusted choice for online earners.
+        </p>
+
+        <h2>How It Works</h2>
+        <p>
+            Getting started with Task Tube is simple:
+        </p>
+        <ul>
+            <li><strong>Sign Up:</strong> Create your account in minutes with basic details and receive a unique 5-digit passcode.</li>
+            <li><strong>Watch Ads:</strong> Browse and watch video advertisements from our partners at your convenience.</li>
+            <li><strong>Earn Rewards:</strong> Get paid in USD for each ad you watch, with earnings credited instantly to your account.</li>
+            <li><strong>Withdraw Earnings:</strong> Cash out your rewards securely using our crypto-powered payment system.</li>
+        </ul>
+
+        <h2>Why Choose Task Tube?</h2>
+        <p>
+            Task Tube stands out as a leading platform for earning online due to its unique features and user-centric approach:
+        </p>
+        <ul>
+            <li><strong>Effortless Earning:</strong> No special skills or equipment needed—just your smartphone and an internet connection.</li>
+            <li><strong>High Rewards:</strong> Unlock the potential to earn up to $1,000 daily by watching ads at your own pace.</li>
+            <li><strong>Low Data Usage:</strong> Optimized for minimal data consumption, making it accessible even in low-bandwidth areas.</li>
+            <li><strong>Secure Transactions:</strong> Our crypto-powered system ensures fast, safe, and transparent payouts.</li>
+            <li><strong>Global Access:</strong> Available to users worldwide, Task Tube lets you earn from anywhere, anytime.</li>
+        </ul>
+        <p>
+            Join thousands of users who are already turning their screen time into income with Task Tube. Whether you’re a student, professional, or simply looking for a side hustle, our platform offers a fun and rewarding way to make money online.
+        </p>
+        <p class="signup-link">
+            Ready to start earning? <a href="register.php">Sign Up Now</a> and join the Task Tube community today!
+        </p>
     </div>
 
     <div class="notice" id="notice">
         <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
         <h2>Welcome to Task Tube</h2>
-        <p>Learn how you can earn money by watching ad videos on our platform.</p>
-        <p>Join now and start earning with Task Tube!</p>
+        <p>Discover how you can earn money by watching ad videos on our innovative platform.</p>
+        <p>Join now and start your journey to effortless earnings with Task Tube!</p>
     </div>
 
     <?php include 'inc/footer.php'; ?>
