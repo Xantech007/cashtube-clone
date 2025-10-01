@@ -5,6 +5,9 @@ session_start();
 // Include database connection
 require_once 'database/conn.php';
 
+// Debug: Log received POST data
+file_put_contents('debug.log', 'POST data: ' . print_r($_POST, true) . "\n", FILE_APPEND);
+
 // Function to generate a unique 5-digit passcode
 function generatePasscode($pdo) {
     do {
@@ -23,19 +26,32 @@ if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) 
     $email = $data['email'];
     $gender = $data['gender'];
 
-    try {
-        // Generate unique passcode
-        $passcode = generatePasscode($pdo);
+    // Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email format.";
+    } else {
+        try {
+            // Check if email already exists
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            if ($stmt->fetchColumn() > 0) {
+                $error = "Email already registered.";
+            } else {
+                // Generate unique passcode
+                $passcode = generatePasscode($pdo);
 
-        // Insert user into database
-        $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$name, $email, $gender, $passcode]);
-    } catch (PDOException $e) {
-        // Handle errors (e.g., duplicate email)
-        $error = "Registration failed: " . $e->getMessage();
+                // Insert user into database
+                $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$name, $email, $gender, $passcode]);
+            }
+        } catch (PDOException $e) {
+            $error = "Database error: " . $e->getMessage();
+            file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
+        }
     }
 } else {
-    $error = "Invalid registration data.";
+    $error = "Invalid registration data: " . (empty($_POST['registerData']) ? "No data received." : "Incomplete data.");
+    file_put_contents('debug.log', 'Invalid data error: ' . print_r($data, true) . "\n", FILE_APPEND);
 }
 ?>
 
