@@ -8,7 +8,11 @@ $response = ['success' => false, 'error' => ''];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     $passcode = trim($_POST['passcode']);
     
-    if (strlen($passcode) === 5) {
+    // Validate passcode format (5 digits)
+    if (!preg_match('/^\d{5}$/', $passcode)) {
+        $response['error'] = "Passcode must be exactly 5 digits.";
+        file_put_contents('debug.log', 'Invalid passcode format: ' . $passcode . "\n", FILE_APPEND);
+    } else {
         try {
             // Query to fetch user ID based on passcode
             $stmt = $pdo->prepare("SELECT id FROM users WHERE passcode = ?");
@@ -16,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($user) {
+                // Regenerate session ID to prevent session fixation
+                session_regenerate_id(true);
                 // Store user ID in session
                 $_SESSION['user_id'] = $user['id'];
                 $response['success'] = true;
@@ -27,9 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             $response['error'] = "Database error: " . $e->getMessage();
             file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
         }
-    } else {
-        $response['error'] = "Passcode must be 5 digits.";
-        file_put_contents('debug.log', 'Invalid passcode length: ' . $passcode . "\n", FILE_APPEND);
     }
     
     header('Content-Type: application/json');
@@ -49,7 +52,155 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Your existing CSS remains unchanged */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #6e44ff, #b5179e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px 80px;
+        }
+
+        .login-container {
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .login-container h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .login-container p {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .login-container p span {
+            color: #ff69b4;
+            font-weight: 500;
+        }
+
+        #passcode {
+            width: 100%;
+            height: 50px;
+            font-size: 24px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #passcode:focus {
+            border-color: #6e44ff;
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(5, auto);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .key {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .key:hover {
+            background: #6e44ff;
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        .key.action {
+            background: #ff69b4;
+            color: #fff;
+            border: none;
+        }
+
+        .key.action:hover {
+            background: #ff4d94;
+        }
+
+        .key.zero {
+            grid-column: 2 / 3;
+            grid-row: 4 / 5; /* Place 0 in row 4, middle column */
+        }
+
+        .key.action.signup {
+            grid-column: 1 / 2;
+            grid-row: 5 / 6;
+        }
+
+        .key.action.clear {
+            grid-column: 2 / 3;
+            grid-row: 5 / 6;
+        }
+
+        .key.action.enter {
+            grid-column: 3 / 4;
+            grid-row: 5 / 6;
+        }
+
+        .signin-link {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .signin-link a {
+            color: #6e44ff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .signin-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                padding: 20px;
+            }
+
+            .key {
+                padding: 10px;
+                font-size: 16px;
+            }
+        }
+
+        /* Loading spinner for AJAX */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
         const keys = document.querySelectorAll(".key:not(.action)");
         const clearButton = document.getElementById("clear");
         const enterButton = document.getElementById("enter");
+        const loginContainer = document.querySelector(".login-container");
 
         keys.forEach(key => {
             key.addEventListener("click", () => {
@@ -125,6 +277,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 });
                 return;
             }
+
+            // Disable input and show loading state
+            loginContainer.classList.add("loading");
+            enterButton.textContent = "Logging in...";
+            enterButton.disabled = true;
 
             $.ajax({
                 url: './login.php',
@@ -162,6 +319,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                         footer: '<a href="register.php">Sign Up</a>'
                     });
                     passcodeInput.value = "";
+                },
+                complete: function() {
+                    // Re-enable input and reset button
+                    loginContainer.classList.remove("loading");
+                    enterButton.textContent = "Login";
+                    enterButton.disabled = false;
                 }
             });
         }
