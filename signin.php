@@ -294,7 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = 'home.html';
+                            window.location.href = 'users/home.php';
                         });
                     } else {
                         Swal.fire({
