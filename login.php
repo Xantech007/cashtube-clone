@@ -1,5 +1,6 @@
 <?php
 // login.php
+session_start();
 require_once 'database/conn.php';
 
 $response = ['success' => false, 'error' => ''];
@@ -9,9 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     
     if (strlen($passcode) === 5) {
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE passcode = ?");
             $stmt->execute([$passcode]);
-            if ($stmt->fetchColumn() > 0) {
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($user) {
+                // Set session data
+                $_SESSION['user_id'] = $user['id'];
                 $response['success'] = true;
             } else {
                 $response['error'] = "Invalid passcode.";
@@ -40,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <title>Task Tube - Secure Login</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
@@ -141,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
 
         .key.zero {
             grid-column: 2 / 3;
-            grid-row: 4 / 5; /* Place 0 in row 4, middle column */
+            grid-row: 4 / 5;
         }
 
         .key.action.signup {
@@ -188,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     </style>
 </head>
 <body>
-    <?php include 'inc/header.php'; ?>
-    <?php include 'inc/navbar.php'; ?>
+    <?php include 'users/inc/header.php'; ?>
+    <?php include 'users/inc/navbar.php'; ?>
 
     <div class="login-container">
         <h1>Welcome to <span>Task Tube</span></h1>
@@ -206,20 +212,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             <div class="key">8</div>
             <div class="key">9</div>
             <div class="key zero">0</div>
-            <div class="key action signup"><a href='register.php' style='color: #fff;'>Sign Up</a></div>
+            <div class="key action signup"><a href="register.php" style="color: #fff;">Sign Up</a></div>
             <div class="key action clear" id="clear">Clear</div>
             <div class="key action enter" id="enter">Login</div>
         </div>
         <p class="signin-link">Already have an account? <a href="signin.php">Sign In</a></p>
     </div>
 
-    <?php include 'inc/footer.php'; ?>
+    <?php include 'users/inc/footer.php'; ?>
 
     <!-- LiveChat Script -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
-        (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h,null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechat.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
+        (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h:null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
     </script>
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
