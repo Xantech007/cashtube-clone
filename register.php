@@ -65,14 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Register for Task Tube to start earning money by watching video ads. Join our crypto-powered platform today!">
+    <meta name="description" content="Register for Task Tube to start earning money by watching video ads. Create your account today!">
     <meta name="keywords" content="Task Tube, register, earn money, watch ads, passive income">
     <meta name="author" content="Task Tube">
     <title>Task Tube - Register</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
             margin: 0;
@@ -91,54 +91,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             padding-bottom: 100px; /* Matches footer height */
         }
 
-        /* Register Section */
-        .register-section {
-            background: #fff;
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #6e44ff, #b5179e);
+            color: #fff;
+            text-align: center;
+            padding: 60px 20px;
+            position: relative;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://source.unsplash.com/random/1920x1080/?technology') no-repeat center center/cover;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .hero-section h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-section p {
+            font-size: 18px;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Register Container */
+        .register-container {
             max-width: 500px;
             margin: 40px auto;
-            padding: 40px;
+            padding: 30px;
+            background: #fff;
             border-radius: 15px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             text-align: center;
-            position: relative;
-            z-index: 10;
-            animation: slideIn 0.5s ease-out;
         }
 
-        @keyframes slideIn {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .register-section h1 {
-            font-size: 32px;
+        .register-container h2 {
+            font-size: 28px;
             font-weight: 600;
             color: #333;
             margin-bottom: 10px;
         }
 
-        .register-section p {
+        .register-container p {
             font-size: 16px;
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
-        .register-section p span {
-            color: #6e44ff;
+        .register-container p span {
+            color: #ff69b4;
             font-weight: 500;
         }
 
+        /* Form Styles */
         .input-field {
             width: 100%;
             height: 50px;
             font-size: 16px;
-            padding: 10px;
+            padding: 10px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             margin-bottom: 20px;
@@ -148,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
 
         .input-field:focus {
             border-color: #6e44ff;
-            box-shadow: 0 0 8px rgba(110, 68, 255, 0.2);
+            box-shadow: 0 0 5px rgba(110, 68, 255, 0.3);
         }
 
         .gender-options {
@@ -159,12 +186,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         .gender-options label {
+            display: flex;
+            align-items: center;
             font-size: 16px;
             color: #333;
             cursor: pointer;
-            display: flex;
-            align-items: center;
             gap: 5px;
+        }
+
+        .gender-options input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #6e44ff;
         }
 
         .submit-btn {
@@ -177,19 +210,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             font-weight: 500;
             cursor: pointer;
             width: 100%;
-            transition: background 0.3s ease;
-            position: relative;
-            z-index: 50; /* Ensure button is clickable */
-            pointer-events: auto; /* Ensure button is clickable */
+            transition: background 0.3s ease, transform 0.2s ease;
         }
 
         .submit-btn:hover {
             background: #5a33cc;
-        }
-
-        .submit-btn:disabled {
-            background: #999;
-            cursor: not-allowed;
+            transform: translateY(-2px);
         }
 
         .login-link {
@@ -202,30 +228,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             color: #6e44ff;
             text-decoration: none;
             font-weight: 500;
+            transition: color 0.3s ease;
         }
 
         .login-link a:hover {
+            color: #ff69b4;
             text-decoration: underline;
         }
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            .register-section {
-                padding: 20px;
-                margin: 20px;
-            }
-
             body {
                 padding-top: 70px;
                 padding-bottom: 80px;
             }
 
-            .register-section h1 {
-                font-size: 28px;
+            .hero-section {
+                padding: 40px 20px;
             }
 
-            .register-section p {
-                font-size: 15px;
+            .hero-section h1 {
+                font-size: 30px;
+            }
+
+            .hero-section p {
+                font-size: 16px;
+            }
+
+            .register-container {
+                padding: 20px;
+                margin: 20px;
+            }
+
+            .register-container h2 {
+                font-size: 24px;
             }
 
             .input-field {
@@ -245,12 +281,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 padding-bottom: 60px;
             }
 
-            .register-section h1 {
-                font-size: 24px;
+            .hero-section {
+                padding: 30px 15px;
             }
 
-            .register-section p {
+            .hero-section h1 {
+                font-size: 26px;
+            }
+
+            .hero-section p {
                 font-size: 14px;
+            }
+
+            .register-container {
+                padding: 15px;
+            }
+
+            .register-container h2 {
+                font-size: 22px;
             }
 
             .gender-options {
@@ -258,14 +306,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 gap: 10px;
             }
 
-            .input-field {
-                height: 40px;
+            .gender-options label {
                 font-size: 14px;
-            }
-
-            .submit-btn {
-                padding: 10px;
-                font-size: 15px;
             }
         }
     </style>
@@ -274,22 +316,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     <?php include 'inc/header.php'; ?>
     <?php include 'inc/navbar.php'; ?>
 
-    <!-- Register Section -->
-    <section class="register-section">
-        <h1>Join <span>Task Tube</span> Today</h1>
-        <p>Create your account to start earning by watching video ads</p>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <h1>Join Task Tube</h1>
+        <p>Create your account to start earning money by watching video ads on our crypto-powered platform.</p>
+    </section>
+
+    <!-- Register Form -->
+    <div class="register-container">
+        <h2>Register for <span>Task Tube</span></h2>
+        <p>Fill in your details to get started</p>
         <form id="register-form" method="POST">
             <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
             <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
             <div class="gender-options">
-                <label><input type="radio" name="gender" value="male" required> Male</label>
-                <label><input type="radio" name="gender" value="female"> Female</label>
-                <label><input type="radio" name="gender" value="other"> Other</label>
+                <label><input type="radio" name="gender" value="male" required aria-label="Male"> Male</label>
+                <label><input type="radio" name="gender" value="female" aria-label="Female"> Female</label>
+                <label><input type="radio" name="gender" value="other" aria-label="Other"> Other</label>
             </div>
-            <button type="submit" class="submit-btn" onclick="console.log('Submit button clicked')">Submit</button>
+            <button type="submit" class="submit-btn">Submit</button>
         </form>
-        <p class="login-link">Already have an account? <a href="signin.php">Sign In</a></p>
-    </section>
+        <p class="login-link">Already have an account? <a href="signin.php">Login</a></p>
+    </div>
 
     <?php include 'inc/footer.php'; ?>
 
@@ -310,7 +358,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
             const gender = document.querySelector('input[name="gender"]:checked')?.value;
-            const submitBtn = document.querySelector('.submit-btn');
 
             // Client-side validation
             if (!name || !email || !gender) {
@@ -332,10 +379,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 });
                 return;
             }
-
-            // Disable button to prevent multiple submissions
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
 
             // Prepare data
             const data = { name, email, gender };
@@ -375,18 +418,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                         title: 'Oops...',
                         text: 'Failed to send data: ' + (xhr.responseText || 'Server error. Please try again.'),
                     });
-                },
-                complete: function() {
-                    // Re-enable button
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Submit';
                 }
             });
         });
 
         // Prevent right-click only on non-link elements
         document.addEventListener('contextmenu', e => {
-            if (!e.target.closest('a') && !e.target.closest('button')) {
+            if (!e.target.closest('a')) {
                 e.preventDefault();
             }
         });
