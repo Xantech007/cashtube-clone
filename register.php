@@ -65,9 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Register for Task Tube to start earning money by watching video ads. Create your account today!">
+    <meta name="keywords" content="Task Tube, register, earn money, watch ads, passive income">
+    <meta name="author" content="Task Tube">
     <title>Task Tube - Register</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
@@ -78,27 +82,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         body {
-            background: linear-gradient(135deg, #6e44ff, #b5179e);
+            background: #f5f7fa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 80px 20px 80px;
+            color: #333;
+            padding-top: 80px; /* Matches header height */
+            padding-bottom: 100px; /* Matches footer height */
         }
 
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #6e44ff, #b5179e);
+            color: #fff;
+            text-align: center;
+            padding: 60px 20px;
+            position: relative;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://source.unsplash.com/random/1920x1080/?technology') no-repeat center center/cover;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .hero-section h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-section p {
+            font-size: 18px;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Register Container */
         .register-container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 30px;
             background: #fff;
             border-radius: 15px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            padding: 30px;
-            max-width: 400px;
-            width: 100%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
 
-        .register-container h1 {
-            font-size: 24px;
+        .register-container h2 {
+            font-size: 28px;
             font-weight: 600;
             color: #333;
             margin-bottom: 10px;
@@ -115,20 +160,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             font-weight: 500;
         }
 
+        /* Form Styles */
         .input-field {
             width: 100%;
             height: 50px;
             font-size: 16px;
-            padding: 10px;
+            padding: 10px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             margin-bottom: 20px;
             outline: none;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .input-field:focus {
             border-color: #6e44ff;
+            box-shadow: 0 0 5px rgba(110, 68, 255, 0.3);
         }
 
         .gender-options {
@@ -139,9 +186,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         .gender-options label {
+            display: flex;
+            align-items: center;
             font-size: 16px;
             color: #333;
             cursor: pointer;
+            gap: 5px;
+        }
+
+        .gender-options input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #6e44ff;
         }
 
         .submit-btn {
@@ -154,32 +210,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             font-weight: 500;
             cursor: pointer;
             width: 100%;
-            transition: background 0.3s ease;
+            transition: background 0.3s ease, transform 0.2s ease;
         }
 
         .submit-btn:hover {
             background: #5a33cc;
+            transform: translateY(-2px);
         }
 
         .login-link {
             font-size: 14px;
             color: #666;
-            margin-top: 10px;
+            margin-top: 20px;
         }
 
         .login-link a {
             color: #6e44ff;
             text-decoration: none;
             font-weight: 500;
+            transition: color 0.3s ease;
         }
 
         .login-link a:hover {
+            color: #ff69b4;
             text-decoration: underline;
         }
 
+        /* Responsive Design */
         @media (max-width: 768px) {
+            body {
+                padding-top: 70px;
+                padding-bottom: 80px;
+            }
+
+            .hero-section {
+                padding: 40px 20px;
+            }
+
+            .hero-section h1 {
+                font-size: 30px;
+            }
+
+            .hero-section p {
+                font-size: 16px;
+            }
+
             .register-container {
                 padding: 20px;
+                margin: 20px;
+            }
+
+            .register-container h2 {
+                font-size: 24px;
+            }
+
+            .input-field {
+                height: 45px;
+                font-size: 15px;
+            }
+
+            .submit-btn {
+                padding: 12px;
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding-top: 60px;
+                padding-bottom: 60px;
+            }
+
+            .hero-section {
+                padding: 30px 15px;
+            }
+
+            .hero-section h1 {
+                font-size: 26px;
+            }
+
+            .hero-section p {
+                font-size: 14px;
+            }
+
+            .register-container {
+                padding: 15px;
+            }
+
+            .register-container h2 {
+                font-size: 22px;
+            }
+
+            .gender-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .gender-options label {
+                font-size: 14px;
             }
         }
     </style>
@@ -188,16 +316,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     <?php include 'inc/header.php'; ?>
     <?php include 'inc/navbar.php'; ?>
 
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <h1>Join Task Tube</h1>
+        <p>Create your account to start earning money by watching video ads on our crypto-powered platform.</p>
+    </section>
+
+    <!-- Register Form -->
     <div class="register-container">
-        <h1>Register for <span>Task Tube</span></h1>
-        <p>Create your account to start earning</p>
+        <h2>Register for <span>Task Tube</span></h2>
+        <p>Fill in your details to get started</p>
         <form id="register-form" method="POST">
             <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
             <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
             <div class="gender-options">
-                <label><input type="radio" name="gender" value="male" required> Male</label>
-                <label><input type="radio" name="gender" value="female"> Female</label>
-                <label><input type="radio" name="gender" value="other"> Other</label>
+                <label><input type="radio" name="gender" value="male" required aria-label="Male"> Male</label>
+                <label><input type="radio" name="gender" value="female" aria-label="Female"> Female</label>
+                <label><input type="radio" name="gender" value="other" aria-label="Other"> Other</label>
             </div>
             <button type="submit" class="submit-btn">Submit</button>
         </form>
@@ -287,8 +422,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             });
         });
 
-        // Prevent right-click
-        document.addEventListener('contextmenu', e => e.preventDefault());
+        // Prevent right-click only on non-link elements
+        document.addEventListener('contextmenu', e => {
+            if (!e.target.closest('a')) {
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 </html>
