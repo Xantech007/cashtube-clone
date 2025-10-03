@@ -82,52 +82,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         body {
-            background: #f5f7fa; /* Match index.php background */
+            background: #f5f7fa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 80px 20px 100px; /* Prevent header/footer overlap */
             color: #333;
+            padding-top: 80px; /* Matches header height */
+            padding-bottom: 100px; /* Matches footer height */
         }
 
-        .register-container {
+        /* Register Section */
+        .register-section {
             background: #fff;
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 40px;
             border-radius: 15px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            padding: 40px;
-            max-width: 450px;
-            width: 100%;
             text-align: center;
             position: relative;
-            z-index: 50; /* Ensure form is above background elements */
+            z-index: 10;
+            animation: slideIn 0.5s ease-out;
         }
 
-        .register-container h1 {
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .register-section h1 {
             font-size: 32px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
-        .register-container p {
+        .register-section p {
             font-size: 16px;
             color: #666;
-            margin-bottom: 25px;
-            line-height: 1.6;
+            margin-bottom: 30px;
         }
 
-        .register-container p span {
+        .register-section p span {
             color: #6e44ff;
-            font-weight: 600;
+            font-weight: 500;
         }
 
         .input-field {
             width: 100%;
             height: 50px;
             font-size: 16px;
-            padding: 12px 15px;
+            padding: 10px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             margin-bottom: 20px;
@@ -140,15 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             box-shadow: 0 0 8px rgba(110, 68, 255, 0.2);
         }
 
-        .input-field::placeholder {
-            color: #999;
-        }
-
         .gender-options {
             display: flex;
             justify-content: center;
             gap: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .gender-options label {
@@ -157,40 +164,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        .gender-options input[type="radio"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
+            gap: 5px;
         }
 
         .submit-btn {
             background: #6e44ff;
             color: #fff;
             border: none;
-            border-radius: 25px;
+            border-radius: 10px;
             padding: 15px;
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 500;
             cursor: pointer;
             width: 100%;
-            transition: background 0.3s ease, transform 0.2s ease;
+            transition: background 0.3s ease;
+            position: relative;
+            z-index: 50; /* Ensure button is clickable */
             pointer-events: auto; /* Ensure button is clickable */
         }
 
         .submit-btn:hover {
             background: #5a33cc;
-            transform: translateY(-2px);
         }
 
-        .submit-btn:active {
-            transform: translateY(0);
+        .submit-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
         }
 
         .login-link {
-            font-size: 15px;
+            font-size: 14px;
             color: #666;
             margin-top: 20px;
         }
@@ -198,33 +201,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         .login-link a {
             color: #6e44ff;
             text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-            pointer-events: auto; /* Ensure link is clickable */
+            font-weight: 500;
         }
 
         .login-link a:hover {
-            color: #ff69b4;
             text-decoration: underline;
         }
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            .register-section {
+                padding: 20px;
+                margin: 20px;
+            }
+
             body {
                 padding-top: 70px;
                 padding-bottom: 80px;
             }
 
-            .register-container {
-                padding: 30px;
-                max-width: 90%;
-            }
-
-            .register-container h1 {
+            .register-section h1 {
                 font-size: 28px;
             }
 
-            .register-container p {
+            .register-section p {
                 font-size: 15px;
             }
 
@@ -234,8 +234,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             }
 
             .submit-btn {
-                font-size: 16px;
                 padding: 12px;
+                font-size: 16px;
             }
         }
 
@@ -245,20 +245,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 padding-bottom: 60px;
             }
 
-            .register-container {
-                padding: 20px;
-            }
-
-            .register-container h1 {
+            .register-section h1 {
                 font-size: 24px;
             }
 
-            .register-container p {
-                font-size: 14px;
-            }
-
-            .input-field {
-                height: 40px;
+            .register-section p {
                 font-size: 14px;
             }
 
@@ -267,9 +258,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 gap: 10px;
             }
 
+            .input-field {
+                height: 40px;
+                font-size: 14px;
+            }
+
             .submit-btn {
-                font-size: 15px;
                 padding: 10px;
+                font-size: 15px;
             }
         }
     </style>
@@ -278,21 +274,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     <?php include 'inc/header.php'; ?>
     <?php include 'inc/navbar.php'; ?>
 
-    <div class="register-container">
-        <h1>Register for <span>Task Tube</span></h1>
-        <p>Create your account to start earning money by watching video ads</p>
+    <!-- Register Section -->
+    <section class="register-section">
+        <h1>Join <span>Task Tube</span> Today</h1>
+        <p>Create your account to start earning by watching video ads</p>
         <form id="register-form" method="POST">
             <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
             <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
             <div class="gender-options">
-                <label><input type="radio" name="gender" value="male" required aria-label="Male"> Male</label>
-                <label><input type="radio" name="gender" value="female" aria-label="Female"> Female</label>
-                <label><input type="radio" name="gender" value="other" aria-label="Other"> Other</label>
+                <label><input type="radio" name="gender" value="male" required> Male</label>
+                <label><input type="radio" name="gender" value="female"> Female</label>
+                <label><input type="radio" name="gender" value="other"> Other</label>
             </div>
             <button type="submit" class="submit-btn" onclick="console.log('Submit button clicked')">Submit</button>
         </form>
-        <p class="login-link">Already have an account? <a href="signin.php" onclick="console.log('Login link clicked')">Login</a></p>
-    </div>
+        <p class="login-link">Already have an account? <a href="signin.php">Sign In</a></p>
+    </section>
 
     <?php include 'inc/footer.php'; ?>
 
@@ -313,6 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
             const gender = document.querySelector('input[name="gender"]:checked')?.value;
+            const submitBtn = document.querySelector('.submit-btn');
 
             // Client-side validation
             if (!name || !email || !gender) {
@@ -334,6 +332,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 });
                 return;
             }
+
+            // Disable button to prevent multiple submissions
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
 
             // Prepare data
             const data = { name, email, gender };
@@ -373,11 +375,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                         title: 'Oops...',
                         text: 'Failed to send data: ' + (xhr.responseText || 'Server error. Please try again.'),
                     });
+                },
+                complete: function() {
+                    // Re-enable button
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit';
                 }
             });
         });
 
-        // Prevent right-click only on non-link/button elements
+        // Prevent right-click only on non-link elements
         document.addEventListener('contextmenu', e => {
             if (!e.target.closest('a') && !e.target.closest('button')) {
                 e.preventDefault();
