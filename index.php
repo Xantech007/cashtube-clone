@@ -28,7 +28,6 @@
             display: flex;
             flex-direction: column;
             color: #333;
-            /* Add padding to prevent header/footer overlap */
             padding-top: 80px; /* Matches header height */
             padding-bottom: 100px; /* Matches footer height */
         }
@@ -41,6 +40,7 @@
             padding: 100px 20px;
             position: relative;
             overflow: hidden;
+            z-index: 10; /* Ensure hero section is below header but above background */
         }
 
         .hero-section::before {
@@ -204,6 +204,8 @@
             justify-content: center;
             gap: 20px;
             margin-top: 30px;
+            position: relative;
+            z-index: 50; /* Ensure buttons are clickable */
         }
 
         .btn {
@@ -214,6 +216,7 @@
             text-decoration: none;
             transition: all 0.3s ease;
             cursor: pointer;
+            pointer-events: auto; /* Ensure buttons are clickable */
         }
 
         .btn-register {
@@ -302,8 +305,8 @@
 
         @media (max-width: 768px) {
             body {
-                padding-top: 70px; /* Adjust for smaller header */
-                padding-bottom: 80px; /* Adjust for smaller footer */
+                padding-top: 70px;
+                padding-bottom: 80px;
             }
 
             .hero-section {
@@ -339,7 +342,7 @@
 
         @media (max-width: 480px) {
             body {
-                padding-top: 60px; /* Further adjust for smaller screens */
+                padding-top: 60px;
                 padding-bottom: 60px;
             }
 
@@ -387,8 +390,8 @@
         <h1>Welcome to Task Tube</h1>
         <p>Earn money effortlessly by watching video ads from your smartphone or computer. Join our crypto-powered platform and turn your screen time into income!</p>
         <div class="button-group">
-            <a href="register.php" class="btn btn-register">Get Started</a>
-            <a href="signin.php" class="btn btn-signin">Sign In</a>
+            <a href="register.php" class="btn btn-register" onclick="console.log('Register button clicked')">Get Started</a>
+            <a href="signin.php" class="btn btn-signin" onclick="console.log('Sign In button clicked')">Sign In</a>
         </div>
     </section>
 
@@ -439,7 +442,7 @@
     <!-- CTA Banner -->
     <section class="cta-banner">
         <h2>Join Thousands Earning with Task Tube</h2>
-        <a href="register.php" class="btn">Start Earning Now</a>
+        <a href="register.php" class="btn" onclick="console.log('CTA button clicked')">Start Earning Now</a>
     </section>
 
     <!-- Notice Popup -->
@@ -447,7 +450,7 @@
         <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
         <h2>Join Task Tube Today</h2>
         <p>Start earning money by watching video ads with our easy-to-use platform. Register now and turn your screen time into income!</p>
-        <a href="register.php" class="btn btn-register">Get Started</a>
+        <a href="register.php" class="btn btn-register" onclick="console.log('Notice button clicked')">Get Started</a>
     </div>
 
     <?php include 'inc/footer.php'; ?>
@@ -498,8 +501,12 @@
 
         window.addEventListener('load', showNotice);
 
-        // Prevent right-click
-        document.addEventListener('contextmenu', e => e.preventDefault());
+        // Prevent right-click only on non-link elements
+        document.addEventListener('contextmenu', e => {
+            if (!e.target.closest('a')) {
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 </html>
