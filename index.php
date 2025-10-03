@@ -28,6 +28,8 @@
             display: flex;
             flex-direction: column;
             color: #333;
+            padding-top: 80px; /* Space for fixed header */
+            padding-bottom: 70px; /* Space for fixed footer */
         }
 
         /* Header Section */
@@ -298,6 +300,11 @@
         }
 
         @media (max-width: 768px) {
+            body {
+                padding-top: 70px; /* Adjust for smaller header */
+                padding-bottom: 60px; /* Adjust for smaller footer */
+            }
+
             .hero-section {
                 padding: 80px 20px;
             }
@@ -330,6 +337,11 @@
         }
 
         @media (max-width: 480px) {
+            body {
+                padding-top: 60px; /* Adjust for smaller header */
+                padding-bottom: 50px; /* Adjust for smaller footer */
+            }
+
             .hero-section {
                 padding: 60px 15px;
             }
@@ -474,7 +486,7 @@
                 setTimeout(() => {
                     notice.style.display = 'block';
                     setNoticeShown();
-                }, 2000); // Increased delay for better user experience
+                }, 2000);
             }
         }
 
