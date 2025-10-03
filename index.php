@@ -28,11 +28,12 @@
             display: flex;
             flex-direction: column;
             color: #333;
-            padding-top: 80px; /* Space for fixed header */
-            padding-bottom: 70px; /* Space for fixed footer */
+            /* Add padding to prevent header/footer overlap */
+            padding-top: 80px; /* Matches header height */
+            padding-bottom: 100px; /* Matches footer height */
         }
 
-        /* Header Section */
+        /* Hero Section */
         .hero-section {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -302,7 +303,7 @@
         @media (max-width: 768px) {
             body {
                 padding-top: 70px; /* Adjust for smaller header */
-                padding-bottom: 60px; /* Adjust for smaller footer */
+                padding-bottom: 80px; /* Adjust for smaller footer */
             }
 
             .hero-section {
@@ -338,8 +339,8 @@
 
         @media (max-width: 480px) {
             body {
-                padding-top: 60px; /* Adjust for smaller header */
-                padding-bottom: 50px; /* Adjust for smaller footer */
+                padding-top: 60px; /* Further adjust for smaller screens */
+                padding-bottom: 60px;
             }
 
             .hero-section {
