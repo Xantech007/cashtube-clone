@@ -9,24 +9,16 @@
 
 <style>
     footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
         width: 100%;
         background: #fff;
         padding: 20px;
         text-align: center;
         box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
+        display: none; /* Hidden by default */
     }
 
     footer.visible {
-        opacity: 1;
-        visibility: visible;
+        display: block; /* Show when visible */
     }
 
     footer a {
