@@ -11,9 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     // Validate passcode format (5 digits)
     if (!preg_match('/^\d{5}$/', $passcode)) {
         $response['error'] = "Passcode must be exactly 5 digits.";
-        file_put_contents('debug.log', 'Invalid passcode format: ' . $passcode . "\n", FILE_APPEND);
+        file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Invalid passcode format: ' . $passcode . "\n", FILE_APPEND);
     } else {
         try {
+            // Ensure PDO is available
+            if (!$pdo) {
+                throw new Exception('Database connection not established.');
+            }
+
             // Query to fetch user ID based on passcode
             $stmt = $pdo->prepare("SELECT id FROM users WHERE passcode = ?");
             $stmt->execute([$passcode]);
@@ -30,11 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 exit;
             } else {
                 $response['error'] = "Invalid passcode.";
-                file_put_contents('debug.log', 'Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
+                file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
             }
-        } catch (PDOException $e) {
-            $response['error'] = "Database error: " . $e->getMessage();
-            file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
+        } catch (Exception $e) {
+            $response['error'] = "Server error: " . $e->getMessage();
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Exception: ' . $e->getMessage() . "\n", FILE_APPEND);
         }
     }
     
@@ -316,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Oops...',
-                        text: 'Server error. Please try again.',
+                        text: 'Server error: ' + (xhr.responseText || 'Please try again.'),
                         footer: '<a href="register.php">Sign Up</a>'
                     });
                     passcodeInput.value = "";
