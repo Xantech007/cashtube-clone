@@ -2,7 +2,6 @@
 // register.php
 require_once 'database/conn.php';
 
-// Function to generate a unique 5-digit passcode
 function generatePasscode($pdo) {
     do {
         $passcode = str_pad(mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
@@ -17,47 +16,48 @@ $response = ['success' => false, 'error' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     $data = json_decode($_POST['registerData'], true);
-    if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) {
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        $response['error'] = "Invalid JSON data.";
+        file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Invalid JSON: ' . $_POST['registerData'] . "\n", FILE_APPEND);
+    } elseif (!isset($data['name']) || !isset($data['email']) || !isset($data['gender']) || empty(trim($data['name'])) || empty(trim($data['email'])) || empty($data['gender'])) {
+        $response['error'] = "Incomplete registration data.";
+        file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Incomplete data: ' . print_r($data, true) . "\n", FILE_APPEND);
+    } else {
         $name = trim($data['name']);
         $email = trim($data['email']);
         $gender = $data['gender'];
 
-        // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $response['error'] = "Invalid email format.";
-            file_put_contents('debug.log', 'Invalid email format: ' . $email . "\n", FILE_APPEND);
+            file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Invalid email format: ' . $email . "\n", FILE_APPEND);
         } else {
             try {
-                // Check if email already exists
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
                 $stmt->execute([$email]);
                 if ($stmt->fetchColumn() > 0) {
                     $response['error'] = "Email already registered.";
-                    file_put_contents('debug.log', 'Duplicate email: ' . $email . "\n", FILE_APPEND);
+                    file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Duplicate email: ' . $email . "\n", FILE_APPEND);
                 } else {
-                    // Generate unique passcode
                     $passcode = generatePasscode($pdo);
-
-                    // Insert user into database
-                    $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode) VALUES (?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode, balance) VALUES (?, ?, ?, ?, 0.00)");
                     $stmt->execute([$name, $email, $gender, $passcode]);
-
                     $response['success'] = true;
                     $response['email'] = $email;
                 }
             } catch (PDOException $e) {
                 $response['error'] = "Database error: " . $e->getMessage();
-                file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
+                file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
             }
         }
-    } else {
-        $response['error'] = "Incomplete registration data.";
-        file_put_contents('debug.log', 'Invalid data: ' . print_r($data, true) . "\n", FILE_APPEND);
     }
-    header('Content-Type: application/json');
-    echo json_encode($response);
-    exit;
+} else {
+    $response['error'] = "No registration data provided.";
+    file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - No registerData in POST: ' . print_r($_POST, true) . "\n", FILE_APPEND);
 }
+
+header('Content-Type: application/json');
+echo json_encode($response);
+exit;
 ?>
 
 <!DOCTYPE html>
@@ -87,11 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             display: flex;
             flex-direction: column;
             color: #333;
-            padding-top: 80px; /* Matches header height */
-            padding-bottom: 100px; /* Matches footer height */
+            padding-top: 80px;
+            padding-bottom: 100px;
         }
 
-        /* Hero Section */
         .hero-section {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -131,7 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             z-index: 1;
         }
 
-        /* Register Container */
         .register-container {
             max-width: 500px;
             margin: 40px auto;
@@ -160,7 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             font-weight: 500;
         }
 
-        /* Form Styles */
         .input-field {
             width: 100%;
             height: 50px;
@@ -236,7 +233,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             text-decoration: underline;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             body {
                 padding-top: 70px;
@@ -316,13 +312,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     <?php include 'inc/header.php'; ?>
     <?php include 'inc/navbar.php'; ?>
 
-    <!-- Hero Section -->
     <section class="hero-section">
         <h1>Join Task Tube</h1>
         <p>Create your account to start earning money by watching video ads on our crypto-powered platform.</p>
     </section>
 
-    <!-- Register Form -->
     <div class="register-container">
         <h2>Register for <span>Task Tube</span></h2>
         <p>Fill in your details to get started</p>
@@ -341,25 +335,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
 
     <?php include 'inc/footer.php'; ?>
 
-    <!-- LiveChat Script -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
-        (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h:null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
+        (function(n,t,c){function i(n){return e._h?e._h.apply(null,n):e._q.push(n)}var e={_q:[],_h,null,_v:"2.0",on:function(){i(["on",c.call(arguments)])},once:function(){i(["once",c.call(arguments)])},off:function(){i(["off",c.call(arguments)])},get:function(){if(!e._h)throw new Error("[LiveChatWidget] You can't use getters before load.");return i(["get",c.call(arguments)])},call:function(){i(["call",c.call(arguments)])},init:function(){var n=t.createElement("script");n.async=!0,n.type="text/javascript",n.src="https://cdn.livechatinc.com/tracking.js",t.head.appendChild(n)}};!n.__lc.asyncInit&&e.init(),n.LiveChatWidget=n.LiveChatWidget||e}(window,document,[].slice))
     </script>
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
     <script>
-        // Form Submission
         document.getElementById('register-form').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            // Get form values
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
             const gender = document.querySelector('input[name="gender"]:checked')?.value;
 
-            // Client-side validation
             if (!name || !email || !gender) {
                 Swal.fire({
                     icon: 'error',
@@ -369,7 +359,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 return;
             }
 
-            // Validate email format
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 Swal.fire({
@@ -380,17 +369,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 return;
             }
 
-            // Prepare data
             const data = { name, email, gender };
             console.log('Form data prepared:', data);
 
-            // Send data via AJAX
             $.ajax({
                 url: './register.php',
                 type: 'POST',
                 data: { registerData: JSON.stringify(data) },
                 contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
                 dataType: 'json',
+                timeout: 5000,
                 success: function(response) {
                     console.log('AJAX success:', response);
                     if (response.success) {
@@ -416,13 +404,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Oops...',
-                        text: 'Failed to send data: ' + (xhr.responseText || 'Server error. Please try again.'),
+                        text: 'Server error: ' + (xhr.responseText || 'Please try again.'),
                     });
                 }
             });
         });
 
-        // Prevent right-click only on non-link elements
         document.addEventListener('contextmenu', e => {
             if (!e.target.closest('a')) {
                 e.preventDefault();
