@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT username, balance FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, balance FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -21,7 +21,7 @@ try {
         header('Location: ../signin.php');
         exit;
     }
-    $username = htmlspecialchars($user['username']);
+    $username = htmlspecialchars($user['name']); // Changed from username to name
     $balance = number_format($user['balance'], 2);
 } catch (PDOException $e) {
     // Log error and redirect to sign-in
