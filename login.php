@@ -25,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 // Store user ID in session
                 $_SESSION['user_id'] = $user['id'];
                 $response['success'] = true;
+                // Server-side redirect
+                header('Location: users/home.php');
+                exit;
             } else {
                 $response['error'] = "Invalid passcode.";
                 file_put_contents('debug.log', 'Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
@@ -289,16 +292,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 data: { passcode: passcode },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('AJAX response:', response);
                     if (response.success) {
+                        // Server-side redirect handles navigation
                         Swal.fire({
                             icon: 'success',
                             title: 'Good job!',
                             text: 'Login successful',
-                            timer: 2000,
+                            timer: 1000,
                             showConfirmButton: false
-                        }).then(() => {
-                            window.location.href = 'users/home.php'; // Redirect to home.php
                         });
                     } else {
                         Swal.fire({
