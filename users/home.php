@@ -15,15 +15,20 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
+        // Log error and redirect to sign-in if user not found
+        error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+        session_destroy();
         header('Location: ../signin.php');
         exit;
     }
     $username = htmlspecialchars($user['username']);
     $balance = number_format($user['balance'], 2);
 } catch (PDOException $e) {
+    // Log error and redirect to sign-in
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
-    $username = 'User';
-    $balance = '5.00';
+    session_destroy();
+    header('Location: ../signin.php?error=database');
+    exit;
 }
 ?>
 
@@ -539,7 +544,7 @@ try {
             <div style="display: flex; align-items: center;">
                 <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
                 <div class="header-text">
-                    <h1>Hello, <?php echo $username; ?></h1>
+                    <h1>Hello, <?php echo $username; ?>!</h1>
                     <p>Start Earning Crypto Today!</p>
                 </div>
             </div>
