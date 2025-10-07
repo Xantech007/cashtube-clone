@@ -1,6 +1,6 @@
 <?php
 // login.php
-session_start();
+session_start(); // Start the session
 require_once 'database/conn.php';
 
 $response = ['success' => false, 'error' => ''];
@@ -11,14 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     // Validate passcode format (5 digits)
     if (!preg_match('/^\d{5}$/', $passcode)) {
         $response['error'] = "Passcode must be exactly 5 digits.";
-        file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Invalid passcode format: ' . $passcode . "\n", FILE_APPEND);
+        file_put_contents('debug.log', 'Invalid passcode format: ' . $passcode . "\n", FILE_APPEND);
     } else {
         try {
-            // Ensure PDO is available
-            if (!$pdo) {
-                throw new Exception('Database connection not established.');
-            }
-
             // Query to fetch user ID based on passcode
             $stmt = $pdo->prepare("SELECT id FROM users WHERE passcode = ?");
             $stmt->execute([$passcode]);
@@ -34,12 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 header('Location: users/home.php');
                 exit;
             } else {
-                $response['error'] = "Invalid passcode. Please check and try again.";
-                file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
+                $response['error'] = "Invalid passcode.";
+                file_put_contents('debug.log', 'Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
             }
-        } catch (Exception $e) {
-            $response['error'] = "Server error: " . $e->getMessage();
-            file_put_contents('debug.log', date('Y-m-d H:i:s') . ' - Exception: ' . $e->getMessage() . "\n", FILE_APPEND);
+        } catch (PDOException $e) {
+            $response['error'] = "Database error: " . $e->getMessage();
+            file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
         }
     }
     
@@ -159,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
 
         .key.zero {
             grid-column: 2 / 3;
-            grid-row: 4 / 5;
+            grid-row: 4 / 5; /* Place 0 in row 4, middle column */
         }
 
         .key.action.signup {
@@ -204,6 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             }
         }
 
+        /* Loading spinner for AJAX */
         .loading {
             opacity: 0.6;
             pointer-events: none;
@@ -238,6 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
 
     <?php include 'inc/footer.php'; ?>
 
+    <!-- LiveChat Script -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
@@ -246,6 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
     <script>
+        // Passcode Logic
         const passcodeInput = document.getElementById("passcode");
         const keys = document.querySelectorAll(".key:not(.action)");
         const clearButton = document.getElementById("clear");
@@ -283,6 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 return;
             }
 
+            // Disable input and show loading state
             loginContainer.classList.add("loading");
             enterButton.textContent = "Logging in...";
             enterButton.disabled = true;
@@ -292,9 +291,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 type: 'POST',
                 data: { passcode: passcode },
                 dataType: 'json',
-                timeout: 5000,
                 success: function(response) {
                     if (response.success) {
+                        // Server-side redirect handles navigation
                         Swal.fire({
                             icon: 'success',
                             title: 'Good job!',
@@ -317,12 +316,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Oops...',
-                        text: 'Server error: ' + (xhr.responseText || 'Please try again.'),
+                        text: 'Server error. Please try again.',
                         footer: '<a href="register.php">Sign Up</a>'
                     });
                     passcodeInput.value = "";
                 },
                 complete: function() {
+                    // Re-enable input and reset button
                     loginContainer.classList.remove("loading");
                     enterButton.textContent = "Login";
                     enterButton.disabled = false;
@@ -330,6 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             });
         }
 
+        // Prevent right-click
         document.addEventListener('contextmenu', e => e.preventDefault());
     </script>
 </body>
