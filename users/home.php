@@ -31,17 +31,14 @@ try {
 
 // Fetch earnings summary
 try {
-    // Total earned (sum of positive activities)
     $stmt = $pdo->prepare("SELECT SUM(amount) as total_earned FROM activities WHERE user_id = ? AND amount > 0");
     $stmt->execute([$_SESSION['user_id']]);
     $total_earned = $stmt->fetchColumn() ?: 0.00;
 
-    // Videos watched (count of video watch activities)
     $stmt = $pdo->prepare("SELECT COUNT(*) as videos_watched FROM activities WHERE user_id = ? AND action LIKE 'Watched%'");
     $stmt->execute([$_SESSION['user_id']]);
     $videos_watched = $stmt->fetchColumn();
 
-    // Pending withdrawals
     $stmt = $pdo->prepare("SELECT SUM(amount) as pending_withdrawals FROM withdrawals WHERE user_id = ? AND status = 'pending'");
     $stmt->execute([$_SESSION['user_id']]);
     $pending_withdrawals = $stmt->fetchColumn() ?: 0.00;
@@ -62,9 +59,9 @@ try {
     $activities = [];
 }
 
-// Fetch available videos
+// Fetch a random video
 try {
-    $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY created_at DESC LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY RAND() LIMIT 1");
     $stmt->execute();
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -138,9 +135,22 @@ try {
         }
 
         .container {
+            width: 80%;
             max-width: 1200px;
             margin: 0 auto;
             padding: 24px;
+        }
+
+        .balance-card,
+        .earnings-summary,
+        .video-section,
+        .form-card,
+        .activity-section,
+        .faq-section {
+            width: 80%;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         /* Page Header */
@@ -300,8 +310,7 @@ try {
             margin-bottom: 28px;
         }
 
-        .input-container input,
-        .input-container select {
+        .input-container input {
             width: 100%;
             padding: 14px 0;
             font-size: 16px;
@@ -313,16 +322,8 @@ try {
             transition: border-color 0.3s ease;
         }
 
-        .input-container select {
-            padding: 14px 0;
-            appearance: none;
-            background: transparent;
-        }
-
         .input-container input:focus,
-        .input-container input:valid,
-        .input-container select:focus,
-        .input-container select:valid {
+        .input-container input:valid {
             border-bottom-color: var(--accent-color);
         }
 
@@ -337,9 +338,7 @@ try {
         }
 
         .input-container input:focus ~ label,
-        .input-container input:valid ~ label,
-        .input-container select:focus ~ label,
-        .input-container select:valid ~ label {
+        .input-container input:valid ~ label {
             top: -18px;
             font-size: 12px;
             color: var(--accent-color);
@@ -541,8 +540,14 @@ try {
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            .container {
-                padding: 16px;
+            .container,
+            .balance-card,
+            .earnings-summary,
+            .video-section,
+            .form-card,
+            .activity-section,
+            .faq-section {
+                width: 90%; /* Slightly wider on mobile */
             }
 
             .page-header h1 {
@@ -637,8 +642,8 @@ try {
             <div class="video-section">
                 <h1>Watch Videos to Earn Crypto</h1>
                 <?php if ($video): ?>
-                    <iframe src="<?php echo htmlspecialchars($video['url']); ?>" title="<?php echo htmlspecialchars($video['title']); ?>" frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    <iframe src="<?php echo htmlspecialchars($video['url']); ?>" title="<?php echo htmlspecialchars($video['title']); ?>" 
+                        frameborder="0" loop allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
                     <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
                 <?php else: ?>
@@ -650,55 +655,8 @@ try {
                 <h2>Withdraw Crypto Funds</h2>
                 <form id="fundForm" role="form">
                     <div class="input-container">
-                        <select id="withdrawalMethod" name="withdrawalMethod" required aria-required="true">
-                            <option value="" disabled selected>Select Withdrawal Method</option>
-                            <option value="crypto">Cryptocurrency</option>
-                            <option value="cashapp">Cash App</option>
-                            <option value="bank">Bank Transfer</option>
-                        </select>
-                        <label for="withdrawalMethod">Withdrawal Method</label>
-                    </div>
-                    <div class="input-container" id="cryptoFields" style="display: none;">
-                        <input type="text" id="cryptoAddress" name="cryptoAddress">
+                        <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
                         <label for="cryptoAddress">Crypto Wallet Address</label>
-                    </div>
-                    <div class="input-container" id="cashappFields" style="display: none;">
-                        <input type="text" id="cashappTag" name="cashappTag">
-                        <label for="cashappTag">Cash App $Cashtag</label>
-                    </div>
-                    <div class="input-container" id="bankFields" style="display: none;">
-                        <select id="bankName" name="bankName">
-                            <option value="" disabled selected>Select Bank</option>
-                            <option value="Bank of America">Bank of America</option>
-                            <option value="JPMorgan Chase">JPMorgan Chase</option>
-                            <option value="Wells Fargo">Wells Fargo</option>
-                            <option value="Citibank">Citibank</option>
-                            <option value="U.S. Bank">U.S. Bank</option>
-                            <option value="PNC Bank">PNC Bank</option>
-                            <option value="TD Bank">TD Bank</option>
-                            <option value="Capital One">Capital One</option>
-                            <option value="HSBC Bank USA">HSBC Bank USA</option>
-                            <option value="Fifth Third Bank">Fifth Third Bank</option>
-                            <option value="Regions Bank">Regions Bank</option>
-                            <option value="Truist Bank">Truist Bank</option>
-                            <option value="M&T Bank">M&T Bank</option>
-                            <option value="Huntington National Bank">Huntington National Bank</option>
-                            <option value="KeyBank">KeyBank</option>
-                            <option value="Citizens Bank">Citizens Bank</option>
-                            <option value="Ally Bank">Ally Bank</option>
-                            <option value="Discover Bank">Discover Bank</option>
-                            <option value="Synchrony Bank">Synchrony Bank</option>
-                            <option value="Chime">Chime</option>
-                        </select>
-                        <label for="bankName">Bank Name</label>
-                    </div>
-                    <div class="input-container" id="accountNumberField" style="display: none;">
-                        <input type="number" id="accountNumber" name="accountNumber">
-                        <label for="accountNumber">Account Number</label>
-                    </div>
-                    <div class="input-container" id="routingNumberField" style="display: none;">
-                        <input type="number" id="routingNumber" name="routingNumber">
-                        <label for="routingNumber">Routing Number</label>
                     </div>
                     <div class="input-container">
                         <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
@@ -723,7 +681,7 @@ try {
                             <?php foreach ($activities as $activity): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($activity['action']); ?></td>
-                                    <td class="amount"><?php echo number_format($activity['amount'], 2); ?></td>
+                                    <td class="amount">$<?php echo number_format($activity['amount'], 2); ?></td>
                                     <td><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -742,7 +700,7 @@ try {
                 </div>
                 <div class="faq-item">
                     <h3>What are the withdrawal options?</h3>
-                    <p>You can withdraw via Cryptocurrency, Cash App, or Bank Transfer. Ensure your details are correct to avoid delays.</p>
+                    <p>You can withdraw your earnings via Cryptocurrency. Ensure your wallet address is correct to avoid delays.</p>
                 </div>
                 <div class="faq-item">
                     <h3>Is my data secure?</h3>
@@ -820,38 +778,21 @@ try {
             });
         });
 
-        // Withdrawal Method Logic
-        const withdrawalMethod = document.getElementById('withdrawalMethod');
-        const cryptoFields = document.getElementById('cryptoFields');
-        const cashappFields = document.getElementById('cashappFields');
-        const bankFields = document.getElementById('bankFields');
-        const accountNumberField = document.getElementById('accountNumberField');
-        const routingNumberField = document.getElementById('routingNumberField');
-
-        withdrawalMethod.addEventListener('change', () => {
-            cryptoFields.style.display = 'none';
-            cashappFields.style.display = 'none';
-            bankFields.style.display = 'none';
-            accountNumberField.style.display = 'none';
-            routingNumberField.style.display = 'none';
-
-            if (withdrawalMethod.value === 'crypto') {
-                cryptoFields.style.display = 'block';
-            } else if (withdrawalMethod.value === 'cashapp') {
-                cashappFields.style.display = 'block';
-            } else if (withdrawalMethod.value === 'bank') {
-                bankFields.style.display = 'block';
-                accountNumberField.style.display = 'block';
-                routingNumberField.style.display = 'block';
-            }
-        });
-
         // Form Submission
         document.getElementById('fundForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            const withdrawalMethodValue = document.getElementById('withdrawalMethod').value;
+            const cryptoAddress = document.getElementById('cryptoAddress').value;
             const amount = parseFloat(document.getElementById('amount').value);
             const balance = parseFloat(document.getElementById('balance').textContent);
+
+            if (!cryptoAddress) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Missing Wallet Address',
+                    text: 'Please enter a valid crypto wallet address.'
+                });
+                return;
+            }
 
             if (amount <= 0 || isNaN(amount)) {
                 Swal.fire({
@@ -871,45 +812,10 @@ try {
                 return;
             }
 
-            let withdrawalData = { method: withdrawalMethodValue, amount: amount };
-            if (withdrawalMethodValue === 'crypto') {
-                withdrawalData.cryptoAddress = document.getElementById('cryptoAddress').value;
-                if (!withdrawalData.cryptoAddress) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Missing Wallet Address',
-                        text: 'Please enter a valid crypto wallet address.'
-                    });
-                    return;
-                }
-            } else if (withdrawalMethodValue === 'cashapp') {
-                withdrawalData.cashappTag = document.getElementById('cashappTag').value;
-                if (!withdrawalData.cashappTag) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Missing Cashtag',
-                        text: 'Please enter a valid Cash App $Cashtag.'
-                    });
-                    return;
-                }
-            } else if (withdrawalMethodValue === 'bank') {
-                withdrawalData.bankName = document.getElementById('bankName').value;
-                withdrawalData.accountNumber = document.getElementById('accountNumber').value;
-                withdrawalData.routingNumber = document.getElementById('routingNumber').value;
-                if (!withdrawalData.bankName || !withdrawalData.accountNumber || !withdrawalData.routingNumber) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Missing Bank Details',
-                        text: 'Please complete all bank details.'
-                    });
-                    return;
-                }
-            }
-
             $.ajax({
                 url: 'process_withdrawal.php',
                 type: 'POST',
-                data: withdrawalData,
+                data: { cryptoAddress: cryptoAddress, amount: amount },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
@@ -920,7 +826,7 @@ try {
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            location.reload(); // Reload to update balance and activity
+                            location.reload();
                         });
                     } else {
                         Swal.fire({
@@ -962,7 +868,7 @@ try {
                                         timer: 2000,
                                         showConfirmButton: false
                                     }).then(() => {
-                                        location.reload(); // Reload to update balance and activity
+                                        location.reload(); // Reload to get a new random video
                                     });
                                 } else {
                                     Swal.fire({
@@ -985,7 +891,7 @@ try {
             });
         }
 
-        // Withdrawal Notifications (Dynamic from DB)
+        // Withdrawal Notifications
         const notificationContainer = document.getElementById('notificationContainer');
         function fetchNotifications() {
             $.ajax({
