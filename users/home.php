@@ -49,16 +49,6 @@ try {
     $pending_withdrawals = 0.00;
 }
 
-// Fetch recent activities
-try {
-    $stmt = $pdo->prepare("SELECT action, amount, created_at FROM activities WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
-    $stmt->execute([$_SESSION['user_id']]);
-    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log('Recent activities error: ' . $e->getMessage(), 3, '../debug.log');
-    $activities = [];
-}
-
 // Fetch a random video from the videos table (assuming url points to local files like 'users/videos/video.mp4')
 try {
     $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY RAND() LIMIT 1");
@@ -85,7 +75,6 @@ try {
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root {
-      /* Light mode variables */
       --bg-color: #f7f9fc;
       --gradient-bg: linear-gradient(135deg, #f7f9fc, #e5e7eb);
       --card-bg: #ffffff;
@@ -100,7 +89,6 @@ try {
     }
 
     [data-theme="dark"] {
-      /* Dark mode variables */
       --bg-color: #1f2937;
       --gradient-bg: linear-gradient(135deg, #1f2937, #374151);
       --card-bg: #2d3748;
@@ -354,89 +342,6 @@ try {
       transform: scale(1.02);
     }
 
-    /* Activity Section */
-    .activity-section {
-      background: var(--card-bg);
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 6px 16px var(--shadow-color);
-      animation: slideIn 0.5s ease-out 0.7s backwards;
-    }
-
-    .activity-section h2 {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 20px;
-    }
-
-    .activity-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .activity-table th, .activity-table td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .activity-table th {
-      font-weight: 600;
-      color: var(--subtext-color);
-    }
-
-    .activity-table td {
-      font-size: 16px;
-      color: var(--text-color);
-    }
-
-    .activity-table .amount {
-      font-weight: 700;
-      color: var(--accent-color);
-    }
-
-    /* FAQ Section */
-    .faq-section {
-      background: var(--card-bg);
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 6px 16px var(--shadow-color);
-      animation: slideIn 0.5s ease-out 0.8s backwards;
-    }
-
-    .faq-section h2 {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 20px;
-    }
-
-    .faq-item {
-      margin-bottom: 20px;
-    }
-
-    .faq-item h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-color);
-      margin-bottom: 10px;
-    }
-
-    .faq-item p {
-      font-size: 16px;
-      color: var(--subtext-color);
-      line-height: 1.6;
-    }
-
-    .faq-item a {
-      color: var(--accent-color);
-      text-decoration: none;
-    }
-
-    .faq-item a:hover {
-      color: var(--accent-hover);
-      text-decoration: underline;
-    }
-
     /* Withdrawal Notifications */
     .notification {
       position: fixed;
@@ -579,12 +484,11 @@ try {
         top: 10px;
       }
 
-      .earnings-table, .activity-table {
+      .earnings-table {
         font-size: 14px;
       }
 
-      .earnings-table th, .earnings-table td,
-      .activity-table th, .activity-table td {
+      .earnings-table th, .earnings-table td {
         padding: 8px;
       }
     }
@@ -712,48 +616,6 @@ try {
       </form>
     </div>
 
-    <div class="activity-section">
-      <h2>Recent Activity</h2>
-      <?php if ($activities): ?>
-        <table class="activity-table" id="activity-table">
-          <thead>
-            <tr>
-              <th>Action</th>
-              <th>Amount</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($activities as $activity): ?>
-              <tr>
-                <td><?php echo htmlspecialchars($activity['action']); ?></td>
-                <td class="amount">$<?php echo number_format($activity['amount'], 2); ?></td>
-                <td><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      <?php else: ?>
-        <p>No recent activity.</p>
-      <?php endif; ?>
-    </div>
-
-    <div class="faq-section">
-      <h2>Frequently Asked Questions</h2>
-      <div class="faq-item">
-        <h3>How do I earn crypto on Cash Tube?</h3>
-        <p>Watch video ads to earn crypto rewards. The more videos you watch, the higher your earnings!</p>
-      </div>
-      <div class="faq-item">
-        <h3>What are the withdrawal options?</h3>
-        <p>You can withdraw your earnings via Cryptocurrency, Cash App, or Bank Transfer. Ensure your details are correct to avoid delays.</p>
-      </div>
-      <div class="faq-item">
-        <h3>Is my data secure?</h3>
-        <p>We use industry-standard encryption to protect your data. See our <a href="../privacy.php">Privacy Policy</a> for details.</p>
-      </div>
-    </div>
-
     <!-- Notification Container -->
     <div id="notificationContainer"></div>
   </div>
@@ -763,9 +625,38 @@ try {
     <a href="profile.php">Profile</a>
     <a href="history.php">History</a>
     <a href="support.php">Support</a>
-    <a href="about.php">About</a>
     <button id="logoutBtn" aria-label="Log out">Logout</button>
   </div>
+
+  <!-- LiveChat Integration -->
+  <script>
+    window.__lc = window.__lc || {};
+    window.__lc.license = 15808029;
+    (function(n, t, c) {
+      function i(n) { return e._h ? e._h.apply(null, n) : e._q.push(n) }
+      var e = {
+        _q: [], _h: null, _v: "2.0",
+        on: function() { i(["on", c.call(arguments)]) },
+        once: function() { i(["once", c.call(arguments)]) },
+        off: function() { i(["off", c.call(arguments)]) },
+        get: function() { if (!e._h) throw new Error("[LiveChatWidget] You can't use getters before load."); return i(["get", c.call(arguments)]) },
+        call: function() { i(["call", c.call(arguments)]) },
+        init: function() {
+          var n = t.createElement("script");
+          n.async = true;
+          n.type = "text/javascript";
+          n.src = "https://cdn.livechatinc.com/tracking.js";
+          t.head.appendChild(n);
+        }
+      };
+      !n.__lc.asyncInit && e.init();
+      n.LiveChatWidget = n.LiveChatWidget || e;
+    })(window, document, [].slice);
+  </script>
+  <noscript>
+    <a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, 
+    powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
+  </noscript>
 
   <!-- JavaScript -->
   <script>
@@ -781,4 +672,344 @@ try {
     themeToggle.addEventListener('click', () => {
       const isDark = body.getAttribute('data-theme') === 'dark';
       body.setAttribute('data-theme', isDark ? 'light' : 'dark');
-      themeToggle.textContent = isDark ? 'Toggle Dark Mode' : 'Toggle Light Mode
+      themeToggle.textContent = isDark ? 'Toggle Dark Mode' : 'Toggle Light Mode';
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    });
+
+    // Menu interactions
+    const menuItems = document.querySelectorAll('.bottom-menu a');
+    menuItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        menuItems.forEach((menuItem) => {
+          menuItem.classList.remove('active');
+        });
+        item.classList.add('active');
+      });
+    });
+
+    // Logout Button
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      Swal.fire({
+        title: 'Log out?',
+        text: 'Are you sure you want to log out?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#22c55e',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, log out'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          $.ajax({
+            url: 'logout.php',
+            type: 'POST',
+            dataType: 'json',
+            success: function(response) {
+              if (response.success) {
+                window.location.href = '../signin.php';
+              } else {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: 'Failed to log out. Please try again.'
+                });
+              }
+            },
+            error: function() {
+              Swal.fire({
+                icon: 'error',
+                title: 'Server Error',
+                text: 'An error occurred while logging out.'
+              });
+            }
+          });
+        }
+      });
+    });
+
+    // Withdrawal method logic
+    const withdrawalMethod = document.getElementById('withdrawalMethod');
+    const cryptoFields = document.getElementById('cryptoFields');
+    const cashappFields = document.getElementById('cashappFields');
+    const bankFields = document.getElementById('bankFields');
+    const accountNumberField = document.getElementById('accountNumberField');
+    const routingNumberField = document.getElementById('routingNumberField');
+
+    withdrawalMethod.addEventListener('change', () => {
+      cryptoFields.style.display = 'none';
+      cashappFields.style.display = 'none';
+      bankFields.style.display = 'none';
+      accountNumberField.style.display = 'none';
+      routingNumberField.style.display = 'none';
+
+      if (withdrawalMethod.value === 'crypto') {
+        cryptoFields.style.display = 'block';
+      } else if (withdrawalMethod.value === 'cashapp') {
+        cashappFields.style.display = 'block';
+      } else if (withdrawalMethod.value === 'bank') {
+        bankFields.style.display = 'block';
+        accountNumberField.style.display = 'block';
+        routingNumberField.style.display = 'block';
+      }
+    });
+
+    // Form submission
+    document.getElementById('fundForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const withdrawalMethodValue = document.getElementById('withdrawalMethod').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const balance = parseFloat(document.getElementById('balance').textContent);
+
+      if (amount <= 0 || isNaN(amount)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Amount',
+          text: 'Please enter a valid withdrawal amount.'
+        });
+        return;
+      }
+
+      if (amount > balance) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Insufficient Balance',
+          text: 'Withdrawal amount exceeds your available balance.'
+        });
+        return;
+      }
+
+      let withdrawalData = { method: withdrawalMethodValue, amount: amount };
+
+      if (withdrawalMethodValue === 'crypto') {
+        withdrawalData.cryptoAddress = document.getElementById('cryptoAddress').value;
+        if (!withdrawalData.cryptoAddress) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Missing Wallet Address',
+            text: 'Please enter a valid crypto wallet address.'
+          });
+          return;
+        }
+      } else if (withdrawalMethodValue === 'cashapp') {
+        withdrawalData.cashappTag = document.getElementById('cashappTag').value;
+        if (!withdrawalData.cashappTag) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Missing Cashtag',
+            text: 'Please enter a valid Cash App $Cashtag.'
+          });
+          return;
+        }
+      } else if (withdrawalMethodValue === 'bank') {
+        withdrawalData.bankName = document.getElementById('bankName').value;
+        withdrawalData.accountNumber = document.getElementById('accountNumber').value;
+        withdrawalData.routingNumber = document.getElementById('routingNumber').value;
+        if (!withdrawalData.bankName || !withdrawalData.accountNumber || !withdrawalData.routingNumber) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Missing Bank Details',
+            text: 'Please provide all bank details.'
+          });
+          return;
+        }
+      }
+
+      $.ajax({
+        url: 'process_withdrawal.php',
+        type: 'POST',
+        data: withdrawalData,
+        dataType: 'json',
+        success: function(response) {
+          if (response.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Withdrawal Requested',
+              text: 'Your withdrawal request has been submitted successfully!',
+              timer: 2000,
+              showConfirmButton: false
+            }).then(() => {
+              // Update pending withdrawals without reload
+              const newPending = parseFloat(document.getElementById('pending-withdrawals').textContent.replace('$', '')) + amount;
+              document.getElementById('pending-withdrawals').textContent = `$${newPending.toFixed(2)}`;
+              // Update balance
+              const newBalance = balance - amount;
+              document.getElementById('balance').textContent = newBalance.toFixed(2);
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: response.error || 'Failed to process withdrawal. Please try again.'
+            });
+          }
+        },
+        error: function() {
+          Swal.fire({
+            icon: 'error',
+            title: 'Server Error',
+            text: 'An error occurred. Please try again later.'
+          });
+        }
+      });
+    });
+
+    // Video Watch Tracking and Auto-Play Next
+    const videoPlayer = document.getElementById('videoPlayer');
+    if (videoPlayer) {
+      videoPlayer.addEventListener('ended', function() {
+        const videoId = videoPlayer.getAttribute('data-video-id');
+        $.ajax({
+          url: 'process_video_watch.php',
+          type: 'POST',
+          data: { video_id: videoId },
+          dataType: 'json',
+          success: function(response) {
+            if (response.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'Video Watched',
+                text: `You earned $${response.reward}!`,
+                timer: 2000,
+                showConfirmButton: false
+              });
+
+              // Update balance
+              const currentBalance = parseFloat(document.getElementById('balance').textContent);
+              const newBalance = currentBalance + parseFloat(response.reward);
+              document.getElementById('balance').textContent = newBalance.toFixed(2);
+
+              // Update earnings summary
+              const currentTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
+              const newTotalEarned = currentTotalEarned + parseFloat(response.reward);
+              document.getElementById('total-earned').textContent = `$${newTotalEarned.toFixed(2)}`;
+
+              const currentVideosWatched = parseInt(document.getElementById('videos-watched').textContent);
+              document.getElementById('videos-watched').textContent = currentVideosWatched + 1;
+
+              // Load next video
+              loadNextVideo();
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: response.error || 'Failed to record video watch.'
+              });
+            }
+          },
+          error: function() {
+            Swal.fire({
+              icon: 'error',
+              title: 'Server Error',
+              text: 'An error occurred while tracking video watch.'
+            });
+          }
+        });
+      });
+    }
+
+    // Function to load next random video via AJAX
+    function loadNextVideo() {
+      $.ajax({
+        url: 'get_random_video.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(data) {
+          if (data) {
+            videoPlayer.src = data.url;
+            videoPlayer.setAttribute('data-video-id', data.id);
+            document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
+            videoPlayer.load();
+            videoPlayer.play();
+          } else {
+            Swal.fire({
+              icon: 'info',
+              title: 'No More Videos',
+              text: 'No more videos available at the moment.'
+            });
+          }
+        },
+        error: function() {
+          Swal.fire({
+            icon: 'error',
+            title: 'Server Error',
+            text: 'Failed to load next video.'
+          });
+        }
+      });
+    }
+
+    // Withdrawal Notifications
+    const notificationContainer = document.getElementById('notificationContainer');
+    function fetchNotifications() {
+      $.ajax({
+        url: 'fetch_notifications.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(notifications) {
+          notifications.forEach((message, index) => {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.setAttribute('role', 'alert');
+            notification.innerHTML = `<span>${message}</span>`;
+            notificationContainer.appendChild(notification);
+            notification.style.top = `${20 + index * 80}px`;
+            setTimeout(() => notification.remove(), 3500);
+          });
+        },
+        error: function() {
+          console.error('Failed to fetch notifications');
+        }
+      });
+    }
+
+    fetchNotifications();
+    setInterval(fetchNotifications, 20000);
+
+    // Gradient Animation (optimized with requestAnimationFrame)
+    var colors = [
+      [62, 35, 255],
+      [60, 255, 60],
+      [255, 35, 98],
+      [45, 175, 230],
+      [255, 0, 255],
+      [255, 128, 0]
+    ];
+    var step = 0;
+    var colorIndices = [0, 1, 2, 3];
+    var gradientSpeed = 0.002;
+    const gradientElement = document.getElementById('gradient');
+
+    function updateGradient() {
+      var c0_0 = colors[colorIndices[0]];
+      var c0_1 = colors[colorIndices[1]];
+      var c1_0 = colors[colorIndices[2]];
+      var c1_1 = colors[colorIndices[3]];
+      var istep = 1 - step;
+      var r1 = Math.round(istep * c0_0[0] + step * c0_1[0]);
+      var g1 = Math.round(istep * c0_0[1] + step * c0_1[1]);
+      var b1 = Math.round(istep * c0_0[2] + step * c0_1[2]);
+      var color1 = `rgb(${r1},${g1},${b1})`;
+      var r2 = Math.round(istep * c1_0[0] + step * c1_1[0]);
+      var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
+      var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
+      var color2 = `rgb(${r2},${g2},${b2})`;
+      gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+      step += gradientSpeed;
+      if (step >= 1) {
+        step %= 1;
+        colorIndices[0] = colorIndices[1];
+        colorIndices[2] = colorIndices[3];
+        colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
+        colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
+      }
+      requestAnimationFrame(updateGradient);
+    }
+
+    requestAnimationFrame(updateGradient);
+
+    // Context Menu Disable
+    document.addEventListener('contextmenu', function(event) {
+      event.preventDefault();
+    });
+  </script>
+</body>
+</html>
