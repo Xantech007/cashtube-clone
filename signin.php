@@ -1,8 +1,14 @@
 <?php
 // signin.php
+session_start(); // Start session for user authentication
 require_once 'database/conn.php';
 
 $response = ['success' => false, 'error' => ''];
+
+// Prevent caching to avoid redirect issues
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['passcode'])) {
     $email = trim($_POST['email']);
@@ -16,10 +22,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
         file_put_contents('debug.log', 'Invalid passcode length: ' . $passcode . "\n", FILE_APPEND);
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ? AND passcode = ?");
+            $stmt = $pdo->prepare("SELECT id, username FROM users WHERE email = ? AND passcode = ?");
             $stmt->execute([$email, $passcode]);
-            if ($stmt->fetchColumn() > 0) {
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
                 $response['success'] = true;
+                $_SESSION['passcode'] = $passcode;
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'] ?? $email; // Fallback to email if username is null
+                $_SESSION['email'] = $email; // Store email for consistency
+                file_put_contents('debug.log', 'Sign-in successful, session: ' . print_r($_SESSION, true) . "\n", FILE_APPEND);
             } else {
                 $response['error'] = "Invalid email or passcode.";
                 file_put_contents('debug.log', 'Invalid email or passcode: ' . $email . ', ' . $passcode . "\n", FILE_APPEND);
@@ -63,11 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             display: flex;
             flex-direction: column;
             color: #333;
-            padding-top: 80px; /* Matches header height */
-            padding-bottom: 100px; /* Matches footer height */
+            padding-top: 80px;
+            padding-bottom: 100px;
         }
 
-        /* Hero Section */
         .hero-section {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -107,7 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             z-index: 1;
         }
 
-        /* Main Container */
         .index-container {
             max-width: 1200px;
             margin: 40px auto;
@@ -236,7 +246,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             height: 100%;
         }
 
-        /* Button Styles */
         .btn {
             padding: 12px 30px;
             font-size: 16px;
@@ -266,7 +275,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             text-decoration: underline;
         }
 
-        /* CTA Banner */
         .cta-banner {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -296,7 +304,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             background-color: #f0f0f0;
         }
 
-        /* Notice Popup */
         .notice {
             position: fixed;
             top: 50%;
@@ -354,132 +361,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             background-color: #5a00b5;
         }
 
-        /* Responsive Design */
         @media (max-width: 1024px) {
-            .hero-section h1 {
-                font-size: 36px;
-            }
-
-            .hero-section p {
-                font-size: 16px;
-            }
-
-            .section-title {
-                font-size: 30px;
-            }
-
-            .signin-content {
-                padding: 20px;
-            }
+            .hero-section h1 { font-size: 36px; }
+            .hero-section p { font-size: 16px; }
+            .section-title { font-size: 30px; }
+            .signin-content { padding: 20px; }
         }
 
         @media (max-width: 768px) {
-            body {
-                padding-top: 70px;
-                padding-bottom: 80px;
-            }
-
-            .hero-section {
-                padding: 80px 20px;
-            }
-
-            .hero-section h1 {
-                font-size: 32px;
-            }
-
-            .hero-section p {
-                font-size: 15px;
-            }
-
-            .section-title {
-                font-size: 28px;
-            }
-
-            .signin-content {
-                padding: 20px;
-                margin: 0 20px;
-            }
-
-            .keypad {
-                gap: 8px;
-            }
-
-            .key {
-                padding: 10px;
-                font-size: 16px;
-            }
-
-            .input-field {
-                height: 45px;
-                font-size: 15px;
-            }
-
-            #passcode {
-                font-size: 20px;
-            }
-
-            .cta-banner h2 {
-                font-size: 28px;
-            }
+            body { padding-top: 70px; padding-bottom: 80px; }
+            .hero-section { padding: 80px 20px; }
+            .hero-section h1 { font-size: 32px; }
+            .hero-section p { font-size: 15px; }
+            .section-title { font-size: 28px; }
+            .signin-content { padding: 20px; margin: 0 20px; }
+            .keypad { gap: 8px; }
+            .key { padding: 10px; font-size: 16px; }
+            .input-field { height: 45px; font-size: 15px; }
+            #passcode { font-size: 20px; }
+            .cta-banner h2 { font-size: 28px; }
         }
 
         @media (max-width: 480px) {
-            body {
-                padding-top: 60px;
-                padding-bottom: 60px;
-            }
-
-            .hero-section {
-                padding: 60px 15px;
-            }
-
-            .hero-section h1 {
-                font-size: 28px;
-            }
-
-            .hero-section p {
-                font-size: 14px;
-            }
-
-            .section-title {
-                font-size: 24px;
-            }
-
-            .signin-content {
-                padding: 15px;
-                margin: 0 15px;
-            }
-
-            .keypad {
-                gap: 6px;
-            }
-
-            .key {
-                padding: 8px;
-                font-size: 14px;
-            }
-
-            .input-field {
-                height: 40px;
-                font-size: 14px;
-            }
-
-            #passcode {
-                font-size: 18px;
-            }
-
-            .cta-banner {
-                padding: 40px 15px;
-            }
-
-            .cta-banner h2 {
-                font-size: 24px;
-            }
-
-            .cta-banner .btn {
-                padding: 12px 30px;
-                font-size: 16px;
-            }
+            body { padding-top: 60px; padding-bottom: 60px; }
+            .hero-section { padding: 60px 15px; }
+            .hero-section h1 { font-size: 28px; }
+            .hero-section p { font-size: 14px; }
+            .section-title { font-size: 24px; }
+            .signin-content { padding: 15px; margin: 0 15px; }
+            .keypad { gap: 6px; }
+            .key { padding: 8px; font-size: 14px; }
+            .input-field { height: 40px; font-size: 14px; }
+            #passcode { font-size: 18px; }
+            .cta-banner { padding: 40px 15px; }
+            .cta-banner h2 { font-size: 24px; }
+            .cta-banner .btn { padding: 12px 30px; font-size: 16px; }
         }
     </style>
 </head>
@@ -487,13 +403,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
     <?php include 'inc/header.php'; ?>
     <?php include 'inc/navbar.php'; ?>
 
-    <!-- Hero Section -->
     <section class="hero-section">
         <h1>Sign In to Task Tube</h1>
         <p>Enter your email and 5-digit passcode to access your account and start earning by watching video ads.</p>
     </section>
 
-    <!-- Sign In Form -->
     <div class="index-container">
         <h2 class="section-title">Sign In</h2>
         <div class="signin-content">
@@ -520,13 +434,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
         </div>
     </div>
 
-    <!-- CTA Banner -->
     <section class="cta-banner">
         <h2>Not Yet a Member?</h2>
         <a href="register.php" class="btn" onclick="console.log('CTA button clicked')">Join Task Tube Now</a>
     </section>
 
-    <!-- Notice Popup -->
     <div class="notice" id="notice">
         <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
         <h2>Sign In to Task Tube</h2>
@@ -536,7 +448,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
 
     <?php include 'inc/footer.php'; ?>
 
-    <!-- LiveChat Script -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
@@ -545,7 +456,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
     <script>
-        // Set Active Navbar Link
         document.addEventListener('DOMContentLoaded', function() {
             const currentPath = window.location.pathname.split('/').pop();
             const links = document.querySelectorAll('.ham-menu ul li a');
@@ -556,7 +466,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             });
         });
 
-        // Notice Popup
         function isNoticeShown() {
             return localStorage.getItem('noticeShownSignIn');
         }
@@ -571,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                 setTimeout(() => {
                     notice.style.display = 'block';
                     setNoticeShown();
-                }, 2000); // Match index.php timing
+                }, 2000);
             }
         }
 
@@ -582,7 +491,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
 
         window.addEventListener('load', showNotice);
 
-        // Passcode Logic
         const emailInput = document.getElementById("email");
         const passcodeInput = document.getElementById("passcode");
         const keys = document.querySelectorAll(".key:not(.action)");
@@ -636,6 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                 type: 'POST',
                 data: { email: email, passcode: passcode },
                 dataType: 'json',
+                cache: false,
                 success: function(response) {
                     console.log('AJAX response:', response);
                     if (response.success) {
@@ -646,6 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
+                            console.log('Redirecting to users/home.php');
                             window.location.href = 'users/home.php';
                         });
                     } else {
@@ -671,7 +581,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             });
         }
 
-        // Prevent right-click only on non-link elements
         document.addEventListener('contextmenu', e => {
             if (!e.target.closest('a')) {
                 e.preventDefault();
