@@ -1,5 +1,5 @@
 <?php
-// inc/navbar.php
+// navbar.php
 ?>
 
 <style>
@@ -38,7 +38,12 @@
     }
 
     .ham-menu ul li a:hover {
+        color: #ff69b4;
+    }
+
+    .ham-menu ul li.active a {
         color: #6e44ff;
+        font-weight: 600;
     }
 
     @media (min-width: 768px) {
@@ -60,6 +65,24 @@
         .ham-menu ul li {
             margin: 0;
         }
+
+        .ham-menu ul li a {
+            font-size: 15px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .ham-menu {
+            top: 60px;
+        }
+
+        .ham-menu ul {
+            padding: 15px;
+        }
+
+        .ham-menu ul li a {
+            font-size: 14px;
+        }
     }
 </style>
 
@@ -68,5 +91,7 @@
         <li><a href="index.php">Home</a></li>
         <li><a href="about.php">About</a></li>
         <li><a href="contact.php">Contact</a></li>
+        <li><a href="terms.php">Terms</a></li>
+        <li><a href="privacy.php">Privacy</a></li>
     </ul>
 </nav>
