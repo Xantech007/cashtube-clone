@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
             text-align: center;
-            padding: 60px 20px;
+            padding: 100px 20px;
             position: relative;
             overflow: hidden;
             z-index: 10;
@@ -115,9 +115,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         .hero-section h1 {
-            font-size: 36px;
+            font-size: 48px;
             font-weight: 700;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             position: relative;
             z-index: 1;
         }
@@ -126,37 +126,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             font-size: 18px;
             line-height: 1.6;
             max-width: 600px;
-            margin: 0 auto;
+            margin: 0 auto 30px;
             position: relative;
             z-index: 1;
         }
 
-        /* Register Container */
-        .register-container {
-            max-width: 500px;
+        /* Main Container */
+        .index-container {
+            max-width: 1200px;
             margin: 40px auto;
-            padding: 30px;
+            padding: 0 20px;
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .register-content {
+            max-width: 500px;
+            margin: 0 auto;
             background: #fff;
             border-radius: 15px;
+            padding: 30px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
 
-        .register-container h2 {
+        .register-content h2 {
             font-size: 28px;
             font-weight: 600;
             color: #333;
             margin-bottom: 10px;
         }
 
-        .register-container p {
+        .register-content p {
             font-size: 16px;
             color: #666;
             margin-bottom: 20px;
         }
 
-        .register-container p span {
-            color: #ff69b4;
+        .register-content p span {
+            color: #6e44ff;
             font-weight: 500;
         }
 
@@ -200,11 +214,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             accent-color: #6e44ff;
         }
 
+        /* Button Styles */
+        .btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-block;
+        }
+
         .submit-btn {
             background: #6e44ff;
             color: #fff;
             border: none;
-            border-radius: 10px;
+            border-radius: 25px;
             padding: 15px;
             font-size: 18px;
             font-weight: 500;
@@ -214,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         .submit-btn:hover {
-            background: #5a33cc;
+            background: #5a00b5;
             transform: translateY(-2px);
         }
 
@@ -236,7 +262,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             text-decoration: underline;
         }
 
+        /* CTA Banner */
+        .cta-banner {
+            background: linear-gradient(135deg, #6e44ff, #b5179e);
+            color: #fff;
+            text-align: center;
+            padding: 60px 20px;
+            border-radius: 15px;
+            margin: 40px 20px;
+        }
+
+        .cta-banner h2 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .cta-banner .btn {
+            background-color: #fff;
+            color: #6e44ff;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 50px;
+            transition: background-color 0.3s ease;
+        }
+
+        .cta-banner .btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Notice Popup */
+        .notice {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            display: none;
+            z-index: 1002;
+        }
+
+        .notice h2 {
+            font-size: 24px;
+            color: #6e44ff;
+            margin-bottom: 15px;
+        }
+
+        .notice p {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .notice .btn {
+            background-color: #6e44ff;
+            color: #fff;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .notice .btn:hover {
+            background-color: #5a00b5;
+        }
+
         /* Responsive Design */
+        @media (max-width: 1024px) {
+            .hero-section h1 {
+                font-size: 36px;
+            }
+
+            .hero-section p {
+                font-size: 16px;
+            }
+
+            .section-title {
+                font-size: 30px;
+            }
+
+            .register-content {
+                padding: 20px;
+            }
+        }
+
         @media (max-width: 768px) {
             body {
                 padding-top: 70px;
@@ -244,24 +376,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             }
 
             .hero-section {
-                padding: 40px 20px;
+                padding: 80px 20px;
             }
 
             .hero-section h1 {
-                font-size: 30px;
+                font-size: 32px;
             }
 
             .hero-section p {
-                font-size: 16px;
+                font-size: 15px;
             }
 
-            .register-container {
+            .section-title {
+                font-size: 28px;
+            }
+
+            .register-content {
                 padding: 20px;
-                margin: 20px;
-            }
-
-            .register-container h2 {
-                font-size: 24px;
+                margin: 0 20px;
             }
 
             .input-field {
@@ -273,6 +405,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 padding: 12px;
                 font-size: 16px;
             }
+
+            .cta-banner h2 {
+                font-size: 28px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -282,23 +418,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             }
 
             .hero-section {
-                padding: 30px 15px;
+                padding: 60px 15px;
             }
 
             .hero-section h1 {
-                font-size: 26px;
+                font-size: 28px;
             }
 
             .hero-section p {
                 font-size: 14px;
             }
 
-            .register-container {
-                padding: 15px;
+            .section-title {
+                font-size: 24px;
             }
 
-            .register-container h2 {
-                font-size: 22px;
+            .register-content {
+                padding: 15px;
+                margin: 0 15px;
             }
 
             .gender-options {
@@ -308,6 +445,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
 
             .gender-options label {
                 font-size: 14px;
+            }
+
+            .cta-banner {
+                padding: 40px 15px;
+            }
+
+            .cta-banner h2 {
+                font-size: 24px;
+            }
+
+            .cta-banner .btn {
+                padding: 12px 30px;
+                font-size: 16px;
             }
         }
     </style>
@@ -323,20 +473,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     </section>
 
     <!-- Register Form -->
-    <div class="register-container">
-        <h2>Register for <span>Task Tube</span></h2>
-        <p>Fill in your details to get started</p>
-        <form id="register-form" method="POST">
-            <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
-            <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
-            <div class="gender-options">
-                <label><input type="radio" name="gender" value="male" required aria-label="Male"> Male</label>
-                <label><input type="radio" name="gender" value="female" aria-label="Female"> Female</label>
-                <label><input type="radio" name="gender" value="other" aria-label="Other"> Other</label>
-            </div>
-            <button type="submit" class="submit-btn">Submit</button>
-        </form>
-        <p class="login-link">Already have an account? <a href="signin.php">Login</a></p>
+    <div class="index-container">
+        <h2 class="section-title">Create Your Account</h2>
+        <div class="register-content">
+            <h2>Register for <span>Task Tube</span></h2>
+            <p>Fill in your details to get started</p>
+            <form id="register-form" method="POST">
+                <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
+                <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
+                <div class="gender-options">
+                    <label><input type="radio" name="gender" value="male" required aria-label="Male"> Male</label>
+                    <label><input type="radio" name="gender" value="female" aria-label="Female"> Female</label>
+                    <label><input type="radio" name="gender" value="other" aria-label="Other"> Other</label>
+                </div>
+                <button type="submit" class="submit-btn btn">Submit</button>
+            </form>
+            <p class="login-link">Already have an account? <a href="signin.php">Sign In</a></p>
+        </div>
+    </div>
+
+    <!-- CTA Banner -->
+    <section class="cta-banner">
+        <h2>Start Earning with Task Tube</h2>
+        <a href="register.php" class="btn" onclick="console.log('CTA button clicked')">Join Now</a>
+    </section>
+
+    <!-- Notice Popup -->
+    <div class="notice" id="notice">
+        <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
+        <h2>Join Task Tube Today</h2>
+        <p>Start earning money by watching video ads with our easy-to-use platform. Register now and turn your screen time into income!</p>
+        <a href="register.php" class="btn" onclick="console.log('Notice button clicked')">Get Started</a>
     </div>
 
     <?php include 'inc/footer.php'; ?>
@@ -350,6 +517,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     <noscript><a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a></noscript>
 
     <script>
+        // Set Active Navbar Link
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname.split('/').pop();
+            const links = document.querySelectorAll('.ham-menu ul li a');
+            links.forEach(link => {
+                if (link.getAttribute('href') === currentPath || (currentPath === '' && link.getAttribute('href') === 'index.php')) {
+                    link.parentElement.classList.add('active');
+                }
+            });
+        });
+
+        // Notice Popup
+        function isNoticeShown() {
+            return localStorage.getItem('noticeShownRegister');
+        }
+
+        function setNoticeShown() {
+            localStorage.setItem('noticeShownRegister', true);
+        }
+
+        function showNotice() {
+            if (!isNoticeShown()) {
+                const notice = document.getElementById('notice');
+                setTimeout(() => {
+                    notice.style.display = 'block';
+                    setNoticeShown();
+                }, 2000); // Match index.php timing
+            }
+        }
+
+        function closeNotice() {
+            document.getElementById('notice').style.display = 'none';
+            setNoticeShown();
+        }
+
+        window.addEventListener('load', showNotice);
+
         // Form Submission
         document.getElementById('register-form').addEventListener('submit', function(e) {
             e.preventDefault();
