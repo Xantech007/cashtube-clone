@@ -29,19 +29,19 @@ try {
     exit;
 }
 
-// Fetch earnings summary
+// Fetch earnings summary (combined query for performance)
 try {
-    $stmt = $pdo->prepare("SELECT SUM(amount) as total_earned FROM activities WHERE user_id = ? AND amount > 0");
-    $stmt->execute([$_SESSION['user_id']]);
-    $total_earned = $stmt->fetchColumn() ?: 0.00;
-
-    $stmt = $pdo->prepare("SELECT COUNT(*) as videos_watched FROM activities WHERE user_id = ? AND action LIKE 'Watched%'");
-    $stmt->execute([$_SESSION['user_id']]);
-    $videos_watched = $stmt->fetchColumn();
-
-    $stmt = $pdo->prepare("SELECT SUM(amount) as pending_withdrawals FROM withdrawals WHERE user_id = ? AND status = 'pending'");
-    $stmt->execute([$_SESSION['user_id']]);
-    $pending_withdrawals = $stmt->fetchColumn() ?: 0.00;
+    $stmt = $pdo->prepare("
+        SELECT 
+            (SELECT SUM(amount) FROM activities WHERE user_id = ? AND amount > 0) AS total_earned,
+            (SELECT COUNT(*) FROM activities WHERE user_id = ? AND action LIKE 'Watched%') AS videos_watched,
+            (SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status = 'pending') AS pending_withdrawals
+    ");
+    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+    $summary = $stmt->fetch(PDO::FETCH_ASSOC);
+    $total_earned = $summary['total_earned'] ?: 0.00;
+    $videos_watched = $summary['videos_watched'] ?: 0;
+    $pending_withdrawals = $summary['pending_withdrawals'] ?: 0.00;
 } catch (PDOException $e) {
     error_log('Earnings summary error: ' . $e->getMessage(), 3, '../debug.log');
     $total_earned = 0.00;
@@ -59,7 +59,7 @@ try {
     $activities = [];
 }
 
-// Fetch a random video from the videos table
+// Fetch a random video from the videos table (assuming url points to local files like 'users/videos/video.mp4')
 try {
     $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY RAND() LIMIT 1");
     $stmt->execute();
@@ -223,11 +223,10 @@ try {
             color: var(--text-color);
         }
 
-        .video-section iframe {
+        .video-section video {
             border-radius: 16px;
             width: 100%;
             max-width: 640px;
-            height: 360px;
             box-shadow: 0 6px 16px var(--shadow-color);
         }
 
@@ -506,8 +505,8 @@ try {
                 font-size: 26px;
             }
 
-            .video-section iframe {
-                height: 280px;
+            .video-section video {
+                width: 100%;
             }
 
             .notification {
@@ -548,15 +547,15 @@ try {
                     <tbody>
                         <tr>
                             <td>Total Earned</td>
-                            <td>$<?php echo number_format($total_earned, 2); ?></td>
+                            <td id="total-earned">$<?php echo number_format($total_earned, 2); ?></td>
                         </tr>
                         <tr>
                             <td>Videos Watched</td>
-                            <td><?php echo $videos_watched; ?></td>
+                            <td id="videos-watched"><?php echo $videos_watched; ?></td>
                         </tr>
                         <tr>
                             <td>Pending Withdrawals</td>
-                            <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
+                            <td id="pending-withdrawals">$<?php echo number_format($pending_withdrawals, 2); ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -565,13 +564,13 @@ try {
             <div class="video-section">
                 <h1>Watch Videos to Earn Crypto</h1>
                 <?php if ($video): ?>
-                    <iframe width="95%" height="315" style="margin: 0 auto; display: block;" 
-                            src="<?php echo htmlspecialchars($video['url']); ?>" 
-                            title="<?php echo htmlspecialchars($video['title']); ?>" 
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                            allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
-                    <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
+                    <video id="videoPlayer" 
+                           src="<?php echo htmlspecialchars($video['url']); ?>" 
+                           autoplay 
+                           controls 
+                           playsinline 
+                           data-video-id="<?php echo $video['id']; ?>"></video>
+                    <h4 id="video-reward">Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
                 <?php else: ?>
                     <p>No videos available at the moment.</p>
                 <?php endif; ?>
@@ -595,7 +594,7 @@ try {
             <div class="activity-section">
                 <h2>Recent Activity</h2>
                 <?php if ($activities): ?>
-                    <table class="activity-table">
+                    <table class="activity-table" id="activity-table">
                         <thead>
                             <tr>
                                 <th>Action</th>
@@ -773,7 +772,13 @@ try {
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            location.reload();
+                            // Update pending withdrawals without reload
+                            const newPending = parseFloat(document.getElementById('pending-withdrawals').textContent.replace('$', '')) + amount;
+                            document.getElementById('pending-withdrawals').textContent = `$${newPending.toFixed(2)}`;
+                            // Update balance
+                            const newBalance = balance - amount;
+                            document.getElementById('balance').textContent = newBalance.toFixed(2);
+                            // Append to activity if needed (assuming process_withdrawal logs activity)
                         });
                     } else {
                         Swal.fire({
@@ -793,53 +798,104 @@ try {
             });
         });
 
-        // Video Watch Tracking
-        const iframeElement = document.querySelector('.video-section iframe');
-        if (iframeElement) {
-            const videoId = iframeElement.getAttribute('data-video-id');
-            iframeElement.addEventListener('load', () => {
-                // Attempt to access the iframe's content to detect video end
-                const video = iframeElement.contentDocument?.querySelector('video');
-                if (video) {
-                    video.addEventListener('ended', () => {
-                        $.ajax({
-                            url: 'process_video_watch.php',
-                            type: 'POST',
-                            data: { video_id: videoId },
-                            dataType: 'json',
-                            success: function(response) {
-                                if (response.success) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Video Watched',
-                                        text: `You earned $${response.reward}!`,
-                                        timer: 2000,
-                                        showConfirmButton: false
-                                    }).then(() => {
-                                        location.reload(); // Reload to get a new random video
-                                    });
-                                } else {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error',
-                                        text: response.error || 'Failed to record video watch.'
-                                    });
+        // Video Watch Tracking and Auto-Play Next
+        const videoPlayer = document.getElementById('videoPlayer');
+        if (videoPlayer) {
+            videoPlayer.addEventListener('ended', function() {
+                const videoId = videoPlayer.getAttribute('data-video-id');
+                $.ajax({
+                    url: 'process_video_watch.php',
+                    type: 'POST',
+                    data: { video_id: videoId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Video Watched',
+                                text: `You earned $${response.reward}!`,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                            // Update balance
+                            const currentBalance = parseFloat(document.getElementById('balance').textContent);
+                            const newBalance = currentBalance + parseFloat(response.reward);
+                            document.getElementById('balance').textContent = newBalance.toFixed(2);
+
+                            // Update earnings summary
+                            const currentTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
+                            const newTotalEarned = currentTotalEarned + parseFloat(response.reward);
+                            document.getElementById('total-earned').textContent = `$${newTotalEarned.toFixed(2)}`;
+
+                            const currentVideosWatched = parseInt(document.getElementById('videos-watched').textContent);
+                            document.getElementById('videos-watched').textContent = currentVideosWatched + 1;
+
+                            // Append to recent activity
+                            const activityTableBody = document.querySelector('#activity-table tbody');
+                            if (activityTableBody) {
+                                const newRow = document.createElement('tr');
+                                newRow.innerHTML = `
+                                    <td>${response.action}</td>
+                                    <td class="amount">$${parseFloat(response.reward).toFixed(2)}</td>
+                                    <td>${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' })}</td>
+                                `;
+                                activityTableBody.insertBefore(newRow, activityTableBody.firstChild);
+                                // Limit to 5 rows
+                                if (activityTableBody.children.length > 5) {
+                                    activityTableBody.removeChild(activityTableBody.lastChild);
                                 }
-                            },
-                            error: function() {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Server Error',
-                                    text: 'An error occurred while tracking video watch.'
-                                });
                             }
+
+                            // Load next video
+                            loadNextVideo();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.error || 'Failed to record video watch.'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Server Error',
+                            text: 'An error occurred while tracking video watch.'
                         });
+                    }
+                });
+            });
+        }
+
+        // Function to load next random video via AJAX
+        function loadNextVideo() {
+            $.ajax({
+                url: 'get_random_video.php',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    if (data) {
+                        videoPlayer.src = data.url;
+                        videoPlayer.setAttribute('data-video-id', data.id);
+                        document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>`;
+                        videoPlayer.load();
+                        videoPlayer.play();
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'No More Videos',
+                            text: 'No more videos available at the moment.'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Server Error',
+                        text: 'Failed to load next video.'
                     });
                 }
-            });
-            // Simulate looping by reloading the iframe
-            iframeElement.addEventListener('ended', () => {
-                iframeElement.src = iframeElement.src; // Reload iframe to loop
             });
         }
 
@@ -870,7 +926,7 @@ try {
         fetchNotifications();
         setInterval(fetchNotifications, 20000);
 
-        // Gradient Animation
+        // Gradient Animation (optimized with requestAnimationFrame for better performance)
         var colors = [
             [62, 35, 255],
             [60, 255, 60],
@@ -882,6 +938,7 @@ try {
         var step = 0;
         var colorIndices = [0, 1, 2, 3];
         var gradientSpeed = 0.002;
+        const gradientElement = document.getElementById('gradient');
 
         function updateGradient() {
             var c0_0 = colors[colorIndices[0]];
@@ -897,9 +954,7 @@ try {
             var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
             var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
             var color2 = `rgb(${r2},${g2},${b2})`;
-            $('#gradient').css({
-                background: `linear-gradient(135deg, ${color1}, ${color2})`
-            });
+            gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
             step += gradientSpeed;
             if (step >= 1) {
                 step %= 1;
@@ -908,9 +963,10 @@ try {
                 colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
                 colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
             }
+            requestAnimationFrame(updateGradient);
         }
 
-        setInterval(updateGradient, 10);
+        requestAnimationFrame(updateGradient);
 
         // Context Menu Disable
         document.addEventListener('contextmenu', function(event) {
