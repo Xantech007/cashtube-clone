@@ -59,7 +59,7 @@ try {
     $activities = [];
 }
 
-// Fetch a random video
+// Fetch a random video from the videos table
 try {
     $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY RAND() LIMIT 1");
     $stmt->execute();
@@ -131,15 +131,15 @@ try {
         .main-content {
             flex: 1;
             padding: 20px;
-            width: 100%; /* Ensure full width */
+            width: 100%;
             box-sizing: border-box;
         }
 
         .container {
-            width: 100%; /* Full width */
-            max-width: 1200px; /* Maintain max-width for larger screens */
-            margin: 0 auto; /* Center content */
-            padding: 24px 16px; /* Adjust padding for responsiveness */
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 16px;
         }
 
         .balance-card,
@@ -148,14 +148,13 @@ try {
         .form-card,
         .activity-section,
         .faq-section {
-            width: 100%; /* Full width */
-            max-width: 1200px; /* Consistent max-width */
-            margin: 24px auto; /* Center with auto margins */
-            padding: 28px; /* Consistent padding */
+            width: 100%;
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 28px;
             box-sizing: border-box;
         }
 
-        /* Page Header */
         .page-header {
             display: flex;
             align-items: center;
@@ -199,7 +198,6 @@ try {
             transform: scale(1.02);
         }
 
-        /* Balance Card */
         .balance-card {
             background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
             color: #fff;
@@ -220,7 +218,6 @@ try {
             margin-top: 8px;
         }
 
-        /* Earnings Summary Table */
         .earnings-summary {
             background: var(--card-bg);
             border-radius: 16px;
@@ -256,7 +253,6 @@ try {
             color: var(--accent-color);
         }
 
-        /* Video Section */
         .video-section {
             text-align: center;
             margin: 48px 0;
@@ -270,12 +266,13 @@ try {
             color: var(--text-color);
         }
 
-        .video-section iframe {
+        .video-section video {
             border-radius: 16px;
             width: 100%;
             max-width: 640px;
             height: 360px;
             box-shadow: 0 6px 16px var(--shadow-color);
+            object-fit: cover;
         }
 
         .video-section h4 {
@@ -289,7 +286,6 @@ try {
             font-weight: 600;
         }
 
-        /* Form Section */
         .form-card {
             background: var(--card-bg);
             border-radius: 16px;
@@ -361,7 +357,6 @@ try {
             transform: scale(1.02);
         }
 
-        /* Recent Activity Table */
         .activity-section {
             background: var(--card-bg);
             border-radius: 16px;
@@ -402,7 +397,6 @@ try {
             color: var(--accent-color);
         }
 
-        /* FAQ Section */
         .faq-section {
             background: var(--card-bg);
             border-radius: 16px;
@@ -444,7 +438,6 @@ try {
             text-decoration: underline;
         }
 
-        /* Withdrawal Notifications */
         .notification {
             position: fixed;
             top: 80px;
@@ -488,7 +481,6 @@ try {
             to { opacity: 0; transform: translateY(-20px); }
         }
 
-        /* Bottom Menu */
         .bottom-menu {
             position: fixed;
             bottom: 0;
@@ -517,7 +509,6 @@ try {
             color: var(--accent-color);
         }
 
-        /* Gradient Background */
         #gradient {
             position: fixed;
             top: 0;
@@ -529,13 +520,11 @@ try {
             transition: all 0.3s ease;
         }
 
-        /* Animations */
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .container,
             .balance-card,
@@ -544,8 +533,8 @@ try {
             .form-card,
             .activity-section,
             .faq-section {
-                width: 100%; /* Full width on mobile */
-                padding: 20px 12px; /* Slightly reduced padding for mobile */
+                width: 100%;
+                padding: 20px 12px;
             }
 
             .page-header h1 {
@@ -560,7 +549,7 @@ try {
                 font-size: 26px;
             }
 
-            .video-section iframe {
+            .video-section video {
                 height: 280px;
             }
 
@@ -633,9 +622,10 @@ try {
             <div class="video-section">
                 <h1>Watch Videos to Earn Crypto</h1>
                 <?php if ($video): ?>
-                    <iframe src="<?php echo htmlspecialchars($video['url']); ?>" title="<?php echo htmlspecialchars($video['title']); ?>" 
-                        frameborder="0" loop allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
+                    <video controls loop data-video-id="<?php echo $video['id']; ?>">
+                        <source src="<?php echo htmlspecialchars($video['url']); ?>" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
                     <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
                 <?php else: ?>
                     <p>No videos available at the moment.</p>
@@ -838,47 +828,42 @@ try {
         });
 
         // Video Watch Tracking
-        const videoIframe = document.querySelector('.video-section iframe');
-        if (videoIframe) {
-            const videoId = videoIframe.getAttribute('data-video-id');
-            videoIframe.addEventListener('load', () => {
-                const videoElement = videoIframe.contentWindow.document.querySelector('video');
-                if (videoElement) {
-                    videoElement.addEventListener('ended', () => {
-                        $.ajax({
-                            url: 'process_video_watch.php',
-                            type: 'POST',
-                            data: { video_id: videoId },
-                            dataType: 'json',
-                            success: function(response) {
-                                if (response.success) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Video Watched',
-                                        text: `You earned $${response.reward}!`,
-                                        timer: 2000,
-                                        showConfirmButton: false
-                                    }).then(() => {
-                                        location.reload(); // Reload to get a new random video
-                                    });
-                                } else {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error',
-                                        text: response.error || 'Failed to record video watch.'
-                                    });
-                                }
-                            },
-                            error: function() {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Server Error',
-                                    text: 'An error occurred while tracking video watch.'
-                                });
-                            }
+        const videoElement = document.querySelector('.video-section video');
+        if (videoElement) {
+            const videoId = videoElement.getAttribute('data-video-id');
+            videoElement.addEventListener('ended', () => {
+                $.ajax({
+                    url: 'process_video_watch.php',
+                    type: 'POST',
+                    data: { video_id: videoId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Video Watched',
+                                text: `You earned $${response.reward}!`,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload(); // Reload to get a new random video
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.error || 'Failed to record video watch.'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Server Error',
+                            text: 'An error occurred while tracking video watch.'
                         });
-                    });
-                }
+                    }
+                });
             });
         }
 
