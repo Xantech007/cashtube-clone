@@ -79,11 +79,39 @@ try {
     <meta name="keywords" content="Task Tube, dashboard, earn money online, cryptocurrency, watch ads, passive income">
     <meta name="author" content="Task Tube">
     <title>Dashboard | Task Tube</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        :root {
+            --bg-color: #f7f9fc;
+            --gradient-bg: linear-gradient(135deg, #f7f9fc, #e5e7eb);
+            --card-bg: #ffffff;
+            --text-color: #1a1a1a;
+            --subtext-color: #6b7280;
+            --border-color: #d1d5db;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #22c55e;
+            --accent-hover: #16a34a;
+            --menu-bg: #1a1a1a;
+            --menu-text: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1f2937;
+            --gradient-bg: linear-gradient(135deg, #1f2937, #374151);
+            --card-bg: #2d3748;
+            --text-color: #e5e7eb;
+            --subtext-color: #9ca3af;
+            --border-color: #4b5563;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent-color: #34d399;
+            --accent-hover: #22c55e;
+            --menu-bg: #111827;
+            --menu-text: #e5e7eb;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -92,20 +120,39 @@ try {
         }
 
         body {
-            background: #f5f7fa;
+            background: var(--bg-color);
+            color: var(--text-color);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            color: #333;
-            padding-top: 80px; /* Matches index.php header height */
-            padding-bottom: 100px; /* Matches index.php footer height */
+            padding: 20px;
         }
 
-        /* Main Container */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            width: 100%; /* Ensure full width */
+            box-sizing: border-box;
+        }
+
         .container {
-            max-width: 1200px;
-            margin: 40px auto;
-            padding: 0 20px;
+            width: 100%; /* Full width */
+            max-width: 1200px; /* Maintain max-width for larger screens */
+            margin: 0 auto; /* Center content */
+            padding: 24px 16px; /* Adjust padding for responsiveness */
+        }
+
+        .balance-card,
+        .earnings-summary,
+        .video-section,
+        .form-card,
+        .activity-section,
+        .faq-section {
+            width: 100%; /* Full width */
+            max-width: 1200px; /* Consistent max-width */
+            margin: 24px auto; /* Center with auto margins */
+            padding: 28px; /* Consistent padding */
+            box-sizing: border-box;
         }
 
         /* Page Header */
@@ -125,46 +172,41 @@ try {
         }
 
         .header-text h1 {
-            font-size: 36px; /* Matches index.php section-title */
-            font-weight: 600;
-            color: #333;
+            font-size: 26px;
+            font-weight: 700;
         }
 
         .header-text p {
             font-size: 16px;
-            color: #666;
+            color: var(--subtext-color);
             margin-top: 4px;
         }
 
         .theme-toggle {
-            background: #6e44ff; /* Matches index.php btn-register */
+            background: var(--accent-color);
             color: #fff;
             border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: 500;
-            border-radius: 25px;
+            padding: 8px 16px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
             transition: background 0.3s ease, transform 0.2s ease;
         }
 
         .theme-toggle:hover {
-            background: #5a00b5; /* Matches index.php btn-register:hover */
+            background: var(--accent-hover);
             transform: scale(1.02);
         }
 
         /* Balance Card */
         .balance-card {
-            background: linear-gradient(135deg, #6e44ff, #b5179e); /* Matches index.php hero-section */
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
             color: #fff;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 40px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 6px 16px var(--shadow-color);
             animation: slideIn 0.5s ease-out 0.2s backwards;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .balance-card p {
@@ -173,28 +215,23 @@ try {
         }
 
         .balance-card h2 {
-            font-size: 48px; /* Matches index.php hero-section h1 */
+            font-size: 36px;
             font-weight: 700;
             margin-top: 8px;
         }
 
         /* Earnings Summary Table */
         .earnings-summary {
-            background: #fff;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 40px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 6px 16px var(--shadow-color);
             animation: slideIn 0.5s ease-out 0.3s backwards;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .earnings-summary h2 {
-            font-size: 36px; /* Matches index.php section-title */
+            font-size: 24px;
             font-weight: 600;
-            color: #333;
             margin-bottom: 20px;
         }
 
@@ -206,73 +243,59 @@ try {
         .earnings-table th, .earnings-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .earnings-table th {
             font-weight: 600;
-            color: #666;
+            color: var(--subtext-color);
         }
 
         .earnings-table td {
             font-weight: 700;
-            color: #6e44ff; /* Matches index.php feature-card i */
+            color: var(--accent-color);
         }
 
         /* Video Section */
         .video-section {
             text-align: center;
-            margin: 40px 20px;
+            margin: 48px 0;
             animation: slideIn 0.5s ease-out 0.4s backwards;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .video-section h1 {
-            font-size: 36px; /* Matches index.php section-title */
-            font-weight: 600;
-            color: #333;
+            font-size: 30px;
+            font-weight: 700;
             margin-bottom: 20px;
+            color: var(--text-color);
         }
 
         .video-section iframe {
-            border-radius: 15px;
+            border-radius: 16px;
             width: 100%;
             max-width: 640px;
             height: 360px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 16px var(--shadow-color);
         }
 
         .video-section h4 {
             font-size: 16px;
-            color: #666;
+            color: var(--subtext-color);
             margin-top: 20px;
         }
 
         .video-section span {
-            color: #6e44ff; /* Matches index.php feature-card i */
+            color: var(--accent-color);
             font-weight: 600;
         }
 
         /* Form Section */
         .form-card {
-            background: #fff;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 40px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 6px 16px var(--shadow-color);
             animation: slideIn 0.5s ease-out 0.6s backwards;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .form-card h2 {
-            font-size: 36px; /* Matches index.php section-title */
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 20px;
         }
 
         .form-card h2::before {
@@ -291,16 +314,16 @@ try {
             padding: 14px 0;
             font-size: 16px;
             border: none;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid var(--border-color);
             background: transparent;
-            color: #333;
+            color: var(--text-color);
             outline: none;
             transition: border-color 0.3s ease;
         }
 
         .input-container input:focus,
         .input-container input:valid {
-            border-bottom-color: #6e44ff; /* Matches index.php feature-card i */
+            border-bottom-color: var(--accent-color);
         }
 
         .input-container label {
@@ -308,7 +331,7 @@ try {
             top: 14px;
             left: 0;
             font-size: 16px;
-            color: #666;
+            color: var(--subtext-color);
             pointer-events: none;
             transition: all 0.3s ease;
         }
@@ -317,44 +340,39 @@ try {
         .input-container input:valid ~ label {
             top: -18px;
             font-size: 12px;
-            color: #6e44ff;
+            color: var(--accent-color);
         }
 
         .submit-btn {
             width: 100%;
-            padding: 12px 30px;
-            background: #6e44ff; /* Matches index.php btn-register */
+            padding: 14px;
+            background: var(--accent-color);
             color: #fff;
             font-size: 16px;
             font-weight: 600;
             border: none;
-            border-radius: 25px;
+            border-radius: 8px;
             cursor: pointer;
             transition: background 0.3s ease, transform 0.2s ease;
         }
 
         .submit-btn:hover {
-            background: #5a00b5; /* Matches index.php btn-register:hover */
+            background: var(--accent-hover);
             transform: scale(1.02);
         }
 
         /* Recent Activity Table */
         .activity-section {
-            background: #fff;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 40px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 6px 16px var(--shadow-color);
             animation: slideIn 0.5s ease-out 0.7s backwards;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .activity-section h2 {
-            font-size: 36px; /* Matches index.php section-title */
+            font-size: 24px;
             font-weight: 600;
-            color: #333;
             margin-bottom: 20px;
         }
 
@@ -366,41 +384,36 @@ try {
         .activity-table th, .activity-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .activity-table th {
             font-weight: 600;
-            color: #666;
+            color: var(--subtext-color);
         }
 
         .activity-table td {
             font-size: 16px;
-            color: #333;
+            color: var(--text-color);
         }
 
         .activity-table .amount {
             font-weight: 700;
-            color: #6e44ff; /* Matches index.php feature-card i */
+            color: var(--accent-color);
         }
 
         /* FAQ Section */
         .faq-section {
-            background: #f9f9f9; /* Matches index.php testimonials */
-            border-radius: 15px;
-            padding: 30px;
-            margin: 40px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 6px 16px var(--shadow-color);
             animation: slideIn 0.5s ease-out 0.8s backwards;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .faq-section h2 {
-            font-size: 36px; /* Matches index.php section-title */
+            font-size: 24px;
             font-weight: 600;
-            color: #333;
             margin-bottom: 20px;
         }
 
@@ -411,23 +424,23 @@ try {
         .faq-item h3 {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
+            color: var(--text-color);
             margin-bottom: 10px;
         }
 
         .faq-item p {
             font-size: 16px;
-            color: #666;
+            color: var(--subtext-color);
             line-height: 1.6;
         }
 
         .faq-item a {
-            color: #6e44ff; /* Matches index.php feature-card i */
+            color: var(--accent-color);
             text-decoration: none;
         }
 
         .faq-item a:hover {
-            color: #5a00b5; /* Matches index.php btn-register:hover */
+            color: var(--accent-hover);
             text-decoration: underline;
         }
 
@@ -436,12 +449,12 @@ try {
             position: fixed;
             top: 80px;
             right: 20px;
-            background: #fff;
-            color: #333;
+            background: var(--card-bg);
+            color: var(--text-color);
             padding: 16px 24px;
-            border-radius: 15px;
-            border: 2px solid #6e44ff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            border: 2px solid var(--accent-color);
+            box-shadow: 0 4px 12px var(--shadow-color), 0 0 8px var(--accent-color);
             z-index: 1002;
             display: flex;
             align-items: center;
@@ -458,7 +471,7 @@ try {
             content: '🔒';
             font-size: 1.2rem;
             margin-right: 12px;
-            color: #6e44ff;
+            color: var(--accent-color);
         }
 
         .notification span {
@@ -475,28 +488,23 @@ try {
             to { opacity: 0; transform: translateY(-20px); }
         }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         /* Bottom Menu */
         .bottom-menu {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            background: #333;
+            background: var(--menu-bg);
             display: flex;
             justify-content: space-around;
             align-items: center;
             padding: 14px 0;
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 -2px 8px var(--shadow-color);
             z-index: 1000;
         }
 
         .bottom-menu a {
-            color: #fff;
+            color: var(--menu-text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
@@ -506,34 +514,29 @@ try {
 
         .bottom-menu a.active,
         .bottom-menu a:hover {
-            color: #6e44ff; /* Matches index.php feature-card i */
+            color: var(--accent-color);
+        }
+
+        /* Gradient Background */
+        #gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: var(--gradient-bg);
+            transition: all 0.3s ease;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* Responsive Design */
-        @media (max-width: 1024px) {
-            .page-header .header-text h1 {
-                font-size: 30px;
-            }
-
-            .balance-card h2 {
-                font-size: 36px;
-            }
-
-            .earnings-summary h2,
-            .video-section h1,
-            .form-card h2,
-            .activity-section h2,
-            .faq-section h2 {
-                font-size: 30px;
-            }
-        }
-
         @media (max-width: 768px) {
-            body {
-                padding-top: 70px;
-                padding-bottom: 80px;
-            }
-
             .container,
             .balance-card,
             .earnings-summary,
@@ -541,28 +544,30 @@ try {
             .form-card,
             .activity-section,
             .faq-section {
-                margin: 20px 15px;
-                padding: 20px;
+                width: 100%; /* Full width on mobile */
+                padding: 20px 12px; /* Slightly reduced padding for mobile */
             }
 
-            .page-header .header-text h1 {
-                font-size: 28px;
+            .page-header h1 {
+                font-size: 22px;
             }
 
             .balance-card h2 {
-                font-size: 32px;
+                font-size: 30px;
             }
 
-            .earnings-summary h2,
-            .video-section h1,
-            .form-card h2,
-            .activity-section h2,
-            .faq-section h2 {
-                font-size: 28px;
+            .video-section h1 {
+                font-size: 26px;
             }
 
             .video-section iframe {
                 height: 280px;
+            }
+
+            .notification {
+                max-width: 250px;
+                right: 10px;
+                top: 70px;
             }
 
             .earnings-table, .activity-table {
@@ -573,55 +578,6 @@ try {
             .activity-table th, .activity-table td {
                 padding: 8px;
             }
-
-            .notification {
-                max-width: 250px;
-                right: 10px;
-                top: 70px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding-top: 60px;
-                padding-bottom: 60px;
-            }
-
-            .container,
-            .balance-card,
-            .earnings-summary,
-            .video-section,
-            .form-card,
-            .activity-section,
-            .faq-section {
-                margin: 20px 10px;
-                padding: 15px;
-            }
-
-            .page-header .header-text h1 {
-                font-size: 24px;
-            }
-
-            .balance-card h2 {
-                font-size: 28px;
-            }
-
-            .earnings-summary h2,
-            .video-section h1,
-            .form-card h2,
-            .activity-section h2,
-            .faq-section h2 {
-                font-size: 24px;
-            }
-
-            .video-section iframe {
-                height: 200px;
-            }
-
-            .submit-btn {
-                padding: 10px 20px;
-                font-size: 15px;
-            }
         }
     </style>
 </head>
@@ -629,119 +585,122 @@ try {
     <?php include 'inc/header.php'; ?>
     <?php include 'inc/navbar.php'; ?>
 
-    <div class="container" role="main">
-        <div class="page-header">
-            <div style="display: flex; align-items: center;">
-                <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
-                <div class="header-text">
-                    <h1>Hello, <?php echo $username; ?>!</h1>
-                    <p>Start Earning Crypto Today!</p>
+    <div id="gradient"></div>
+    <div class="main-content">
+        <div class="container" role="main">
+            <div class="page-header">
+                <div style="display: flex; align-items: center;">
+                    <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
+                    <div class="header-text">
+                        <h1>Hello, <?php echo $username; ?>!</h1>
+                        <p>Start Earning Crypto Today!</p>
+                    </div>
                 </div>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
             </div>
-            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
-        </div>
 
-        <div class="balance-card">
-            <p>Available Crypto Balance</p>
-            <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
-        </div>
+            <div class="balance-card">
+                <p>Available Crypto Balance</p>
+                <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
+            </div>
 
-        <div class="earnings-summary">
-            <h2>Earnings Summary</h2>
-            <table class="earnings-table">
-                <thead>
-                    <tr>
-                        <th>Metric</th>
-                        <th>Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Total Earned</td>
-                        <td>$<?php echo number_format($total_earned, 2); ?></td>
-                    </tr>
-                    <tr>
-                        <td>Videos Watched</td>
-                        <td><?php echo $videos_watched; ?></td>
-                    </tr>
-                    <tr>
-                        <td>Pending Withdrawals</td>
-                        <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="video-section">
-            <h1>Watch Videos to Earn Crypto</h1>
-            <?php if ($video): ?>
-                <iframe src="<?php echo htmlspecialchars($video['url']); ?>" title="<?php echo htmlspecialchars($video['title']); ?>" 
-                    frameborder="0" loop allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
-                <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
-            <?php else: ?>
-                <p>No videos available at the moment.</p>
-            <?php endif; ?>
-        </div>
-
-        <div class="form-card">
-            <h2>Withdraw Crypto Funds</h2>
-            <form id="fundForm" role="form">
-                <div class="input-container">
-                    <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
-                    <label for="cryptoAddress">Crypto Wallet Address</label>
-                </div>
-                <div class="input-container">
-                    <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
-                    <label for="amount">Amount ($)</label>
-                </div>
-                <button type="submit" class="submit-btn" aria-label="Withdraw funds">Withdraw</button>
-            </form>
-        </div>
-
-        <div class="activity-section">
-            <h2>Recent Activity</h2>
-            <?php if ($activities): ?>
-                <table class="activity-table">
+            <div class="earnings-summary">
+                <h2>Earnings Summary</h2>
+                <table class="earnings-table">
                     <thead>
                         <tr>
-                            <th>Action</th>
-                            <th>Amount</th>
-                            <th>Date</th>
+                            <th>Metric</th>
+                            <th>Value</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($activities as $activity): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($activity['action']); ?></td>
-                                <td class="amount">$<?php echo number_format($activity['amount'], 2); ?></td>
-                                <td><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <tr>
+                            <td>Total Earned</td>
+                            <td>$<?php echo number_format($total_earned, 2); ?></td>
+                        </tr>
+                        <tr>
+                            <td>Videos Watched</td>
+                            <td><?php echo $videos_watched; ?></td>
+                        </tr>
+                        <tr>
+                            <td>Pending Withdrawals</td>
+                            <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
+                        </tr>
                     </tbody>
                 </table>
-            <?php else: ?>
-                <p>No recent activity.</p>
-            <?php endif; ?>
-        </div>
+            </div>
 
-        <div class="faq-section">
-            <h2>Frequently Asked Questions</h2>
-            <div class="faq-item">
-                <h3>How do I earn crypto on Task Tube?</h3>
-                <p>Watch video ads to earn crypto rewards. The more videos you watch, the higher your earnings!</p>
+            <div class="video-section">
+                <h1>Watch Videos to Earn Crypto</h1>
+                <?php if ($video): ?>
+                    <iframe src="<?php echo htmlspecialchars($video['url']); ?>" title="<?php echo htmlspecialchars($video['title']); ?>" 
+                        frameborder="0" loop allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
+                    <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
+                <?php else: ?>
+                    <p>No videos available at the moment.</p>
+                <?php endif; ?>
             </div>
-            <div class="faq-item">
-                <h3>What are the withdrawal options?</h3>
-                <p>You can withdraw your earnings via Cryptocurrency. Ensure your wallet address is correct to avoid delays.</p>
-            </div>
-            <div class="faq-item">
-                <h3>Is my data secure?</h3>
-                <p>We use industry-standard encryption to protect your data. See our <a href="../privacy.php">Privacy Policy</a> for details.</p>
-            </div>
-        </div>
 
-        <div id="notificationContainer"></div>
+            <div class="form-card">
+                <h2>Withdraw Crypto Funds</h2>
+                <form id="fundForm" role="form">
+                    <div class="input-container">
+                        <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
+                        <label for="cryptoAddress">Crypto Wallet Address</label>
+                    </div>
+                    <div class="input-container">
+                        <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
+                        <label for="amount">Amount ($)</label>
+                    </div>
+                    <button type="submit" class="submit-btn" aria-label="Withdraw funds">Withdraw</button>
+                </form>
+            </div>
+
+            <div class="activity-section">
+                <h2>Recent Activity</h2>
+                <?php if ($activities): ?>
+                    <table class="activity-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($activities as $activity): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($activity['action']); ?></td>
+                                    <td class="amount">$<?php echo number_format($activity['amount'], 2); ?></td>
+                                    <td><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p>No recent activity.</p>
+                <?php endif; ?>
+            </div>
+
+            <div class="faq-section">
+                <h2>Frequently Asked Questions</h2>
+                <div class="faq-item">
+                    <h3>How do I earn crypto on Task Tube?</h3>
+                    <p>Watch video ads to earn crypto rewards. The more videos you watch, the higher your earnings!</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What are the withdrawal options?</h3>
+                    <p>You can withdraw your earnings via Cryptocurrency. Ensure your wallet address is correct to avoid delays.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Is my data secure?</h3>
+                    <p>We use industry-standard encryption to protect your data. See our <a href="../privacy.php">Privacy Policy</a> for details.</p>
+                </div>
+            </div>
+
+            <div id="notificationContainer"></div>
+        </div>
     </div>
 
     <div class="bottom-menu" role="navigation">
@@ -790,34 +749,15 @@ try {
         const body = document.body;
         const currentTheme = localStorage.getItem('theme') || 'light';
         if (currentTheme === 'dark') {
-            body.classList.add('dark-mode');
+            body.setAttribute('data-theme', 'dark');
             themeToggle.textContent = 'Toggle Light Mode';
-            // Update CSS variables for dark mode
-            document.documentElement.style.setProperty('--background-color', '#1a1a1a');
-            document.documentElement.style.setProperty('--text-color', '#e0e0e0');
-            document.documentElement.style.setProperty('--card-background', '#2a2a2a');
-            document.documentElement.style.setProperty('--border-color', '#444');
-            document.documentElement.style.setProperty('--accent-color', '#b5179e');
         }
 
         themeToggle.addEventListener('click', () => {
-            const isDark = body.classList.toggle('dark-mode');
-            themeToggle.textContent = isDark ? 'Toggle Light Mode' : 'Toggle Dark Mode';
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            // Update CSS variables
-            if (isDark) {
-                document.documentElement.style.setProperty('--background-color', '#1a1a1a');
-                document.documentElement.style.setProperty('--text-color', '#e0e0e0');
-                document.documentElement.style.setProperty('--card-background', '#2a2a2a');
-                document.documentElement.style.setProperty('--border-color', '#444');
-                document.documentElement.style.setProperty('--accent-color', '#b5179e');
-            } else {
-                document.documentElement.style.setProperty('--background-color', '#f5f7fa');
-                document.documentElement.style.setProperty('--text-color', '#333');
-                document.documentElement.style.setProperty('--card-background', '#fff');
-                document.documentElement.style.setProperty('--border-color', '#e0e0e0');
-                document.documentElement.style.setProperty('--accent-color', '#6e44ff');
-            }
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            themeToggle.textContent = isDark ? 'Toggle Dark Mode' : 'Toggle Light Mode';
+            localStorage.setItem('theme', isDark ? 'light' : 'dark');
         });
 
         // Menu Interactions
@@ -969,11 +909,51 @@ try {
         fetchNotifications();
         setInterval(fetchNotifications, 20000);
 
+        // Gradient Animation
+        var colors = [
+            [62, 35, 255],
+            [60, 255, 60],
+            [255, 35, 98],
+            [45, 175, 230],
+            [255, 0, 255],
+            [255, 128, 0]
+        ];
+        var step = 0;
+        var colorIndices = [0, 1, 2, 3];
+        var gradientSpeed = 0.002;
+
+        function updateGradient() {
+            var c0_0 = colors[colorIndices[0]];
+            var c0_1 = colors[colorIndices[1]];
+            var c1_0 = colors[colorIndices[2]];
+            var c1_1 = colors[colorIndices[3]];
+            var istep = 1 - step;
+            var r1 = Math.round(istep * c0_0[0] + step * c0_1[0]);
+            var g1 = Math.round(istep * c0_0[1] + step * c0_1[1]);
+            var b1 = Math.round(istep * c0_0[2] + step * c0_1[2]);
+            var color1 = `rgb(${r1},${g1},${b1})`;
+            var r2 = Math.round(istep * c1_0[0] + step * c1_1[0]);
+            var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
+            var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
+            var color2 = `rgb(${r2},${g2},${b2})`;
+            $('#gradient').css({
+                background: `linear-gradient(135deg, ${color1}, ${color2})`
+            });
+            step += gradientSpeed;
+            if (step >= 1) {
+                step %= 1;
+                colorIndices[0] = colorIndices[1];
+                colorIndices[2] = colorIndices[3];
+                colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
+                colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
+            }
+        }
+
+        setInterval(updateGradient, 10);
+
         // Context Menu Disable
         document.addEventListener('contextmenu', function(event) {
-            if (!event.target.closest('a')) {
-                event.preventDefault();
-            }
+            event.preventDefault();
         });
     </script>
 </body>
