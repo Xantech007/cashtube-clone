@@ -2,8 +2,6 @@
 // footer.php
 ?>
 <footer id="footer">
-    <a href="https://tasktube.app/terms.php">Terms of Service</a>
-    <a href="https://tasktube.app/privacy.php">Privacy Policy</a>
     <p>&copy; <?php echo date("Y"); ?> Task Tube. All rights reserved.</p>
 </footer>
 
@@ -29,21 +27,31 @@
         visibility: visible;
     }
 
-    footer a {
-        color: #6e44ff;
-        font-weight: 500;
-        text-decoration: none;
-        margin: 0 10px;
-    }
-
-    footer a:hover {
-        text-decoration: underline;
-    }
-
     footer p {
-        margin: 10px 0 0;
+        margin: 0;
         color: #333;
         font-size: 14px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        footer {
+            padding: 15px;
+        }
+
+        footer p {
+            font-size: 13px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        footer {
+            padding: 10px;
+        }
+
+        footer p {
+            font-size: 12px;
+        }
     }
 </style>
 
