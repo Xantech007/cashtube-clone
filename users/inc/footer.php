@@ -15,15 +15,10 @@
 
 <style>
     footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
         width: 100%;
         background: var(--card-bg);
         box-shadow: 0 -2px 4px var(--shadow-color);
         padding: 20px 0;
-        z-index: 1000;
     }
 
     .footer-container {
