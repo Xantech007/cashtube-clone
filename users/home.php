@@ -155,49 +155,6 @@ try {
             box-sizing: border-box;
         }
 
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 24px 0;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        .page-header img {
-            width: 64px;
-            height: 64px;
-            margin-right: 16px;
-            border-radius: 8px;
-        }
-
-        .header-text h1 {
-            font-size: 26px;
-            font-weight: 700;
-        }
-
-        .header-text p {
-            font-size: 16px;
-            color: var(--subtext-color);
-            margin-top: 4px;
-        }
-
-        .theme-toggle {
-            background: var(--accent-color);
-            color: #fff;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background 0.3s ease, transform 0.2s ease;
-        }
-
-        .theme-toggle:hover {
-            background: var(--accent-hover);
-            transform: scale(1.02);
-        }
-
         .balance-card {
             background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
             color: #fff;
@@ -266,13 +223,12 @@ try {
             color: var(--text-color);
         }
 
-        .video-section video {
+        .video-section iframe {
             border-radius: 16px;
             width: 100%;
             max-width: 640px;
             height: 360px;
             box-shadow: 0 6px 16px var(--shadow-color);
-            object-fit: cover;
         }
 
         .video-section h4 {
@@ -440,7 +396,7 @@ try {
 
         .notification {
             position: fixed;
-            top: 80px;
+            top: 20px;
             right: 20px;
             background: var(--card-bg);
             color: var(--text-color);
@@ -495,17 +451,22 @@ try {
             z-index: 1000;
         }
 
-        .bottom-menu a {
+        .bottom-menu a,
+        .bottom-menu button {
             color: var(--menu-text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
             padding: 10px 18px;
             transition: color 0.3s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
         }
 
         .bottom-menu a.active,
-        .bottom-menu a:hover {
+        .bottom-menu a:hover,
+        .bottom-menu button:hover {
             color: var(--accent-color);
         }
 
@@ -537,10 +498,6 @@ try {
                 padding: 20px 12px;
             }
 
-            .page-header h1 {
-                font-size: 22px;
-            }
-
             .balance-card h2 {
                 font-size: 30px;
             }
@@ -549,14 +506,14 @@ try {
                 font-size: 26px;
             }
 
-            .video-section video {
+            .video-section iframe {
                 height: 280px;
             }
 
             .notification {
                 max-width: 250px;
                 right: 10px;
-                top: 70px;
+                top: 10px;
             }
 
             .earnings-table, .activity-table {
@@ -571,23 +528,9 @@ try {
     </style>
 </head>
 <body>
-    <?php include 'inc/header.php'; ?>
-    <?php include 'inc/navbar.php'; ?>
-
     <div id="gradient"></div>
     <div class="main-content">
         <div class="container" role="main">
-            <div class="page-header">
-                <div style="display: flex; align-items: center;">
-                    <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
-                    <div class="header-text">
-                        <h1>Hello, <?php echo $username; ?>!</h1>
-                        <p>Start Earning Crypto Today!</p>
-                    </div>
-                </div>
-                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
-            </div>
-
             <div class="balance-card">
                 <p>Available Crypto Balance</p>
                 <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
@@ -622,10 +565,12 @@ try {
             <div class="video-section">
                 <h1>Watch Videos to Earn Crypto</h1>
                 <?php if ($video): ?>
-                    <video controls loop data-video-id="<?php echo $video['id']; ?>">
-                        <source src="<?php echo htmlspecialchars($video['url']); ?>" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
+                    <iframe width="95%" height="315" style="margin: 0 auto; display: block;" 
+                            src="<?php echo htmlspecialchars($video['url']); ?>" 
+                            title="<?php echo htmlspecialchars($video['title']); ?>" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                            allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
                     <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
                 <?php else: ?>
                     <p>No videos available at the moment.</p>
@@ -698,10 +643,8 @@ try {
         <a href="profile.php">Profile</a>
         <a href="history.php">History</a>
         <a href="support.php">Support</a>
-        <a href="../about.php">About</a>
+        <button id="logoutBtn" aria-label="Log out">Logout</button>
     </div>
-
-    <?php include 'inc/footer.php'; ?>
 
     <!-- LiveChat Integration -->
     <script>
@@ -734,28 +677,51 @@ try {
     </noscript>
 
     <script>
-        // Dark Mode Toggle
-        const themeToggle = document.getElementById('themeToggle');
-        const body = document.body;
-        const currentTheme = localStorage.getItem('theme') || 'light';
-        if (currentTheme === 'dark') {
-            body.setAttribute('data-theme', 'dark');
-            themeToggle.textContent = 'Toggle Light Mode';
-        }
-
-        themeToggle.addEventListener('click', () => {
-            const isDark = body.getAttribute('data-theme') === 'dark';
-            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            themeToggle.textContent = isDark ? 'Toggle Dark Mode' : 'Toggle Light Mode';
-            localStorage.setItem('theme', isDark ? 'light' : 'dark');
-        });
-
         // Menu Interactions
         const menuItems = document.querySelectorAll('.bottom-menu a');
         menuItems.forEach((item) => {
             item.addEventListener('click', () => {
                 menuItems.forEach((menuItem) => menuItem.classList.remove('active'));
                 item.classList.add('active');
+            });
+        });
+
+        // Logout Button
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            Swal.fire({
+                title: 'Log out?',
+                text: 'Are you sure you want to log out?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, log out'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'logout.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                window.location.href = '../signin.php';
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Failed to log out. Please try again.'
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Server Error',
+                                text: 'An error occurred while logging out.'
+                            });
+                        }
+                    });
+                }
             });
         });
 
@@ -828,42 +794,52 @@ try {
         });
 
         // Video Watch Tracking
-        const videoElement = document.querySelector('.video-section video');
-        if (videoElement) {
-            const videoId = videoElement.getAttribute('data-video-id');
-            videoElement.addEventListener('ended', () => {
-                $.ajax({
-                    url: 'process_video_watch.php',
-                    type: 'POST',
-                    data: { video_id: videoId },
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Video Watched',
-                                text: `You earned $${response.reward}!`,
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                location.reload(); // Reload to get a new random video
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: response.error || 'Failed to record video watch.'
-                            });
-                        }
-                    },
-                    error: function() {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Server Error',
-                            text: 'An error occurred while tracking video watch.'
+        const iframeElement = document.querySelector('.video-section iframe');
+        if (iframeElement) {
+            const videoId = iframeElement.getAttribute('data-video-id');
+            iframeElement.addEventListener('load', () => {
+                // Attempt to access the iframe's content to detect video end
+                const video = iframeElement.contentDocument?.querySelector('video');
+                if (video) {
+                    video.addEventListener('ended', () => {
+                        $.ajax({
+                            url: 'process_video_watch.php',
+                            type: 'POST',
+                            data: { video_id: videoId },
+                            dataType: 'json',
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Video Watched',
+                                        text: `You earned $${response.reward}!`,
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        location.reload(); // Reload to get a new random video
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: response.error || 'Failed to record video watch.'
+                                    });
+                                }
+                            },
+                            error: function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Server Error',
+                                    text: 'An error occurred while tracking video watch.'
+                                });
+                            }
                         });
-                    }
-                });
+                    });
+                }
+            });
+            // Simulate looping by reloading the iframe
+            iframeElement.addEventListener('ended', () => {
+                iframeElement.src = iframeElement.src; // Reload iframe to loop
             });
         }
 
@@ -881,7 +857,7 @@ try {
                         notification.setAttribute('role', 'alert');
                         notification.innerHTML = `<span>${message}</span>`;
                         notificationContainer.appendChild(notification);
-                        notification.style.top = `${80 + index * 80}px`;
+                        notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
                     });
                 },
