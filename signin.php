@@ -22,15 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
         file_put_contents('debug.log', 'Invalid passcode length: ' . $passcode . "\n", FILE_APPEND);
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT id, username FROM users WHERE email = ? AND passcode = ?");
+            $stmt = $pdo->prepare("SELECT id, email FROM users WHERE email = ? AND passcode = ?");
             $stmt->execute([$email, $passcode]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user) {
                 $response['success'] = true;
                 $_SESSION['passcode'] = $passcode;
                 $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'] ?? $email; // Fallback to email if username is null
-                $_SESSION['email'] = $email; // Store email for consistency
+                $_SESSION['email'] = $user['email'];
                 file_put_contents('debug.log', 'Sign-in successful, session: ' . print_r($_SESSION, true) . "\n", FILE_APPEND);
             } else {
                 $response['error'] = "Invalid email or passcode.";
