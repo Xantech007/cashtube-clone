@@ -1,6 +1,5 @@
 <?php
 // login.php
-session_start(); // Start the session
 require_once 'database/conn.php';
 
 $response = ['success' => false, 'error' => ''];
@@ -8,26 +7,12 @@ $response = ['success' => false, 'error' => ''];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     $passcode = trim($_POST['passcode']);
     
-    // Validate passcode format (5 digits)
-    if (!preg_match('/^\d{5}$/', $passcode)) {
-        $response['error'] = "Passcode must be exactly 5 digits.";
-        file_put_contents('debug.log', 'Invalid passcode format: ' . $passcode . "\n", FILE_APPEND);
-    } else {
+    if (strlen($passcode) === 5) {
         try {
-            // Query to fetch user ID based on passcode
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE passcode = ?");
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
             $stmt->execute([$passcode]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($user) {
-                // Regenerate session ID to prevent session fixation
-                session_regenerate_id(true);
-                // Store user ID in session
-                $_SESSION['user_id'] = $user['id'];
+            if ($stmt->fetchColumn() > 0) {
                 $response['success'] = true;
-                // Server-side redirect
-                header('Location: users/home.php');
-                exit;
             } else {
                 $response['error'] = "Invalid passcode.";
                 file_put_contents('debug.log', 'Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
@@ -36,6 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             $response['error'] = "Database error: " . $e->getMessage();
             file_put_contents('debug.log', 'Database error: ' . $e->getMessage() . "\n", FILE_APPEND);
         }
+    } else {
+        $response['error'] = "Passcode must be 5 digits.";
+        file_put_contents('debug.log', 'Invalid passcode length: ' . $passcode . "\n", FILE_APPEND);
     }
     
     header('Content-Type: application/json');
@@ -53,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -198,12 +185,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 font-size: 16px;
             }
         }
-
-        /* Loading spinner for AJAX */
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
     </style>
 </head>
 <body>
@@ -248,7 +229,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
         const keys = document.querySelectorAll(".key:not(.action)");
         const clearButton = document.getElementById("clear");
         const enterButton = document.getElementById("enter");
-        const loginContainer = document.querySelector(".login-container");
 
         keys.forEach(key => {
             key.addEventListener("click", () => {
@@ -281,25 +261,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 return;
             }
 
-            // Disable input and show loading state
-            loginContainer.classList.add("loading");
-            enterButton.textContent = "Logging in...";
-            enterButton.disabled = true;
-
             $.ajax({
                 url: './login.php',
                 type: 'POST',
                 data: { passcode: passcode },
                 dataType: 'json',
                 success: function(response) {
+                    console.log('AJAX response:', response);
                     if (response.success) {
-                        // Server-side redirect handles navigation
                         Swal.fire({
                             icon: 'success',
                             title: 'Good job!',
                             text: 'Login successful',
-                            timer: 1000,
+                            timer: 2000,
                             showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = 'home.html';
                         });
                     } else {
                         Swal.fire({
@@ -320,12 +297,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                         footer: '<a href="register.php">Sign Up</a>'
                     });
                     passcodeInput.value = "";
-                },
-                complete: function() {
-                    // Re-enable input and reset button
-                    loginContainer.classList.remove("loading");
-                    enterButton.textContent = "Login";
-                    enterButton.disabled = false;
                 }
             });
         }
