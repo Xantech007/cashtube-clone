@@ -15,20 +15,61 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
-        // Log error and redirect to sign-in if user not found
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
         session_destroy();
         header('Location: ../signin.php');
         exit;
     }
-    $username = htmlspecialchars($user['name']); // Changed from username to name
+    $username = htmlspecialchars($user['name']);
     $balance = number_format($user['balance'], 2);
 } catch (PDOException $e) {
-    // Log error and redirect to sign-in
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     session_destroy();
     header('Location: ../signin.php?error=database');
     exit;
+}
+
+// Fetch earnings summary
+try {
+    // Total earned (sum of positive activities)
+    $stmt = $pdo->prepare("SELECT SUM(amount) as total_earned FROM activities WHERE user_id = ? AND amount > 0");
+    $stmt->execute([$_SESSION['user_id']]);
+    $total_earned = $stmt->fetchColumn() ?: 0.00;
+
+    // Videos watched (count of video watch activities)
+    $stmt = $pdo->prepare("SELECT COUNT(*) as videos_watched FROM activities WHERE user_id = ? AND action LIKE 'Watched%'");
+    $stmt->execute([$_SESSION['user_id']]);
+    $videos_watched = $stmt->fetchColumn();
+
+    // Pending withdrawals
+    $stmt = $pdo->prepare("SELECT SUM(amount) as pending_withdrawals FROM withdrawals WHERE user_id = ? AND status = 'pending'");
+    $stmt->execute([$_SESSION['user_id']]);
+    $pending_withdrawals = $stmt->fetchColumn() ?: 0.00;
+} catch (PDOException $e) {
+    error_log('Earnings summary error: ' . $e->getMessage(), 3, '../debug.log');
+    $total_earned = 0.00;
+    $videos_watched = 0;
+    $pending_withdrawals = 0.00;
+}
+
+// Fetch recent activities
+try {
+    $stmt = $pdo->prepare("SELECT action, amount, created_at FROM activities WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+    $stmt->execute([$_SESSION['user_id']]);
+    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('Recent activities error: ' . $e->getMessage(), 3, '../debug.log');
+    $activities = [];
+}
+
+// Fetch available videos
+try {
+    $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY created_at DESC LIMIT 1");
+    $stmt->execute();
+    $video = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('Video fetch error: ' . $e->getMessage(), 3, '../debug.log');
+    $video = null;
 }
 ?>
 
@@ -85,8 +126,15 @@ try {
             background: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
-            padding: 80px 20px 120px;
-            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            min-height: 120vh; /* Ensure scrolling */
         }
 
         .container {
@@ -161,7 +209,7 @@ try {
             margin-top: 8px;
         }
 
-        /* Earnings Summary */
+        /* Earnings Summary Table */
         .earnings-summary {
             background: var(--card-bg);
             border-radius: 16px;
@@ -177,27 +225,25 @@ try {
             margin-bottom: 20px;
         }
 
-        .earnings-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+        .earnings-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .earnings-item {
-            text-align: center;
+        .earnings-table th, .earnings-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .earnings-item h3 {
-            font-size: 18px;
-            font-weight: 500;
+        .earnings-table th {
+            font-weight: 600;
             color: var(--subtext-color);
         }
 
-        .earnings-item p {
-            font-size: 24px;
+        .earnings-table td {
             font-weight: 700;
             color: var(--accent-color);
-            margin-top: 8px;
         }
 
         /* Video Section */
@@ -317,7 +363,7 @@ try {
             transform: scale(1.02);
         }
 
-        /* Recent Activity */
+        /* Recent Activity Table */
         .activity-section {
             background: var(--card-bg);
             border-radius: 16px;
@@ -333,30 +379,30 @@ try {
             margin-bottom: 20px;
         }
 
-        .activity-list {
-            list-style: none;
+        .activity-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .activity-item {
-            padding: 16px 0;
+        .activity-table th, .activity-table td {
+            padding: 12px;
+            text-align: left;
             border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .activity-item:last-child {
-            border-bottom: none;
+        .activity-table th {
+            font-weight: 600;
+            color: var(--subtext-color);
         }
 
-        .activity-item p {
+        .activity-table td {
             font-size: 16px;
             color: var(--text-color);
         }
 
-        .activity-item span {
-            font-size: 14px;
-            color: var(--subtext-color);
+        .activity-table .amount {
+            font-weight: 700;
+            color: var(--accent-color);
         }
 
         /* FAQ Section */
@@ -393,12 +439,12 @@ try {
         }
 
         .faq-item a {
-            color: #22c55e;
+            color: var(--accent-color);
             text-decoration: none;
         }
 
         .faq-item a:hover {
-            color: #16a34a;
+            color: var(--accent-hover);
             text-decoration: underline;
         }
 
@@ -528,8 +574,13 @@ try {
                 top: 70px;
             }
 
-            .earnings-grid {
-                grid-template-columns: 1fr;
+            .earnings-table, .activity-table {
+                font-size: 14px;
+            }
+
+            .earnings-table th, .earnings-table td,
+            .activity-table th, .activity-table td {
+                padding: 8px;
             }
         }
     </style>
@@ -539,147 +590,168 @@ try {
     <?php include 'inc/navbar.php'; ?>
 
     <div id="gradient"></div>
-    <div class="container" role="main">
-        <div class="page-header">
-            <div style="display: flex; align-items: center;">
-                <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
-                <div class="header-text">
-                    <h1>Hello, <?php echo $username; ?>!</h1>
-                    <p>Start Earning Crypto Today!</p>
+    <div class="main-content">
+        <div class="container" role="main">
+            <div class="page-header">
+                <div style="display: flex; align-items: center;">
+                    <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
+                    <div class="header-text">
+                        <h1>Hello, <?php echo $username; ?>!</h1>
+                        <p>Start Earning Crypto Today!</p>
+                    </div>
+                </div>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
+            </div>
+
+            <div class="balance-card">
+                <p>Available Crypto Balance</p>
+                <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
+            </div>
+
+            <div class="earnings-summary">
+                <h2>Earnings Summary</h2>
+                <table class="earnings-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Total Earned</td>
+                            <td>$<?php echo number_format($total_earned, 2); ?></td>
+                        </tr>
+                        <tr>
+                            <td>Videos Watched</td>
+                            <td><?php echo $videos_watched; ?></td>
+                        </tr>
+                        <tr>
+                            <td>Pending Withdrawals</td>
+                            <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="video-section">
+                <h1>Watch Videos to Earn Crypto</h1>
+                <?php if ($video): ?>
+                    <iframe src="<?php echo htmlspecialchars($video['url']); ?>" title="<?php echo htmlspecialchars($video['title']); ?>" frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen data-video-id="<?php echo $video['id']; ?>"></iframe>
+                    <h4>Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span></h4>
+                <?php else: ?>
+                    <p>No videos available at the moment.</p>
+                <?php endif; ?>
+            </div>
+
+            <div class="form-card">
+                <h2>Withdraw Crypto Funds</h2>
+                <form id="fundForm" role="form">
+                    <div class="input-container">
+                        <select id="withdrawalMethod" name="withdrawalMethod" required aria-required="true">
+                            <option value="" disabled selected>Select Withdrawal Method</option>
+                            <option value="crypto">Cryptocurrency</option>
+                            <option value="cashapp">Cash App</option>
+                            <option value="bank">Bank Transfer</option>
+                        </select>
+                        <label for="withdrawalMethod">Withdrawal Method</label>
+                    </div>
+                    <div class="input-container" id="cryptoFields" style="display: none;">
+                        <input type="text" id="cryptoAddress" name="cryptoAddress">
+                        <label for="cryptoAddress">Crypto Wallet Address</label>
+                    </div>
+                    <div class="input-container" id="cashappFields" style="display: none;">
+                        <input type="text" id="cashappTag" name="cashappTag">
+                        <label for="cashappTag">Cash App $Cashtag</label>
+                    </div>
+                    <div class="input-container" id="bankFields" style="display: none;">
+                        <select id="bankName" name="bankName">
+                            <option value="" disabled selected>Select Bank</option>
+                            <option value="Bank of America">Bank of America</option>
+                            <option value="JPMorgan Chase">JPMorgan Chase</option>
+                            <option value="Wells Fargo">Wells Fargo</option>
+                            <option value="Citibank">Citibank</option>
+                            <option value="U.S. Bank">U.S. Bank</option>
+                            <option value="PNC Bank">PNC Bank</option>
+                            <option value="TD Bank">TD Bank</option>
+                            <option value="Capital One">Capital One</option>
+                            <option value="HSBC Bank USA">HSBC Bank USA</option>
+                            <option value="Fifth Third Bank">Fifth Third Bank</option>
+                            <option value="Regions Bank">Regions Bank</option>
+                            <option value="Truist Bank">Truist Bank</option>
+                            <option value="M&T Bank">M&T Bank</option>
+                            <option value="Huntington National Bank">Huntington National Bank</option>
+                            <option value="KeyBank">KeyBank</option>
+                            <option value="Citizens Bank">Citizens Bank</option>
+                            <option value="Ally Bank">Ally Bank</option>
+                            <option value="Discover Bank">Discover Bank</option>
+                            <option value="Synchrony Bank">Synchrony Bank</option>
+                            <option value="Chime">Chime</option>
+                        </select>
+                        <label for="bankName">Bank Name</label>
+                    </div>
+                    <div class="input-container" id="accountNumberField" style="display: none;">
+                        <input type="number" id="accountNumber" name="accountNumber">
+                        <label for="accountNumber">Account Number</label>
+                    </div>
+                    <div class="input-container" id="routingNumberField" style="display: none;">
+                        <input type="number" id="routingNumber" name="routingNumber">
+                        <label for="routingNumber">Routing Number</label>
+                    </div>
+                    <div class="input-container">
+                        <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
+                        <label for="amount">Amount ($)</label>
+                    </div>
+                    <button type="submit" class="submit-btn" aria-label="Withdraw funds">Withdraw</button>
+                </form>
+            </div>
+
+            <div class="activity-section">
+                <h2>Recent Activity</h2>
+                <?php if ($activities): ?>
+                    <table class="activity-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($activities as $activity): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($activity['action']); ?></td>
+                                    <td class="amount"><?php echo number_format($activity['amount'], 2); ?></td>
+                                    <td><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p>No recent activity.</p>
+                <?php endif; ?>
+            </div>
+
+            <div class="faq-section">
+                <h2>Frequently Asked Questions</h2>
+                <div class="faq-item">
+                    <h3>How do I earn crypto on Task Tube?</h3>
+                    <p>Watch video ads to earn crypto rewards. The more videos you watch, the higher your earnings!</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What are the withdrawal options?</h3>
+                    <p>You can withdraw via Cryptocurrency, Cash App, or Bank Transfer. Ensure your details are correct to avoid delays.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Is my data secure?</h3>
+                    <p>We use industry-standard encryption to protect your data. See our <a href="../privacy.php">Privacy Policy</a> for details.</p>
                 </div>
             </div>
-            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
-        </div>
 
-        <div class="balance-card">
-            <p>Available Crypto Balance</p>
-            <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
+            <div id="notificationContainer"></div>
         </div>
-
-        <div class="earnings-summary">
-            <h2>Earnings Summary</h2>
-            <div class="earnings-grid">
-                <div class="earnings-item">
-                    <h3>Total Earned</h3>
-                    <p>$<?php echo number_format($balance, 2); ?></p>
-                </div>
-                <div class="earnings-item">
-                    <h3>Videos Watched</h3>
-                    <p><?php echo rand(10, 100); ?></p>
-                </div>
-                <div class="earnings-item">
-                    <h3>Pending Withdrawals</h3>
-                    <p>$<?php echo number_format(rand(0, 50), 2); ?></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="video-section">
-            <h1>Watch Videos to Earn Crypto</h1>
-            <iframe src="videos/video1.mp4" title="Task Tube Video" frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen></iframe>
-            <h4>The more videos you watch, the more your <span>crypto balance</span> increases</h4>
-        </div>
-
-        <div class="form-card">
-            <h2>Withdraw Crypto Funds</h2>
-            <form id="fundForm" role="form">
-                <div class="input-container">
-                    <select id="withdrawalMethod" name="withdrawalMethod" required aria-required="true">
-                        <option value="" disabled>Select Withdrawal Method</option>
-                        <option value="crypto" selected>Cryptocurrency</option>
-                        <option value="cashapp">Cash App</option>
-                        <option value="bank">Bank Transfer</option>
-                    </select>
-                    <label for="withdrawalMethod">Withdrawal Method</label>
-                </div>
-                <div class="input-container" id="cryptoFields">
-                    <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
-                    <label for="cryptoAddress">Crypto Wallet Address</label>
-                </div>
-                <div class="input-container" id="cashappFields" style="display: none;">
-                    <input type="text" id="cashappTag" name="cashappTag">
-                    <label for="cashappTag">Cash App $Cashtag</label>
-                </div>
-                <div class="input-container" id="bankFields" style="display: none;">
-                    <select id="bankName" name="bankName">
-                        <option value="" disabled selected>Select Bank</option>
-                        <option value="Bank of America">Bank of America</option>
-                        <option value="JPMorgan Chase">JPMorgan Chase</option>
-                        <option value="Wells Fargo">Wells Fargo</option>
-                        <option value="Citibank">Citibank</option>
-                        <option value="U.S. Bank">U.S. Bank</option>
-                        <option value="PNC Bank">PNC Bank</option>
-                        <option value="TD Bank">TD Bank</option>
-                        <option value="Capital One">Capital One</option>
-                        <option value="HSBC Bank USA">HSBC Bank USA</option>
-                        <option value="Fifth Third Bank">Fifth Third Bank</option>
-                        <option value="Regions Bank">Regions Bank</option>
-                        <option value="Truist Bank">Truist Bank</option>
-                        <option value="M&T Bank">M&T Bank</option>
-                        <option value="Huntington National Bank">Huntington National Bank</option>
-                        <option value="KeyBank">KeyBank</option>
-                        <option value="Citizens Bank">Citizens Bank</option>
-                        <option value="Ally Bank">Ally Bank</option>
-                        <option value="Discover Bank">Discover Bank</option>
-                        <option value="Synchrony Bank">Synchrony Bank</option>
-                        <option value="Chime">Chime</option>
-                    </select>
-                    <label for="bankName">Bank Name</label>
-                </div>
-                <div class="input-container" id="accountNumberField" style="display: none;">
-                    <input type="number" id="accountNumber" name="accountNumber">
-                    <label for="accountNumber">Account Number</label>
-                </div>
-                <div class="input-container" id="routingNumberField" style="display: none;">
-                    <input type="number" id="routingNumber" name="routingNumber">
-                    <label for="routingNumber">Routing Number</label>
-                </div>
-                <div class="input-container">
-                    <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
-                    <label for="amount">Amount ($)</label>
-                </div>
-                <button type="submit" class="submit-btn" aria-label="Withdraw funds">Withdraw</button>
-            </form>
-        </div>
-
-        <div class="activity-section">
-            <h2>Recent Activity</h2>
-            <ul class="activity-list">
-                <?php
-                $activities = [
-                    ['action' => 'Watched video', 'amount' => '+$1.00', 'time' => '5 min ago'],
-                    ['action' => 'Withdrew funds', 'amount' => '-$50.00', 'time' => '1 hr ago'],
-                    ['action' => 'Watched video', 'amount' => '+$1.50', 'time' => '2 hrs ago']
-                ];
-                foreach ($activities as $activity) {
-                    echo '<li class="activity-item">';
-                    echo '<p>' . htmlspecialchars($activity['action']) . '</p>';
-                    echo '<span>' . htmlspecialchars($activity['amount']) . ' • ' . htmlspecialchars($activity['time']) . '</span>';
-                    echo '</li>';
-                }
-                ?>
-            </ul>
-        </div>
-
-        <div class="faq-section">
-            <h2>Frequently Asked Questions</h2>
-            <div class="faq-item">
-                <h3>How do I earn crypto on Task Tube?</h3>
-                <p>Watch video ads to earn crypto rewards. The more videos you watch, the higher your earnings!</p>
-            </div>
-            <div class="faq-item">
-                <h3>What are the withdrawal options?</h3>
-                <p>You can withdraw via Cryptocurrency, Cash App, or Bank Transfer. Ensure your details are correct to avoid delays.</p>
-            </div>
-            <div class="faq-item">
-                <h3>Is my data secure?</h3>
-                <p>We use industry-standard encryption to protect your data. See our <a href="../privacy.php">Privacy Policy</a> for details.</p>
-            </div>
-        </div>
-
-        <div id="notificationContainer"></div>
     </div>
 
     <div class="bottom-menu" role="navigation">
@@ -848,7 +920,7 @@ try {
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = 'next-page.php';
+                            location.reload(); // Reload to update balance and activity
                         });
                     } else {
                         Swal.fire({
@@ -868,34 +940,77 @@ try {
             });
         });
 
-        // Withdrawal Notifications
-        const notificationContainer = document.getElementById('notificationContainer');
-        const notifications = [
-            'John D. withdrew $50 in USDT!',
-            'Sarah K. cashed out $75 via Cash App!',
-            'Mike T. withdrew $30 via Bank Transfer!',
-            'Emma L. received $100 in Bitcoin!',
-            'Alex P. cashed out $45 in Ethereum!'
-        ];
-
-        function showNotification() {
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.setAttribute('role', 'alert');
-            const randomMessage = notifications[Math.floor(Math.random() * notifications.length)];
-            notification.innerHTML = `<span>${randomMessage}</span>`;
-            notificationContainer.appendChild(notification);
-
-            const existingNotifications = document.querySelectorAll('.notification');
-            existingNotifications.forEach((notif, index) => {
-                notif.style.top = `${80 + index * 80}px`;
+        // Video Watch Tracking
+        const videoIframe = document.querySelector('.video-section iframe');
+        if (videoIframe) {
+            const videoId = videoIframe.getAttribute('data-video-id');
+            videoIframe.addEventListener('load', () => {
+                const videoElement = videoIframe.contentWindow.document.querySelector('video');
+                if (videoElement) {
+                    videoElement.addEventListener('ended', () => {
+                        $.ajax({
+                            url: 'process_video_watch.php',
+                            type: 'POST',
+                            data: { video_id: videoId },
+                            dataType: 'json',
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Video Watched',
+                                        text: `You earned $${response.reward}!`,
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        location.reload(); // Reload to update balance and activity
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: response.error || 'Failed to record video watch.'
+                                    });
+                                }
+                            },
+                            error: function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Server Error',
+                                    text: 'An error occurred while tracking video watch.'
+                                });
+                            }
+                        });
+                    });
+                }
             });
-
-            setTimeout(() => notification.remove(), 3500);
         }
 
-        showNotification();
-        setInterval(showNotification, 20000);
+        // Withdrawal Notifications (Dynamic from DB)
+        const notificationContainer = document.getElementById('notificationContainer');
+        function fetchNotifications() {
+            $.ajax({
+                url: 'fetch_notifications.php',
+                type: 'GET',
+                dataType: 'json',
+                success: function(notifications) {
+                    notifications.forEach((message, index) => {
+                        const notification = document.createElement('div');
+                        notification.className = 'notification';
+                        notification.setAttribute('role', 'alert');
+                        notification.innerHTML = `<span>${message}</span>`;
+                        notificationContainer.appendChild(notification);
+                        notification.style.top = `${80 + index * 80}px`;
+                        setTimeout(() => notification.remove(), 3500);
+                    });
+                },
+                error: function() {
+                    console.error('Failed to fetch notifications');
+                }
+            });
+        }
+
+        fetchNotifications();
+        setInterval(fetchNotifications, 20000);
 
         // Gradient Animation
         var colors = [
