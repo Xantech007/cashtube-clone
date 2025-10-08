@@ -5,16 +5,25 @@ require_once 'database/conn.php';
 
 $response = ['success' => false, 'error' => ''];
 
+// Prevent caching to avoid redirect issues
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
     $passcode = trim($_POST['passcode']);
     
     if (strlen($passcode) === 5) {
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
+            $stmt = $pdo->prepare("SELECT id, username FROM users WHERE passcode = ?");
             $stmt->execute([$passcode]);
-            if ($stmt->fetchColumn() > 0) {
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
                 $response['success'] = true;
-                $_SESSION['passcode'] = $passcode; // Store passcode in session
+                $_SESSION['passcode'] = $passcode;
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                file_put_contents('debug.log', 'Login successful, session: ' . print_r($_SESSION, true) . "\n", FILE_APPEND);
             } else {
                 $response['error'] = "Invalid passcode.";
                 file_put_contents('debug.log', 'Invalid passcode: ' . $passcode . "\n", FILE_APPEND);
@@ -221,7 +230,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             grid-row: 5 / 6;
         }
 
-        /* Button Styles */
         .btn {
             padding: 12px 30px;
             font-size: 16px;
@@ -259,7 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             text-decoration: underline;
         }
 
-        /* CTA Banner */
         .cta-banner {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -289,7 +296,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             background-color: #f0f0f0;
         }
 
-        /* Notice Popup */
         .notice {
             position: fixed;
             top: 50%;
@@ -347,124 +353,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
             background-color: #5a00b5;
         }
 
-        /* Responsive Design */
         @media (max-width: 1024px) {
-            .hero-section h1 {
-                font-size: 36px;
-            }
-
-            .hero-section p {
-                font-size: 16px;
-            }
-
-            .section-title {
-                font-size: 30px;
-            }
-
-            .login-content {
-                padding: 20px;
-            }
+            .hero-section h1 { font-size: 36px; }
+            .hero-section p { font-size: 16px; }
+            .section-title { font-size: 30px; }
+            .login-content { padding: 20px; }
         }
 
         @media (max-width: 768px) {
-            body {
-                padding-top: 70px;
-                padding-bottom: 80px;
-            }
-
-            .hero-section {
-                padding: 80px 20px;
-            }
-
-            .hero-section h1 {
-                font-size: 32px;
-            }
-
-            .hero-section p {
-                font-size: 15px;
-            }
-
-            .section-title {
-                font-size: 28px;
-            }
-
-            .login-content {
-                padding: 20px;
-                margin: 0 20px;
-            }
-
-            .keypad {
-                gap: 8px;
-            }
-
-            .key {
-                padding: 10px;
-                font-size: 16px;
-            }
-
-            #passcode {
-                height: 45px;
-                font-size: 20px;
-            }
-
-            .cta-banner h2 {
-                font-size: 28px;
-            }
+            body { padding-top: 70px; padding-bottom: 80px; }
+            .hero-section { padding: 80px 20px; }
+            .hero-section h1 { font-size: 32px; }
+            .hero-section p { font-size: 15px; }
+            .section-title { font-size: 28px; }
+            .login-content { padding: 20px; margin: 0 20px; }
+            .keypad { gap: 8px; }
+            .key { padding: 10px; font-size: 16px; }
+            #passcode { height: 45px; font-size: 20px; }
+            .cta-banner h2 { font-size: 28px; }
         }
 
         @media (max-width: 480px) {
-            body {
-                padding-top: 60px;
-                padding-bottom: 60px;
-            }
-
-            .hero-section {
-                padding: 60px 15px;
-            }
-
-            .hero-section h1 {
-                font-size: 28px;
-            }
-
-            .hero-section p {
-                font-size: 14px;
-            }
-
-            .section-title {
-                font-size: 24px;
-            }
-
-            .login-content {
-                padding: 15px;
-                margin: 0 15px;
-            }
-
-            .keypad {
-                gap: 6px;
-            }
-
-            .key {
-                padding: 8px;
-                font-size: 14px;
-            }
-
-            #passcode {
-                height: 40px;
-                font-size: 18px;
-            }
-
-            .cta-banner {
-                padding: 40px 15px;
-            }
-
-            .cta-banner h2 {
-                font-size: 24px;
-            }
-
-            .cta-banner .btn {
-                padding: 12px 30px;
-                font-size: 16px;
-            }
+            body { padding-top: 60px; padding-bottom: 60px; }
+            .hero-section { padding: 60px 15px; }
+            .hero-section h1 { font-size: 28px; }
+            .hero-section p { font-size: 14px; }
+            .section-title { font-size: 24px; }
+            .login-content { padding: 15px; margin: 0 15px; }
+            .keypad { gap: 6px; }
+            .key { padding: 8px; font-size: 14px; }
+            #passcode { height: 40px; font-size: 18px; }
+            .cta-banner { padding: 40px 15px; }
+            .cta-banner h2 { font-size: 24px; }
+            .cta-banner .btn { padding: 12px 30px; font-size: 16px; }
         }
     </style>
 </head>
@@ -555,7 +476,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 setTimeout(() => {
                     notice.style.display = 'block';
                     setNoticeShown();
-                }, 2000); // Match index.php timing
+                }, 2000);
             }
         }
 
@@ -608,6 +529,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                 type: 'POST',
                 data: { passcode: passcode },
                 dataType: 'json',
+                cache: false, // Prevent AJAX caching
                 success: function(response) {
                     console.log('AJAX response:', response);
                     if (response.success) {
@@ -618,7 +540,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['passcode'])) {
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = 'users/home.php'; // Redirect to users/home.php
+                            console.log('Redirecting to users/home.php');
+                            window.location.href = 'users/home.php';
                         });
                     } else {
                         Swal.fire({
