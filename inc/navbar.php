@@ -65,7 +65,7 @@
 
 <nav id="ham-navigation" class="ham-menu">
     <ul>
-        <li><a href="signin.php">Home</a></li>
+        <li><a href="index.php">Home</a></li>
         <li><a href="about.php">About</a></li>
         <li><a href="contact.php">Contact</a></li>
     </ul>
