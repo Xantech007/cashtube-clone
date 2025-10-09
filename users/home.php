@@ -55,9 +55,9 @@ try {
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($video) {
         // Use absolute URL
-        $video['url'] = 'https://tasktube.app/' . ltrim($video['url'], '/');
-        // Verify file exists on server
-        $file_path = '../' . ltrim($video['url'], 'https://tasktube.app/');
+        $video['url'] = 'https://tasktube.app/' . $video['url'];
+        // Verify file exists
+        $file_path = '../' . ltrim(parse_url($video['url'], PHP_URL_PATH), '/');
         if (!file_exists($file_path)) {
             error_log('Video file not found: ' . $file_path, 3, '../debug.log');
             $video = null;
@@ -887,6 +887,7 @@ try {
     // Video Watch Tracking and Auto-Play Next
     const videoPlayer = document.getElementById('videoPlayer');
     if (videoPlayer) {
+      // Handle video errors
       videoPlayer.addEventListener('error', function(e) {
         console.error('Video playback error:', e);
         Swal.fire({
@@ -897,6 +898,7 @@ try {
         document.getElementById('playButton').style.display = 'block';
       });
 
+      // Play button to bypass autoplay restrictions
       document.getElementById('playButton').addEventListener('click', function() {
         videoPlayer.play().catch(function(error) {
           console.error('Play error:', error);
@@ -945,24 +947,18 @@ try {
               });
             }
           },
-          error: function(xhr, status, error) {
-            console.error('Video watch AJAX error:', status, error);
+          error: function() {
             Swal.fire({
               icon: 'error',
               title: 'Server Error',
-              text: 'Failed to track video watch. Status: ' + status + ', Error: ' + error
+              text: 'An error occurred while tracking video watch.'
             });
           }
         });
       });
-
-      // Attempt to autoplay video on load
-      videoPlayer.play().catch(function(error) {
-        console.error('Initial autoplay error:', error);
-        document.getElementById('playButton').style.display = 'block';
-      });
     }
 
+    // Function to load next random video via AJAX
     function loadNextVideo() {
       $.ajax({
         url: 'get_random_video.php',
@@ -987,12 +983,11 @@ try {
             });
           }
         },
-        error: function(xhr, status, error) {
-          console.error('Load next video error:', status, error);
+        error: function() {
           Swal.fire({
             icon: 'error',
             title: 'Server Error',
-            text: 'Failed to load next video. Status: ' + status + ', Error: ' + error
+            text: 'Failed to load next video.'
           });
         }
       });
