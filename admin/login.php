@@ -3,11 +3,11 @@ session_start();
 
 // Redirect to dashboard if already logged in as admin
 if (isset($_SESSION['admin_id'])) {
-    header("Location: admin/dashboard.php");
+    header("Location: dashboard.php");
     exit;
 }
 
-require_once 'config.php';
+require_once '../database/conn.php';
 
 $error = '';
 
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Set session variables for admin
                 $_SESSION['admin_id'] = $user['id'];
                 $_SESSION['admin_email'] = $user['email'];
-                header("Location: admin/dashboard.php");
+                header("Location: dashboard.php");
                 exit;
             } else {
                 $error = 'Invalid email or passcode, or user is not an admin.';
