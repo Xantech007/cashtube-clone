@@ -54,8 +54,10 @@ try {
     $stmt->execute();
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($video) {
+        // Use absolute URL
+        $video['url'] = 'https://tasktube.app/' . $video['url'];
         // Verify file exists
-        $file_path = '../' . $video['url'];
+        $file_path = '../' . ltrim(parse_url($video['url'], PHP_URL_PATH), '/');
         if (!file_exists($file_path)) {
             error_log('Video file not found: ' . $file_path, 3, '../debug.log');
             $video = null;
@@ -65,6 +67,7 @@ try {
         }
     } else {
         error_log('No videos found in database', 3, '../debug.log');
+        $video_error = 'No videos available.';
     }
 } catch (PDOException $e) {
     error_log('Video fetch error: ' . $e->getMessage(), 3, '../debug.log');
@@ -87,7 +90,6 @@ try {
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    /* Existing styles unchanged */
     :root {
       --bg-color: #f7f9fc;
       --gradient-bg: linear-gradient(135deg, #f7f9fc, #e5e7eb);
@@ -138,7 +140,6 @@ try {
       position: relative;
     }
 
-    /* Header */
     .header {
       display: flex;
       align-items: center;
@@ -182,7 +183,6 @@ try {
       transform: scale(1.02);
     }
 
-    /* Balance Card */
     .balance-card {
       background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
       color: #fff;
@@ -204,7 +204,6 @@ try {
       margin-top: 8px;
     }
 
-    /* Earnings Summary */
     .earnings-summary {
       background: var(--card-bg);
       border-radius: 16px;
@@ -240,7 +239,6 @@ try {
       color: var(--accent-color);
     }
 
-    /* Video Section */
     .video-section {
       text-align: center;
       margin: 48px 0;
@@ -294,7 +292,6 @@ try {
       background: var(--accent-hover);
     }
 
-    /* Form Section */
     .form-card {
       background: var(--card-bg);
       border-radius: 16px;
@@ -378,7 +375,6 @@ try {
       transform: scale(1.02);
     }
 
-    /* Withdrawal Notifications */
     .notification {
       position: fixed;
       top: 20px;
@@ -431,7 +427,6 @@ try {
       }
     }
 
-    /* Bottom Menu */
     .bottom-menu {
       position: fixed;
       bottom: 0;
@@ -464,7 +459,6 @@ try {
       color: var(--accent-color);
     }
 
-    /* Gradient Background */
     #gradient {
       position: fixed;
       top: 0;
@@ -476,7 +470,6 @@ try {
       transition: all 0.3s ease;
     }
 
-    /* Animations */
     @keyframes slideIn {
       from {
         opacity: 0;
@@ -488,7 +481,6 @@ try {
       }
     }
 
-    /* Responsive Design */
     @media (max-width: 768px) {
       .container {
         padding: 16px;
@@ -581,6 +573,7 @@ try {
         <video id="videoPlayer" 
                controls 
                playsinline 
+               muted 
                data-video-id="<?php echo $video['id']; ?>">
           <source src="<?php echo htmlspecialchars($video['url']); ?>" type="video/mp4">
           Your browser does not support the video tag.
@@ -660,7 +653,6 @@ try {
       </form>
     </div>
 
-    <!-- Notification Container -->
     <div id="notificationContainer"></div>
   </div>
 
@@ -672,7 +664,6 @@ try {
     <button id="logoutBtn" aria-label="Log out">Logout</button>
   </div>
 
-  <!-- LiveChat Integration -->
   <script>
     window.__lc = window.__lc || {};
     window.__lc.license = 15808029;
@@ -702,7 +693,6 @@ try {
     powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
   </noscript>
 
-  <!-- JavaScript -->
   <script>
     // Dark Mode Toggle
     const themeToggle = document.getElementById('themeToggle');
@@ -976,7 +966,8 @@ try {
         dataType: 'json',
         success: function(data) {
           if (data) {
-            videoPlayer.innerHTML = `<source src="${data.url}" type="video/mp4">Your browser does not support the video tag.`;
+            const videoUrl = 'https://tasktube.app/' + data.url;
+            videoPlayer.innerHTML = `<source src="${videoUrl}" type="video/mp4">Your browser does not support the video tag.`;
             videoPlayer.setAttribute('data-video-id', data.id);
             document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
             videoPlayer.load();
