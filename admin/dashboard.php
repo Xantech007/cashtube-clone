@@ -102,7 +102,7 @@ try {
         }
 
         .add-video-form input[type="file"] {
-            padding: 4px; /* Adjust padding for file input */
+            padding: 4px;
         }
 
         .add-video-form button {
@@ -113,10 +113,23 @@ try {
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            position: relative;
         }
 
-        .add-video-form button:hover {
+        .add-video-form button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .add-video-form button:hover:not(:disabled) {
             background-color: #0056b3;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 10px;
+            color: #007bff;
+            font-size: 14px;
         }
 
         /* Scrollable Table */
@@ -220,11 +233,12 @@ try {
             <?php endif; ?>
 
             <!-- Add Video Form -->
-            <form action="add_video.php" method="POST" enctype="multipart/form-data" class="add-video-form">
+            <form action="add_video.php" method="POST" enctype="multipart/form-data" class="add-video-form" id="addVideoForm">
                 <input type="text" name="title" placeholder="Video Title" required>
                 <input type="file" name="video_file" accept=".mp4,.avi,.mov" required>
                 <input type="number" name="reward" placeholder="Reward ($)" step="0.01" required>
-                <button type="submit">Add Video</button>
+                <button type="submit" id="addVideoButton">Add Video</button>
+                <div class="loading" id="loadingIndicator">Uploading video, please wait...</div>
             </form>
 
             <!-- Video List -->
@@ -261,5 +275,16 @@ try {
             <?php endif; ?>
         </div>
     </div>
+
+    <script>
+        // Show loading indicator when form is submitted
+        document.getElementById('addVideoForm').addEventListener('submit', function() {
+            const button = document.getElementById('addVideoButton');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            button.disabled = true; // Disable button to prevent multiple submissions
+            button.innerText = 'Uploading...';
+            loadingIndicator.style.display = 'block';
+        });
+    </script>
 </body>
 </html>
