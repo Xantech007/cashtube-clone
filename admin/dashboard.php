@@ -90,13 +90,19 @@ try {
             justify-content: center;
         }
 
-        .add-video-form input {
+        .add-video-form input[type="text"],
+        .add-video-form input[type="number"],
+        .add-video-form input[type="file"] {
             flex: 1;
             min-width: 200px;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
+        }
+
+        .add-video-form input[type="file"] {
+            padding: 4px; /* Adjust padding for file input */
         }
 
         .add-video-form button {
@@ -118,14 +124,14 @@ try {
             max-width: 100%;
             overflow-x: auto;
             overflow-y: auto;
-            max-height: 400px; /* Adjust height as needed */
+            max-height: 400px;
             margin-top: 10px;
         }
 
         .video-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 600px; /* Ensures table is wide enough for content */
+            min-width: 600px;
         }
 
         .video-table th,
@@ -140,7 +146,7 @@ try {
             background-color: #f8f9fa;
             color: #333;
             position: sticky;
-            top: 0; /* Keeps header fixed when scrolling vertically */
+            top: 0;
             z-index: 1;
         }
 
@@ -162,9 +168,13 @@ try {
             text-decoration: underline;
         }
 
-        .error {
+        .error, .success {
             color: red;
             margin-bottom: 15px;
+        }
+
+        .success {
+            color: green;
         }
 
         /* Responsive Design */
@@ -185,7 +195,7 @@ try {
             }
 
             .video-table {
-                min-width: 100%; /* Ensures table fits smaller screens */
+                min-width: 100%;
             }
         }
     </style>
@@ -203,16 +213,16 @@ try {
                 <p class="error"><?php echo htmlspecialchars($error); ?></p>
             <?php endif; ?>
             <?php if (isset($_SESSION['success'])): ?>
-                <p style="color: green; margin-bottom: 15px;"><?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?></p>
+                <p class="success"><?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?></p>
             <?php endif; ?>
             <?php if (isset($_SESSION['error'])): ?>
                 <p class="error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></p>
             <?php endif; ?>
 
             <!-- Add Video Form -->
-            <form action="add_video.php" method="POST" class="add-video-form">
+            <form action="add_video.php" method="POST" enctype="multipart/form-data" class="add-video-form">
                 <input type="text" name="title" placeholder="Video Title" required>
-                <input type="text" name="url" placeholder="Video URL (e.g., users/videos/video.mp4)" required>
+                <input type="file" name="video_file" accept=".mp4,.avi,.mov" required>
                 <input type="number" name="reward" placeholder="Reward ($)" step="0.01" required>
                 <button type="submit">Add Video</button>
             </form>
