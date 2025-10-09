@@ -35,7 +35,7 @@ try {
         }
 
         .dashboard-container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -84,32 +84,48 @@ try {
 
         .add-video-form {
             margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
         }
 
-        .add-video-form input,
-        .add-video-form button {
+        .add-video-form input {
+            flex: 1;
+            min-width: 200px;
             padding: 8px;
-            margin: 5px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
         }
 
         .add-video-form button {
+            padding: 8px 20px;
             background-color: #007bff;
             color: #fff;
             border: none;
+            border-radius: 4px;
             cursor: pointer;
+            font-size: 14px;
         }
 
         .add-video-form button:hover {
             background-color: #0056b3;
         }
 
+        /* Scrollable Table */
+        .table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 400px; /* Adjust height as needed */
+            margin-top: 10px;
+        }
+
         .video-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            min-width: 600px; /* Ensures table is wide enough for content */
         }
 
         .video-table th,
@@ -117,11 +133,19 @@ try {
             padding: 10px;
             border: 1px solid #ddd;
             text-align: left;
+            font-size: 14px;
         }
 
         .video-table th {
             background-color: #f8f9fa;
             color: #333;
+            position: sticky;
+            top: 0; /* Keeps header fixed when scrolling vertically */
+            z-index: 1;
+        }
+
+        .video-table td {
+            color: #555;
         }
 
         .video-table a {
@@ -142,6 +166,28 @@ try {
             color: red;
             margin-bottom: 15px;
         }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                margin: 20px;
+                padding: 15px;
+            }
+
+            .add-video-form {
+                flex-direction: column;
+            }
+
+            .add-video-form input,
+            .add-video-form button {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .video-table {
+                min-width: 100%; /* Ensures table fits smaller screens */
+            }
+        }
     </style>
 </head>
 <body>
@@ -156,6 +202,12 @@ try {
             <?php if (isset($error)): ?>
                 <p class="error"><?php echo htmlspecialchars($error); ?></p>
             <?php endif; ?>
+            <?php if (isset($_SESSION['success'])): ?>
+                <p style="color: green; margin-bottom: 15px;"><?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?></p>
+            <?php endif; ?>
+            <?php if (isset($_SESSION['error'])): ?>
+                <p class="error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></p>
+            <?php endif; ?>
 
             <!-- Add Video Form -->
             <form action="add_video.php" method="POST" class="add-video-form">
@@ -169,31 +221,33 @@ try {
             <?php if (empty($videos)): ?>
                 <p>No videos available.</p>
             <?php else: ?>
-                <table class="video-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Title</th>
-                            <th>URL</th>
-                            <th>Reward ($)</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($videos as $video): ?>
+                <div class="table-container">
+                    <table class="video-table">
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($video['id']); ?></td>
-                                <td><?php echo htmlspecialchars($video['title']); ?></td>
-                                <td><?php echo htmlspecialchars($video['url']); ?></td>
-                                <td><?php echo number_format($video['reward'], 2); ?></td>
-                                <td>
-                                    <a href="edit_video.php?id=<?php echo $video['id']; ?>">Edit</a>
-                                    <a href="delete_video.php?id=<?php echo $video['id']; ?>" class="delete" onclick="return confirm('Are you sure you want to delete this video?');">Delete</a>
-                                </td>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>URL</th>
+                                <th>Reward ($)</th>
+                                <th>Actions</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($videos as $video): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($video['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($video['title']); ?></td>
+                                    <td><?php echo htmlspecialchars($video['url']); ?></td>
+                                    <td><?php echo number_format($video['reward'], 2); ?></td>
+                                    <td>
+                                        <a href="edit_video.php?id=<?php echo $video['id']; ?>">Edit</a>
+                                        <a href="delete_video.php?id=<?php echo $video['id']; ?>" class="delete" onclick="return confirm('Are you sure you want to delete this video?');">Delete</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
     </div>
