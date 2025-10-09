@@ -19,22 +19,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please fill in all fields.';
     } else {
         try {
-            // Check if the user exists and is an admin
-            $stmt = $pdo->prepare("SELECT id, email, passcode FROM users WHERE email = ? AND role = 'admin'");
+            // Check if the user exists
+            $stmt = $pdo->prepare("SELECT id, email, passcode, role FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user && password_verify($passcode, $user['passcode'])) {
+            if (!$user) {
+                $error = 'No user found with this email.';
+            } elseif ($user['role'] !== 'admin') {
+                $error = 'User is not an admin.';
+            } elseif ($user['passcode'] !== $passcode) {
+                $error = 'Incorrect passcode.';
+            } else {
                 // Set session variables for admin
                 $_SESSION['admin_id'] = $user['id'];
                 $_SESSION['admin_email'] = $user['email'];
                 header("Location: dashboard.php");
                 exit;
-            } else {
-                $error = 'Invalid email or passcode, or user is not an admin.';
             }
         } catch (PDOException $e) {
-            $error = 'An error occurred. Please try again.';
+            $error = 'Database error: ' . $e->getMessage();
         }
     }
 }
