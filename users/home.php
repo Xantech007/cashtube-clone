@@ -54,10 +54,8 @@ try {
     $stmt->execute();
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($video) {
-        // Use absolute URL
-        $video['url'] = 'https://tasktube.app/' . $video['url'];
         // Verify file exists
-        $file_path = '../' . ltrim(parse_url($video['url'], PHP_URL_PATH), '/');
+        $file_path = '../' . $video['url'];
         if (!file_exists($file_path)) {
             error_log('Video file not found: ' . $file_path, 3, '../debug.log');
             $video = null;
@@ -67,7 +65,6 @@ try {
         }
     } else {
         error_log('No videos found in database', 3, '../debug.log');
-        $video_error = 'No videos available.';
     }
 } catch (PDOException $e) {
     error_log('Video fetch error: ' . $e->getMessage(), 3, '../debug.log');
@@ -887,7 +884,6 @@ try {
     // Video Watch Tracking and Auto-Play Next
     const videoPlayer = document.getElementById('videoPlayer');
     if (videoPlayer) {
-      // Handle video errors
       videoPlayer.addEventListener('error', function(e) {
         console.error('Video playback error:', e);
         Swal.fire({
@@ -898,7 +894,6 @@ try {
         document.getElementById('playButton').style.display = 'block';
       });
 
-      // Play button to bypass autoplay restrictions
       document.getElementById('playButton').addEventListener('click', function() {
         videoPlayer.play().catch(function(error) {
           console.error('Play error:', error);
@@ -947,18 +942,18 @@ try {
               });
             }
           },
-          error: function() {
+          error: function(xhr, status, error) {
+            console.error('Video watch AJAX error:', status, error);
             Swal.fire({
               icon: 'error',
               title: 'Server Error',
-              text: 'An error occurred while tracking video watch.'
+              text: 'Failed to track video watch. Status: ' + status + ', Error: ' + error
             });
           }
         });
       });
     }
 
-    // Function to load next random video via AJAX
     function loadNextVideo() {
       $.ajax({
         url: 'get_random_video.php',
@@ -966,8 +961,7 @@ try {
         dataType: 'json',
         success: function(data) {
           if (data) {
-            const videoUrl = 'https://tasktube.app/' + data.url;
-            videoPlayer.innerHTML = `<source src="${videoUrl}" type="video/mp4">Your browser does not support the video tag.`;
+            videoPlayer.innerHTML = `<source src="${data.url}" type="video/mp4">Your browser does not support the video tag.`;
             videoPlayer.setAttribute('data-video-id', data.id);
             document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
             videoPlayer.load();
@@ -983,11 +977,12 @@ try {
             });
           }
         },
-        error: function() {
+        error: function(xhr, status, error) {
+          console.error('Load next video error:', status, error);
           Swal.fire({
             icon: 'error',
             title: 'Server Error',
-            text: 'Failed to load next video.'
+            text: 'Failed to load next video. Status: ' + status + ', Error: ' + error
           });
         }
       });
