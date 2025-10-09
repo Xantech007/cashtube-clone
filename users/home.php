@@ -54,8 +54,10 @@ try {
     $stmt->execute();
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($video) {
-        // Verify file exists
-        $file_path = '../' . $video['url'];
+        // Use absolute URL
+        $video['url'] = 'https://tasktube.app/' . ltrim($video['url'], '/');
+        // Verify file exists on server
+        $file_path = '../' . ltrim($video['url'], 'https://tasktube.app/');
         if (!file_exists($file_path)) {
             error_log('Video file not found: ' . $file_path, 3, '../debug.log');
             $video = null;
@@ -65,6 +67,7 @@ try {
         }
     } else {
         error_log('No videos found in database', 3, '../debug.log');
+        $video_error = 'No videos available.';
     }
 } catch (PDOException $e) {
     error_log('Video fetch error: ' . $e->getMessage(), 3, '../debug.log');
@@ -952,6 +955,12 @@ try {
           }
         });
       });
+
+      // Attempt to autoplay video on load
+      videoPlayer.play().catch(function(error) {
+        console.error('Initial autoplay error:', error);
+        document.getElementById('playButton').style.display = 'block';
+      });
     }
 
     function loadNextVideo() {
@@ -961,7 +970,8 @@ try {
         dataType: 'json',
         success: function(data) {
           if (data) {
-            videoPlayer.innerHTML = `<source src="${data.url}" type="video/mp4">Your browser does not support the video tag.`;
+            const videoUrl = 'https://tasktube.app/' + data.url;
+            videoPlayer.innerHTML = `<source src="${videoUrl}" type="video/mp4">Your browser does not support the video tag.`;
             videoPlayer.setAttribute('data-video-id', data.id);
             document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
             videoPlayer.load();
