@@ -1,5 +1,4 @@
 <?php
-// users/home.php
 session_start();
 require_once '../database/conn.php';
 
@@ -29,7 +28,7 @@ try {
     exit;
 }
 
-// Fetch earnings summary (combined query for performance)
+// Fetch earnings summary
 try {
     $stmt = $pdo->prepare("
         SELECT 
@@ -49,14 +48,28 @@ try {
     $pending_withdrawals = 0.00;
 }
 
-// Fetch a random video from the videos table (assuming url points to local files like 'users/videos/video.mp4')
+// Fetch a random video
 try {
     $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY RAND() LIMIT 1");
     $stmt->execute();
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($video) {
+        // Verify file exists
+        $file_path = '../' . $video['url'];
+        if (!file_exists($file_path)) {
+            error_log('Video file not found: ' . $file_path, 3, '../debug.log');
+            $video = null;
+            $video_error = 'Video file not found: ' . htmlspecialchars($video['url']);
+        } else {
+            error_log('Video loaded: ' . $video['url'], 3, '../debug.log');
+        }
+    } else {
+        error_log('No videos found in database', 3, '../debug.log');
+    }
 } catch (PDOException $e) {
     error_log('Video fetch error: ' . $e->getMessage(), 3, '../debug.log');
     $video = null;
+    $video_error = 'Failed to load video from database.';
 }
 ?>
 
@@ -74,6 +87,7 @@ try {
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
+    /* Existing styles unchanged */
     :root {
       --bg-color: #f7f9fc;
       --gradient-bg: linear-gradient(135deg, #f7f9fc, #e5e7eb);
@@ -256,6 +270,28 @@ try {
     .video-section span {
       color: var(--accent-color);
       font-weight: 600;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .play-button {
+      display: none;
+      margin: 10px auto;
+      padding: 10px 20px;
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .play-button:hover {
+      background: var(--accent-hover);
     }
 
     /* Form Section */
@@ -543,14 +579,22 @@ try {
       <h1>Watch Videos to Earn Crypto</h1>
       <?php if ($video): ?>
         <video id="videoPlayer" 
-               src="<?php echo htmlspecialchars($video['url']); ?>" 
-               autoplay 
                controls 
                playsinline 
-               data-video-id="<?php echo $video['id']; ?>"></video>
+               data-video-id="<?php echo $video['id']; ?>">
+          <source src="<?php echo htmlspecialchars($video['url']); ?>" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <button class="play-button" id="playButton">Play Video</button>
         <h4 id="video-reward">Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span>. The more videos you watch, the more your <span>crypto balance</span> increases</h4>
+        <?php if (isset($video_error)): ?>
+          <p class="error"><?php echo $video_error; ?></p>
+        <?php endif; ?>
       <?php else: ?>
         <p>No videos available at the moment.</p>
+        <?php if (isset($video_error)): ?>
+          <p class="error"><?php echo $video_error; ?></p>
+        <?php endif; ?>
       <?php endif; ?>
     </div>
 
@@ -827,10 +871,8 @@ try {
               timer: 2000,
               showConfirmButton: false
             }).then(() => {
-              // Update pending withdrawals without reload
               const newPending = parseFloat(document.getElementById('pending-withdrawals').textContent.replace('$', '')) + amount;
               document.getElementById('pending-withdrawals').textContent = `$${newPending.toFixed(2)}`;
-              // Update balance
               const newBalance = balance - amount;
               document.getElementById('balance').textContent = newBalance.toFixed(2);
             });
@@ -855,6 +897,29 @@ try {
     // Video Watch Tracking and Auto-Play Next
     const videoPlayer = document.getElementById('videoPlayer');
     if (videoPlayer) {
+      // Handle video errors
+      videoPlayer.addEventListener('error', function(e) {
+        console.error('Video playback error:', e);
+        Swal.fire({
+          icon: 'error',
+          title: 'Playback Error',
+          text: 'Failed to play video. Check the file or try another video.'
+        });
+        document.getElementById('playButton').style.display = 'block';
+      });
+
+      // Play button to bypass autoplay restrictions
+      document.getElementById('playButton').addEventListener('click', function() {
+        videoPlayer.play().catch(function(error) {
+          console.error('Play error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Playback Error',
+            text: 'Failed to play video: ' + error.message
+          });
+        });
+      });
+
       videoPlayer.addEventListener('ended', function() {
         const videoId = videoPlayer.getAttribute('data-video-id');
         $.ajax({
@@ -872,12 +937,10 @@ try {
                 showConfirmButton: false
               });
 
-              // Update balance
               const currentBalance = parseFloat(document.getElementById('balance').textContent);
               const newBalance = currentBalance + parseFloat(response.reward);
               document.getElementById('balance').textContent = newBalance.toFixed(2);
 
-              // Update earnings summary
               const currentTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
               const newTotalEarned = currentTotalEarned + parseFloat(response.reward);
               document.getElementById('total-earned').textContent = `$${newTotalEarned.toFixed(2)}`;
@@ -885,7 +948,6 @@ try {
               const currentVideosWatched = parseInt(document.getElementById('videos-watched').textContent);
               document.getElementById('videos-watched').textContent = currentVideosWatched + 1;
 
-              // Load next video
               loadNextVideo();
             } else {
               Swal.fire({
@@ -914,11 +976,14 @@ try {
         dataType: 'json',
         success: function(data) {
           if (data) {
-            videoPlayer.src = data.url;
+            videoPlayer.innerHTML = `<source src="${data.url}" type="video/mp4">Your browser does not support the video tag.`;
             videoPlayer.setAttribute('data-video-id', data.id);
             document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
             videoPlayer.load();
-            videoPlayer.play();
+            videoPlayer.play().catch(function(error) {
+              console.error('Auto-play error:', error);
+              document.getElementById('playButton').style.display = 'block';
+            });
           } else {
             Swal.fire({
               icon: 'info',
@@ -964,7 +1029,7 @@ try {
     fetchNotifications();
     setInterval(fetchNotifications, 20000);
 
-    // Gradient Animation (optimized with requestAnimationFrame)
+    // Gradient Animation
     var colors = [
       [62, 35, 255],
       [60, 255, 60],
