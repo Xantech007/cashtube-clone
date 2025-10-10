@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, balance FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, balance, verification_status FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -21,6 +21,7 @@ try {
     }
     $username = htmlspecialchars($user['name']);
     $balance = number_format($user['balance'], 2);
+    $verification_status = $user['verification_status'];
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     session_destroy();
@@ -370,6 +371,25 @@ try {
       transform: scale(1.02);
     }
 
+    .verify-btn {
+      width: 100%;
+      padding: 14px;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+      margin-top: 20px;
+    }
+
+    .verify-btn:hover {
+      background: #2563eb;
+      transform: scale(1.02);
+    }
+
     .notification {
       position: fixed;
       top: 20px;
@@ -597,6 +617,9 @@ try {
         </div>
         <button type="submit" class="submit-btn" aria-label="Withdraw funds">Withdraw</button>
       </form>
+      <?php if ($verification_status !== 'verified'): ?>
+        <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">Verify Account</button>
+      <?php endif; ?>
     </div>
 
     <div id="notificationContainer"></div>
