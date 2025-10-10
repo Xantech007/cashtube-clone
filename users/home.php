@@ -29,6 +29,12 @@ try {
     exit;
 }
 
+// Check for success message from verification
+$success_message = null;
+if (isset($_GET['success'])) {
+    $success_message = htmlspecialchars($_GET['success']);
+}
+
 // Fetch earnings summary
 try {
     $stmt = $pdo->prepare("
@@ -281,6 +287,13 @@ try {
       color: red;
       margin-top: 10px;
       font-size: 14px;
+    }
+
+    .success {
+      color: var(--accent-color);
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
     }
 
     .play-button {
@@ -550,6 +563,12 @@ try {
       </div>
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
     </div>
+
+    <?php if ($success_message): ?>
+      <div class="notification" role="alert">
+        <span><?php echo $success_message; ?></span>
+      </div>
+    <?php endif; ?>
 
     <div class="balance-card">
       <p>Available Crypto Balance</p>
