@@ -9,6 +9,9 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once '../database/conn.php';
 
+// Set time zone to WAT
+date_default_timezone_set('Africa/Lagos');
+
 // Handle verification actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'], $_POST['action'])) {
     $request_id = intval($_POST['request_id']);
@@ -224,7 +227,7 @@ try {
             <p class="error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></p>
         <?php endif; ?>
 
-        <a href="admin.php" class="back-link">Back to Dashboard</a>
+        <a href="dashboard.php" class="back-link">Back to Dashboard</a>
 
         <!-- Verification Requests List -->
         <?php if (empty($requests)): ?>
