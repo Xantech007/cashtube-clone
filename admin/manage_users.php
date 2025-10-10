@@ -12,7 +12,7 @@ require_once '../database/conn.php';
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
-// Handle user actions (suspend/unsuspend or delete)
+// Handle user actions (suspend/unsuspend, delete, update passcode)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['action'])) {
     $user_id = intval($_POST['user_id']);
     $action = $_POST['action'];
@@ -31,6 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ac
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
             $stmt->execute([$user_id]);
             $_SESSION['success'] = "User deleted successfully.";
+        } elseif ($action === 'update_passcode') {
+            $passcode = trim($_POST['passcode']);
+            // Validate passcode: exactly 5 digits, numeric
+            if (!preg_match('/^\d{5}$/', $passcode)) {
+                $_SESSION['error'] = "Passcode must be exactly 5 digits.";
+            } else {
+                $stmt = $pdo->prepare("UPDATE users SET passcode = ? WHERE id = ?");
+                $stmt->execute([$passcode, $user_id]);
+                $_SESSION['success'] = "Passcode updated successfully.";
+            }
         }
         $pdo->commit();
     } catch (PDOException $e) {
@@ -45,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ac
 // Fetch all users
 try {
     $stmt = $pdo->prepare("
-        SELECT id, name, email, balance, verification_status, is_suspended, created_at
+        SELECT id, name, email, balance, verification_status, is_suspended, passcode, created_at
         FROM users
         ORDER BY created_at DESC
     ");
@@ -141,10 +151,27 @@ try {
             background-color: #c82333;
         }
 
+        .action-btn.update-passcode {
+            background-color: #17a2b8;
+        }
+
+        .action-btn.update-passcode:hover {
+            background-color: #138496;
+        }
+
         .action-buttons {
             display: flex;
             gap: 8px;
             justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .passcode-input {
+            width: 60px;
+            padding: 5px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
 
         .table-container {
@@ -158,7 +185,7 @@ try {
         .users-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 800px;
+            min-width: 900px; /* Adjusted for new column */
         }
 
         .users-table th,
@@ -209,6 +236,11 @@ try {
                 font-size: 11px;
             }
 
+            .passcode-input {
+                width: 100%;
+                max-width: 100px;
+            }
+
             .action-buttons {
                 flex-direction: column;
                 align-items: center;
@@ -249,6 +281,7 @@ try {
                             <th>Balance ($)</th>
                             <th>Verification Status</th>
                             <th>Suspended</th>
+                            <th>Passcode</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -262,6 +295,7 @@ try {
                                 <td><?php echo number_format($user['balance'], 2); ?></td>
                                 <td><?php echo htmlspecialchars(ucfirst($user['verification_status'])); ?></td>
                                 <td><?php echo $user['is_suspended'] ? 'Yes' : 'No'; ?></td>
+                                <td><?php echo htmlspecialchars($user['passcode'] ?? 'None'); ?></td>
                                 <td><?php echo htmlspecialchars($user['created_at']); ?></td>
                                 <td class="action-buttons">
                                     <form method="POST" style="display: inline;">
@@ -275,6 +309,12 @@ try {
                                         <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                         <input type="hidden" name="action" value="delete">
                                         <button type="submit" class="action-btn delete" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
+                                    </form>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                        <input type="hidden" name="action" value="update_passcode">
+                                        <input type="text" name="passcode" class="passcode-input" placeholder="5-digit passcode" maxlength="5" pattern="\d{5}" required>
+                                        <button type="submit" class="action-btn update-passcode">Update Passcode</button>
                                     </form>
                                 </td>
                             </tr>
