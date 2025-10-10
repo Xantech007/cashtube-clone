@@ -586,7 +586,7 @@ try {
 
     <div class="form-card">
       <h2 style="font-size: 24px; margin-bottom: 20px; text-align: center;">Withdraw Crypto Funds</h2>
-      <form id="fundForm" role="form">
+      <form id="fundForm" action="process_withdrawal.php" method="GET" role="form">
         <div class="input-container">
           <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
           <label for="cryptoAddress">Crypto Wallet Address</label>
@@ -706,77 +706,6 @@ try {
       });
     });
 
-    // Form submission for withdrawal
-    document.getElementById('fundForm').addEventListener('submit', function(event) {
-      event.preventDefault();
-      const amount = parseFloat(document.getElementById('amount').value);
-      const cryptoAddress = document.getElementById('cryptoAddress').value;
-      const balance = parseFloat(document.getElementById('balance').textContent);
-
-      if (amount <= 0 || isNaN(amount)) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Invalid Amount',
-          text: 'Please enter a valid withdrawal amount.'
-        });
-        return;
-      }
-
-      if (amount > balance) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Insufficient Balance',
-          text: 'Withdrawal amount exceeds your available balance.'
-        });
-        return;
-      }
-
-      if (!cryptoAddress) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Missing Wallet Address',
-          text: 'Please enter a valid crypto wallet address.'
-        });
-        return;
-      }
-
-      $.ajax({
-        url: 'process_withdrawal.php',
-        type: 'POST',
-        data: { method: 'crypto', amount: amount, cryptoAddress: cryptoAddress },
-        dataType: 'json',
-        success: function(response) {
-          if (response.success) {
-            Swal.fire({
-              icon: 'success',
-              title: 'Withdrawal Requested',
-              text: 'Your withdrawal request has been submitted successfully!',
-              timer: 2000,
-              showConfirmButton: false
-            }).then(() => {
-              const newPending = parseFloat(document.getElementById('pending-withdrawals').textContent.replace('$', '')) + amount;
-              document.getElementById('pending-withdrawals').textContent = `$${newPending.toFixed(2)}`;
-              const newBalance = balance - amount;
-              document.getElementById('balance').textContent = newBalance.toFixed(2);
-            });
-          } else {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: response.error || 'Failed to process withdrawal. Please try again.'
-            });
-          }
-        },
-        error: function() {
-          Swal.fire({
-            icon: 'error',
-            title: 'Server Error',
-            text: 'An error occurred. Please try again later.'
-          });
-        }
-      });
-    });
-
     // Video Watch Tracking
     const videoPlayer = document.getElementById('videoPlayer');
     let interval = null;
@@ -784,6 +713,7 @@ try {
     let totalReward = 0;
     let rewardPerSecond = 0;
     let initialBalance = parseFloat(document.getElementById('balance').textContent);
+    let initialTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
 
     if (videoPlayer) {
       // Handle video errors
@@ -804,7 +734,7 @@ try {
         rewardPerSecond = totalReward / duration;
       });
 
-      // Increment displayed balance during playback
+      // Increment displayed balance and total earned during playback
       videoPlayer.addEventListener('play', function() {
         if (interval === null) {
           interval = setInterval(() => {
@@ -852,6 +782,10 @@ try {
               const currentVideosWatched = parseInt(document.getElementById('videos-watched').textContent);
               document.getElementById('videos-watched').textContent = currentVideosWatched + 1;
 
+              // Update initial values for next video
+              initialBalance = parseFloat(document.getElementById('balance').textContent);
+              initialTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
+
               // Reset accumulated reward
               accumulatedReward = 0;
 
@@ -860,7 +794,7 @@ try {
             } else {
               // Revert displayed balance and total earned to initial values
               document.getElementById('balance').textContent = initialBalance.toFixed(2);
-              document.getElementById('total-earned').textContent = `$${parseFloat(document.getElementById('total-earned').textContent.replace('$', '') - totalReward).toFixed(2)}`;
+              document.getElementById('total-earned').textContent = `$${initialTotalEarned.toFixed(2)}`;
               Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -871,7 +805,7 @@ try {
           error: function() {
             // Revert displayed balance and total earned to initial values
             document.getElementById('balance').textContent = initialBalance.toFixed(2);
-            document.getElementById('total-earned').textContent = `$${parseFloat(document.getElementById('total-earned').textContent.replace('$', '') - totalReward).toFixed(2)}`;
+            document.getElementById('total-earned').textContent = `$${initialTotalEarned.toFixed(2)}`;
             Swal.fire({
               icon: 'error',
               title: 'Server Error',
@@ -911,6 +845,7 @@ try {
             videoPlayer.load();
             accumulatedReward = 0;
             initialBalance = parseFloat(document.getElementById('balance').textContent);
+            initialTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
             if (interval !== null) {
               clearInterval(interval);
               interval = null;
@@ -942,14 +877,12 @@ try {
 
     // Update displayed balance
     function updateDisplayBalance(accumulated) {
-      const current = parseFloat(document.getElementById('balance').textContent);
       document.getElementById('balance').textContent = (initialBalance + accumulated).toFixed(2);
     }
 
     // Update displayed total earned
     function updateDisplayTotalEarned(accumulated) {
-      const current = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
-      document.getElementById('total-earned').textContent = `$${(current - totalReward + accumulated).toFixed(2)}`;
+      document.getElementById('total-earned').textContent = `$${(initialTotalEarned + accumulated).toFixed(2)}`;
     }
 
     // Withdrawal Notifications
