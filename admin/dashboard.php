@@ -19,6 +19,17 @@ try {
     $videos = [];
     $error = 'Failed to load videos: ' . $e->getMessage();
 }
+
+// Fetch total registered users
+try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) AS user_count FROM users");
+    $stmt->execute();
+    $user_count = $stmt->fetch(PDO::FETCH_ASSOC)['user_count'];
+} catch (PDOException $e) {
+    error_log('User count fetch error: ' . $e->getMessage(), 3, '../debug.log');
+    $user_count = 0;
+    $error = isset($error) ? $error . '<br>Failed to load user count: ' . $e->getMessage() : 'Failed to load user count: ' . $e->getMessage();
+}
 ?>
 
 <!DOCTYPE html>
@@ -54,18 +65,36 @@ try {
             font-size: 16px;
         }
 
-        .logout-link {
+        .logout-link, .management-link {
             display: inline-block;
-            margin-top: 20px;
+            margin: 10px 5px;
             padding: 10px 20px;
-            background-color: #dc3545;
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .logout-link {
+            background-color: #dc3545;
         }
 
         .logout-link:hover {
             background-color: #c82333;
+        }
+
+        .management-link {
+            background-color: #007bff;
+        }
+
+        .management-link:hover {
+            background-color: #0056b3;
+        }
+
+        /* Management Buttons Section */
+        .management-buttons {
+            margin: 20px 0;
         }
 
         /* Video Management Section */
@@ -210,6 +239,11 @@ try {
             .video-table {
                 min-width: 100%;
             }
+
+            .management-link {
+                width: 100%;
+                margin: 10px 0;
+            }
         }
     </style>
 </head>
@@ -217,6 +251,14 @@ try {
     <div class="dashboard-container">
         <h2>Welcome to Task Tube Admin Dashboard</h2>
         <p>Hello, <?php echo htmlspecialchars($_SESSION['admin_email']); ?>!</p>
+        <p>Total Registered Users: <strong><?php echo $user_count; ?></strong></p>
+
+        <!-- Management Buttons -->
+        <div class="management-buttons">
+            <a href="manage_verifications.php" class="management-link">Manage Verification Requests</a>
+            <a href="manage_withdrawals.php" class="management-link">Manage Withdrawals</a>
+        </div>
+
         <a href="logout.php" class="logout-link">Logout</a>
 
         <!-- Video Management Section -->
@@ -281,7 +323,7 @@ try {
         document.getElementById('addVideoForm').addEventListener('submit', function() {
             const button = document.getElementById('addVideoButton');
             const loadingIndicator = document.getElementById('loadingIndicator');
-            button.disabled = true; // Disable button to prevent multiple submissions
+            button.disabled = true;
             button.innerText = 'Uploading...';
             loadingIndicator.style.display = 'block';
         });
