@@ -574,7 +574,8 @@ try {
                controls 
                playsinline 
                muted 
-               data-video-id="<?php echo $video['id']; ?>">
+               data-video-id="<?php echo $video['id']; ?>"
+               data-reward="<?php echo $video['reward']; ?>">
           <source src="<?php echo htmlspecialchars($video['url']); ?>" type="video/mp4">
           Your browser does not support the video tag.
         </video>
@@ -886,6 +887,10 @@ try {
 
     // Video Watch Tracking and Auto-Play Next
     const videoPlayer = document.getElementById('videoPlayer');
+    let interval = null;
+    let accumulatedReward = 0;
+    let totalReward = 0;
+    let rewardPerSecond = 0;
     if (videoPlayer) {
       // Handle video errors
       videoPlayer.addEventListener('error', function(e) {
@@ -898,19 +903,37 @@ try {
         document.getElementById('playButton').style.display = 'block';
       });
 
-      // Play button to bypass autoplay restrictions
-      document.getElementById('playButton').addEventListener('click', function() {
-        videoPlayer.play().catch(function(error) {
-          console.error('Play error:', error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Playback Error',
-            text: 'Failed to play video: ' + error.message
-          });
-        });
+      videoPlayer.addEventListener('loadedmetadata', function() {
+        const duration = videoPlayer.duration;
+        totalReward = parseFloat(videoPlayer.getAttribute('data-reward'));
+        rewardPerSecond = totalReward / duration;
+      });
+
+      videoPlayer.addEventListener('play', function() {
+        if (interval === null) {
+          interval = setInterval(() => {
+            accumulatedReward += rewardPerSecond;
+            if (accumulatedReward > totalReward) {
+              accumulatedReward = totalReward;
+            }
+            updateDisplayBalance(rewardPerSecond);
+            updateDisplayTotalEarned(rewardPerSecond);
+          }, 1000);
+        }
+      });
+
+      videoPlayer.addEventListener('pause', function() {
+        if (interval !== null) {
+          clearInterval(interval);
+          interval = null;
+        }
       });
 
       videoPlayer.addEventListener('ended', function() {
+        if (interval !== null) {
+          clearInterval(interval);
+          interval = null;
+        }
         const videoId = videoPlayer.getAttribute('data-video-id');
         $.ajax({
           url: 'process_video_watch.php',
@@ -926,14 +949,6 @@ try {
                 timer: 2000,
                 showConfirmButton: false
               });
-
-              const currentBalance = parseFloat(document.getElementById('balance').textContent);
-              const newBalance = currentBalance + parseFloat(response.reward);
-              document.getElementById('balance').textContent = newBalance.toFixed(2);
-
-              const currentTotalEarned = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
-              const newTotalEarned = currentTotalEarned + parseFloat(response.reward);
-              document.getElementById('total-earned').textContent = `$${newTotalEarned.toFixed(2)}`;
 
               const currentVideosWatched = parseInt(document.getElementById('videos-watched').textContent);
               document.getElementById('videos-watched').textContent = currentVideosWatched + 1;
@@ -956,6 +971,18 @@ try {
           }
         });
       });
+
+      // Play button to bypass autoplay restrictions
+      document.getElementById('playButton').addEventListener('click', function() {
+        videoPlayer.play().catch(function(error) {
+          console.error('Play error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Playback Error',
+            text: 'Failed to play video: ' + error.message
+          });
+        });
+      });
     }
 
     // Function to load next random video via AJAX
@@ -969,8 +996,14 @@ try {
             const videoUrl = 'https://tasktube.app/' + data.url;
             videoPlayer.innerHTML = `<source src="${videoUrl}" type="video/mp4">Your browser does not support the video tag.`;
             videoPlayer.setAttribute('data-video-id', data.id);
+            videoPlayer.setAttribute('data-reward', data.reward);
             document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
             videoPlayer.load();
+            accumulatedReward = 0;
+            if (interval !== null) {
+              clearInterval(interval);
+              interval = null;
+            }
             videoPlayer.play().catch(function(error) {
               console.error('Auto-play error:', error);
               document.getElementById('playButton').style.display = 'block';
@@ -1066,6 +1099,16 @@ try {
     document.addEventListener('contextmenu', function(event) {
       event.preventDefault();
     });
+
+    function updateDisplayBalance(addAmount) {
+      const current = parseFloat(document.getElementById('balance').textContent);
+      document.getElementById('balance').textContent = (current + addAmount).toFixed(2);
+    }
+
+    function updateDisplayTotalEarned(addAmount) {
+      const current = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
+      document.getElementById('total-earned').textContent = `$${(current + addAmount).toFixed(2)}`;
+    }
   </script>
 </body>
 </html>
