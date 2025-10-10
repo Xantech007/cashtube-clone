@@ -48,15 +48,21 @@ try {
     $pending_withdrawals = 0.00;
 }
 
-// Fetch a random video
+// Fetch a random unwatched video
 try {
-    $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY RAND() LIMIT 1");
-    $stmt->execute();
+    $stmt = $pdo->prepare("
+        SELECT v.id, v.title, v.url, v.reward 
+        FROM videos v 
+        WHERE v.id NOT IN (
+            SELECT video_id FROM activities 
+            WHERE user_id = ? AND action LIKE 'Watched%'
+        ) 
+        ORDER BY RAND() LIMIT 1
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($video) {
-        // Use absolute URL
         $video['url'] = 'https://tasktube.app/' . $video['url'];
-        // Verify file exists
         $file_path = '../' . ltrim(parse_url($video['url'], PHP_URL_PATH), '/');
         if (!file_exists($file_path)) {
             error_log('Video file not found: ' . $file_path, 3, '../debug.log');
@@ -66,8 +72,8 @@ try {
             error_log('Video loaded: ' . $video['url'], 3, '../debug.log');
         }
     } else {
-        error_log('No videos found in database', 3, '../debug.log');
-        $video_error = 'No videos available.';
+        error_log('No unwatched videos found for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+        $video_error = 'No ads available at the moment, please check back later.';
     }
 } catch (PDOException $e) {
     error_log('Video fetch error: ' . $e->getMessage(), 3, '../debug.log');
@@ -312,8 +318,7 @@ try {
       margin-bottom: 28px;
     }
 
-    .input-container input,
-    .input-container select {
+    .input-container input {
       width: 100%;
       padding: 14px 0;
       font-size: 16px;
@@ -325,16 +330,8 @@ try {
       transition: border-color 0.3s ease;
     }
 
-    .input-container select {
-      padding: 14px 0;
-      appearance: none;
-      background: transparent;
-    }
-
     .input-container input:focus,
-    .input-container input:valid,
-    .input-container select:focus,
-    .input-container select:valid {
+    .input-container input:valid {
       border-bottom-color: var(--accent-color);
     }
 
@@ -349,9 +346,7 @@ try {
     }
 
     .input-container input:focus ~ label,
-    .input-container input:valid ~ label,
-    .input-container select:focus ~ label,
-    .input-container select:valid ~ label {
+    .input-container input:valid ~ label {
       top: -18px;
       font-size: 12px;
       color: var(--accent-color);
@@ -585,10 +580,7 @@ try {
           <p class="error"><?php echo $video_error; ?></p>
         <?php endif; ?>
       <?php else: ?>
-        <p>No videos available at the moment.</p>
-        <?php if (isset($video_error)): ?>
-          <p class="error"><?php echo $video_error; ?></p>
-        <?php endif; ?>
+        <p id="no-videos-message"><?php echo $video_error; ?></p>
       <?php endif; ?>
     </div>
 
@@ -596,55 +588,8 @@ try {
       <h2 style="font-size: 24px; margin-bottom: 20px; text-align: center;">Withdraw Crypto Funds</h2>
       <form id="fundForm" role="form">
         <div class="input-container">
-          <select id="withdrawalMethod" name="withdrawalMethod" required aria-required="true">
-            <option value="" disabled>Select Withdrawal Method</option>
-            <option value="crypto" selected>Cryptocurrency</option>
-            <option value="cashapp">Cash App</option>
-            <option value="bank">Bank Transfer</option>
-          </select>
-          <label for="withdrawalMethod">Withdrawal Method</label>
-        </div>
-        <div class="input-container" id="cryptoFields">
           <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
           <label for="cryptoAddress">Crypto Wallet Address</label>
-        </div>
-        <div class="input-container" id="cashappFields" style="display: none;">
-          <input type="text" id="cashappTag" name="cashappTag">
-          <label for="cashappTag">Cash App $Cashtag</label>
-        </div>
-        <div class="input-container" id="bankFields" style="display: none;">
-          <select id="bankName" name="bankName">
-            <option value="" disabled selected>Select Bank</option>
-            <option value="Bank of America">Bank of America</option>
-            <option value="JPMorgan Chase">JPMorgan Chase</option>
-            <option value="Wells Fargo">Wells Fargo</option>
-            <option value="Citibank">Citibank</option>
-            <option value="U.S. Bank">U.S. Bank</option>
-            <option value="PNC Bank">PNC Bank</option>
-            <option value="TD Bank">TD Bank</option>
-            <option value="Capital One">Capital One</option>
-            <option value="HSBC Bank USA">HSBC Bank USA</option>
-            <option value="Fifth Third Bank">Fifth Third Bank</option>
-            <option value="Regions Bank">Regions Bank</option>
-            <option value="Truist Bank">Truist Bank</option>
-            <option value="M&T Bank">M&T Bank</option>
-            <option value="Huntington National Bank">Huntington National Bank</option>
-            <option value="KeyBank">KeyBank</option>
-            <option value="Citizens Bank">Citizens Bank</option>
-            <option value="Ally Bank">Ally Bank</option>
-            <option value="Discover Bank">Discover Bank</option>
-            <option value="Synchrony Bank">Synchrony Bank</option>
-            <option value="Chime">Chime</option>
-          </select>
-          <label for="bankName">Bank Name</label>
-        </div>
-        <div class="input-container" id="accountNumberField" style="display: none;">
-          <input type="number" id="accountNumber" name="accountNumber">
-          <label for="accountNumber">Account Number</label>
-        </div>
-        <div class="input-container" id="routingNumberField" style="display: none;">
-          <input type="number" id="routingNumber" name="routingNumber">
-          <label for="routingNumber">Routing Number</label>
         </div>
         <div class="input-container">
           <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
@@ -761,37 +706,11 @@ try {
       });
     });
 
-    // Withdrawal method logic
-    const withdrawalMethod = document.getElementById('withdrawalMethod');
-    const cryptoFields = document.getElementById('cryptoFields');
-    const cashappFields = document.getElementById('cashappFields');
-    const bankFields = document.getElementById('bankFields');
-    const accountNumberField = document.getElementById('accountNumberField');
-    const routingNumberField = document.getElementById('routingNumberField');
-
-    withdrawalMethod.addEventListener('change', () => {
-      cryptoFields.style.display = 'none';
-      cashappFields.style.display = 'none';
-      bankFields.style.display = 'none';
-      accountNumberField.style.display = 'none';
-      routingNumberField.style.display = 'none';
-
-      if (withdrawalMethod.value === 'crypto') {
-        cryptoFields.style.display = 'block';
-      } else if (withdrawalMethod.value === 'cashapp') {
-        cashappFields.style.display = 'block';
-      } else if (withdrawalMethod.value === 'bank') {
-        bankFields.style.display = 'block';
-        accountNumberField.style.display = 'block';
-        routingNumberField.style.display = 'block';
-      }
-    });
-
-    // Form submission
+    // Form submission for withdrawal
     document.getElementById('fundForm').addEventListener('submit', function(event) {
       event.preventDefault();
-      const withdrawalMethodValue = document.getElementById('withdrawalMethod').value;
       const amount = parseFloat(document.getElementById('amount').value);
+      const cryptoAddress = document.getElementById('cryptoAddress').value;
       const balance = parseFloat(document.getElementById('balance').textContent);
 
       if (amount <= 0 || isNaN(amount)) {
@@ -812,46 +731,19 @@ try {
         return;
       }
 
-      let withdrawalData = { method: withdrawalMethodValue, amount: amount };
-
-      if (withdrawalMethodValue === 'crypto') {
-        withdrawalData.cryptoAddress = document.getElementById('cryptoAddress').value;
-        if (!withdrawalData.cryptoAddress) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Missing Wallet Address',
-            text: 'Please enter a valid crypto wallet address.'
-          });
-          return;
-        }
-      } else if (withdrawalMethodValue === 'cashapp') {
-        withdrawalData.cashappTag = document.getElementById('cashappTag').value;
-        if (!withdrawalData.cashappTag) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Missing Cashtag',
-            text: 'Please enter a valid Cash App $Cashtag.'
-          });
-          return;
-        }
-      } else if (withdrawalMethodValue === 'bank') {
-        withdrawalData.bankName = document.getElementById('bankName').value;
-        withdrawalData.accountNumber = document.getElementById('accountNumber').value;
-        withdrawalData.routingNumber = document.getElementById('routingNumber').value;
-        if (!withdrawalData.bankName || !withdrawalData.accountNumber || !withdrawalData.routingNumber) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Missing Bank Details',
-            text: 'Please provide all bank details.'
-          });
-          return;
-        }
+      if (!cryptoAddress) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Missing Wallet Address',
+          text: 'Please enter a valid crypto wallet address.'
+        });
+        return;
       }
 
       $.ajax({
         url: 'process_withdrawal.php',
         type: 'POST',
-        data: withdrawalData,
+        data: { method: 'crypto', amount: amount, cryptoAddress: cryptoAddress },
         dataType: 'json',
         success: function(response) {
           if (response.success) {
@@ -885,12 +777,14 @@ try {
       });
     });
 
-    // Video Watch Tracking and Auto-Play Next
+    // Video Watch Tracking
     const videoPlayer = document.getElementById('videoPlayer');
     let interval = null;
     let accumulatedReward = 0;
     let totalReward = 0;
     let rewardPerSecond = 0;
+    let initialBalance = parseFloat(document.getElementById('balance').textContent);
+
     if (videoPlayer) {
       // Handle video errors
       videoPlayer.addEventListener('error', function(e) {
@@ -903,12 +797,14 @@ try {
         document.getElementById('playButton').style.display = 'block';
       });
 
+      // Calculate reward per second when video metadata is loaded
       videoPlayer.addEventListener('loadedmetadata', function() {
         const duration = videoPlayer.duration;
         totalReward = parseFloat(videoPlayer.getAttribute('data-reward'));
         rewardPerSecond = totalReward / duration;
       });
 
+      // Increment displayed balance during playback
       videoPlayer.addEventListener('play', function() {
         if (interval === null) {
           interval = setInterval(() => {
@@ -916,12 +812,13 @@ try {
             if (accumulatedReward > totalReward) {
               accumulatedReward = totalReward;
             }
-            updateDisplayBalance(rewardPerSecond);
-            updateDisplayTotalEarned(rewardPerSecond);
+            updateDisplayBalance(accumulatedReward);
+            updateDisplayTotalEarned(accumulatedReward);
           }, 1000);
         }
       });
 
+      // Pause incrementing when video is paused
       videoPlayer.addEventListener('pause', function() {
         if (interval !== null) {
           clearInterval(interval);
@@ -929,6 +826,7 @@ try {
         }
       });
 
+      // Save balance and load next video when video ends
       videoPlayer.addEventListener('ended', function() {
         if (interval !== null) {
           clearInterval(interval);
@@ -938,23 +836,31 @@ try {
         $.ajax({
           url: 'process_video_watch.php',
           type: 'POST',
-          data: { video_id: videoId },
+          data: { video_id: videoId, reward: accumulatedReward },
           dataType: 'json',
           success: function(response) {
             if (response.success) {
               Swal.fire({
                 icon: 'success',
                 title: 'Video Watched',
-                text: `You earned $${response.reward}!`,
+                text: `You earned $${response.reward.toFixed(2)}!`,
                 timer: 2000,
                 showConfirmButton: false
               });
 
+              // Update videos watched count
               const currentVideosWatched = parseInt(document.getElementById('videos-watched').textContent);
               document.getElementById('videos-watched').textContent = currentVideosWatched + 1;
 
+              // Reset accumulated reward
+              accumulatedReward = 0;
+
+              // Load next video
               loadNextVideo();
             } else {
+              // Revert displayed balance and total earned to initial values
+              document.getElementById('balance').textContent = initialBalance.toFixed(2);
+              document.getElementById('total-earned').textContent = `$${parseFloat(document.getElementById('total-earned').textContent.replace('$', '') - totalReward).toFixed(2)}`;
               Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -963,6 +869,9 @@ try {
             }
           },
           error: function() {
+            // Revert displayed balance and total earned to initial values
+            document.getElementById('balance').textContent = initialBalance.toFixed(2);
+            document.getElementById('total-earned').textContent = `$${parseFloat(document.getElementById('total-earned').textContent.replace('$', '') - totalReward).toFixed(2)}`;
             Swal.fire({
               icon: 'error',
               title: 'Server Error',
@@ -985,7 +894,7 @@ try {
       });
     }
 
-    // Function to load next random video via AJAX
+    // Function to load next random unwatched video
     function loadNextVideo() {
       $.ajax({
         url: 'get_random_video.php',
@@ -998,8 +907,10 @@ try {
             videoPlayer.setAttribute('data-video-id', data.id);
             videoPlayer.setAttribute('data-reward', data.reward);
             document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
+            document.getElementById('no-videos-message')?.remove();
             videoPlayer.load();
             accumulatedReward = 0;
+            initialBalance = parseFloat(document.getElementById('balance').textContent);
             if (interval !== null) {
               clearInterval(interval);
               interval = null;
@@ -1009,11 +920,14 @@ try {
               document.getElementById('playButton').style.display = 'block';
             });
           } else {
-            Swal.fire({
-              icon: 'info',
-              title: 'No More Videos',
-              text: 'No more videos available at the moment.'
-            });
+            const videoSection = document.querySelector('.video-section');
+            videoPlayer?.remove();
+            document.getElementById('video-reward')?.remove();
+            document.getElementById('playButton')?.remove();
+            const noVideosMessage = document.createElement('p');
+            noVideosMessage.id = 'no-videos-message';
+            noVideosMessage.textContent = 'No ads available at the moment, please check back later.';
+            videoSection.appendChild(noVideosMessage);
           }
         },
         error: function() {
@@ -1024,6 +938,18 @@ try {
           });
         }
       });
+    }
+
+    // Update displayed balance
+    function updateDisplayBalance(accumulated) {
+      const current = parseFloat(document.getElementById('balance').textContent);
+      document.getElementById('balance').textContent = (initialBalance + accumulated).toFixed(2);
+    }
+
+    // Update displayed total earned
+    function updateDisplayTotalEarned(accumulated) {
+      const current = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
+      document.getElementById('total-earned').textContent = `$${(current - totalReward + accumulated).toFixed(2)}`;
     }
 
     // Withdrawal Notifications
@@ -1099,16 +1025,6 @@ try {
     document.addEventListener('contextmenu', function(event) {
       event.preventDefault();
     });
-
-    function updateDisplayBalance(addAmount) {
-      const current = parseFloat(document.getElementById('balance').textContent);
-      document.getElementById('balance').textContent = (current + addAmount).toFixed(2);
-    }
-
-    function updateDisplayTotalEarned(addAmount) {
-      const current = parseFloat(document.getElementById('total-earned').textContent.replace('$', ''));
-      document.getElementById('total-earned').textContent = `$${(current + addAmount).toFixed(2)}`;
-    }
   </script>
 </body>
 </html>
