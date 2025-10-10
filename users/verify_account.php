@@ -8,9 +8,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Fetch user verification status
+// Fetch user verification status and details
 try {
-    $stmt = $pdo->prepare("SELECT verification_status FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, email, verification_status FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -18,6 +18,8 @@ try {
         header('Location: ../signin.php');
         exit;
     }
+    $username = htmlspecialchars($user['name']);
+    $email = htmlspecialchars($user['email']);
     $verification_status = $user['verification_status'];
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
@@ -25,7 +27,7 @@ try {
     exit;
 }
 
-// Fetch dynamic amount and wallet address from region_settings (assuming a single global setting, e.g., id=1)
+// Fetch dynamic amount and wallet address from region_settings
 try {
     $stmt = $pdo->prepare("SELECT amount, wallet_address FROM region_settings LIMIT 1");
     $stmt->execute();
@@ -36,47 +38,72 @@ try {
         $wallet_address = '';
     } else {
         $amount = $settings['amount'];
-        $wallet_address = $settings['wallet_address'];
+        $wallet_address = htmlspecialchars($settings['wallet_address']);
     }
 } catch (PDOException $e) {
     error_log('Settings fetch error: ' . $e->getMessage(), 3, '../debug.log');
-    $error = 'Failed to load settings.';
+    $error = 'Failed to load verification settings.';
     $amount = 0.00;
     $wallet_address = '';
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $payment_proof = $_POST['payment_proof'] ?? ''; // Text field for transaction ID or proof details
-    // Handle file upload if needed (e.g., screenshot)
     $proof_file = $_FILES['proof_file'] ?? null;
 
-    if (!$payment_proof || !$proof_file) {
-        $error = 'Please provide payment proof details and upload a file.';
+    if (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
+        $error = 'Please upload a payment proof file.';
     } else {
-        // Process file upload (save to a directory, e.g., uploads/)
-        $upload_dir = '../uploads/verification_proofs/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        $proof_file_path = $upload_dir . basename($proof_file['name']);
-        if (move_uploaded_file($proof_file['tmp_name'], $proof_file_path)) {
-            try {
-                // Update verification status to 'pending'
-                $stmt = $pdo->prepare("UPDATE users SET verification_status = 'pending' WHERE id = ?");
-                $stmt->execute([$_SESSION['user_id']]);
-
-                // Optionally, log the verification request (e.g., in a verification_requests table)
-                // For simplicity, we skip logging here
-
-                header('Location: home.php?success=1');
-                exit;
-            } catch (PDOException $e) {
-                error_log('Verification update error: ' . $e->getMessage(), 3, '../debug.log');
-                $error = 'An error occurred while submitting your verification request.';
-            }
+        // Validate file
+        $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
+        $max_size = 5 * 1024 * 1024; // 5MB
+        if (!in_array($proof_file['type'], $allowed_types) || $proof_file['size'] > $max_size) {
+            $error = 'Invalid file type or size. Please upload a JPG, PNG, or PDF file (max 5MB).';
         } else {
-            $error = 'Failed to upload proof file.';
+            // Create upload directory if it doesn't exist
+            $upload_dir = '../users/proofs/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+
+            // Generate a unique filename to prevent overwrites
+            $file_ext = pathinfo($proof_file['name'], PATHINFO_EXTENSION);
+            $file_name = 'proof_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_ext;
+            $upload_path = $upload_dir . $file_name;
+
+            if (move_uploaded_file($proof_file['tmp_name'], $upload_path)) {
+                try {
+                    // Start transaction
+                    $pdo->beginTransaction();
+
+                    // Update verification status to 'pending'
+                    $stmt = $pdo->prepare("UPDATE users SET verification_status = 'pending' WHERE id = ?");
+                    $stmt->execute([$_SESSION['user_id']]);
+
+                    // Insert into verification_requests table
+                    $stmt = $pdo->prepare("
+                        INSERT INTO verification_requests (user_id, payment_amount, name, email, upload_path, file_name, status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                    ");
+                    $stmt->execute([$_SESSION['user_id'], $amount, $username, $email, $upload_path, $file_name]);
+
+                    // Commit transaction
+                    $pdo->commit();
+
+                    header('Location: home.php?success=Verification+request+submitted+successfully');
+                    exit;
+                } catch (PDOException $e) {
+                    $pdo->rollBack();
+                    error_log('Verification error: ' . $e->getMessage(), 3, '../debug.log');
+                    $error = 'An error occurred while submitting your verification request.';
+                    // Delete the uploaded file if database operation fails
+                    if (file_exists($upload_path)) {
+                        unlink($upload_path);
+                    }
+                }
+            } else {
+                $error = 'Failed to upload proof file.';
+            }
         }
     }
 }
@@ -278,6 +305,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       transform: scale(1.02);
     }
 
+    .error {
+      text-align: center;
+      color: red;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .success {
+      text-align: center;
+      color: var(--accent-color);
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
     .notification {
       position: fixed;
       top: 20px;
@@ -413,7 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
         <div class="header-text">
           <h1>Verify Account</h1>
-          <p>Complete verification to enable full features</p>
+          <p>Complete verification to enable withdrawals</p>
         </div>
       </div>
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
@@ -422,37 +463,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="form-card">
       <h2>Account Verification</h2>
       <?php if ($verification_status === 'verified'): ?>
-        <p class="success" style="text-align: center; color: var(--accent-color);">Your account is already verified!</p>
+        <p class="success">Your account is already verified!</p>
+        <p style="text-align: center;"><a href="home.php">Return to Dashboard</a></p>
       <?php elseif ($verification_status === 'pending'): ?>
-        <p class="message" style="text-align: center; color: var(--subtext-color);">Your verification request is pending review.</p>
+        <p class="success">Your verification request is pending review.</p>
+        <p style="text-align: center;"><a href="home.php">Return to Dashboard</a></p>
       <?php else: ?>
         <?php if (isset($error)): ?>
-          <p class="error" style="text-align: center; color: red;"><?php echo htmlspecialchars($error); ?></p>
+          <p class="error"><?php echo htmlspecialchars($error); ?></p>
         <?php endif; ?>
         <div class="instructions">
           <p>To verify your account, please make a payment of <strong>$<?php echo number_format($amount, 2); ?></strong> to the following wallet address:</p>
-          <p><strong>Wallet Address:</strong> <?php echo htmlspecialchars($wallet_address); ?></p>
-          <p>After making the payment, enter the transaction ID or proof details below and upload a screenshot or proof of payment. Your request will be reviewed, and your status will be updated to pending.</p>
+          <p><strong>Wallet Address:</strong> <?php echo $wallet_address; ?></p>
+          <p>After making the payment, upload a screenshot or proof of payment below. Your request will be reviewed, and your account status will be updated to pending.</p>
           <p><strong>Important:</strong></p>
           <ul>
             <li>Ensure the payment is made from your wallet.</li>
-            <li>Use the exact amount specified.</li>
-            <li>Upload a clear screenshot showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
+            <li>Use the exact amount specified ($<?php echo number_format($amount, 2); ?>).</li>
+            <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
             <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
             <li>Verification may take up to 48 hours.</li>
           </ul>
         </div>
         <form action="verify_account.php" method="POST" enctype="multipart/form-data">
           <div class="input-container">
-            <input type="text" id="payment_proof" name="payment_proof" required>
-            <label for="payment_proof">Transaction ID / Proof Details</label>
-          </div>
-          <div class="input-container">
             <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required>
             <label for="proof_file">Upload Payment Proof</label>
           </div>
           <button type="submit" class="submit-btn">Submit Verification</button>
         </form>
+        <p style="text-align: center; margin-top: 20px;"><a href="home.php">Return to Dashboard</a></p>
       <?php endif; ?>
     </div>
 
@@ -460,7 +500,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <div class="bottom-menu" role="navigation">
-    <a href="home.php">Home</a>
+    <a href="home.php" class="active">Home</a>
     <a href="profile.php">Profile</a>
     <a href="history.php">History</a>
     <a href="support.php">Support</a>
@@ -563,7 +603,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       });
     });
 
-    // Withdrawal Notifications
+    // Notification Handling
     const notificationContainer = document.getElementById('notificationContainer');
     function fetchNotifications() {
       $.ajax({
