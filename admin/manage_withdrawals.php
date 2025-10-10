@@ -26,15 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdrawal_id'], $_PO
         
         if ($withdrawal) {
             if ($action === 'approve') {
-                // Update withdrawal status
                 $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'success' WHERE id = ?");
                 $stmt->execute([$withdrawal_id]);
                 $_SESSION['success'] = "Withdrawal request approved successfully.";
             } elseif ($action === 'reject') {
-                // Update withdrawal status and refund the amount
                 $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'failed' WHERE id = ?");
                 $stmt->execute([$withdrawal_id]);
-                // Refund the amount to the user's balance
                 $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
                 $stmt->execute([$withdrawal['amount'], $withdrawal['user_id']]);
                 $_SESSION['success'] = "Withdrawal request rejected and amount refunded.";
@@ -102,14 +99,21 @@ try {
             font-size: 16px;
         }
 
+        .button-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
         .back-link, .action-btn {
-            display: inline-block;
-            margin: 10px 5px;
-            padding: 10px 20px;
+            box-sizing: border-box;
+            padding: 7px 14px;
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 12px;
             transition: background-color 0.3s ease;
         }
 
@@ -135,6 +139,12 @@ try {
 
         .action-btn.reject:hover {
             background-color: #c82333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
         }
 
         .table-container {
@@ -193,7 +203,15 @@ try {
 
             .action-btn, .back-link {
                 width: 100%;
-                margin: 10px 0;
+                max-width: 200px;
+                margin: 6px 0;
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
             }
         }
     </style>
@@ -213,7 +231,9 @@ try {
             <p class="error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></p>
         <?php endif; ?>
 
-        <a href="dashboard.php" class="back-link">Back to Dashboard</a>
+        <div class="button-container">
+            <a href="dashboard.php" class="back-link">Back to Dashboard</a>
+        </div>
 
         <!-- Withdrawal Requests List -->
         <?php if (empty($withdrawals)): ?>
@@ -243,7 +263,7 @@ try {
                                 <td><?php echo htmlspecialchars($withdrawal['ref_number']); ?></td>
                                 <td><?php echo htmlspecialchars(ucfirst($withdrawal['status'])); ?></td>
                                 <td><?php echo htmlspecialchars($withdrawal['created_at']); ?></td>
-                                <td>
+                                <td class="action-buttons">
                                     <?php if ($withdrawal['status'] === 'pending'): ?>
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="withdrawal_id" value="<?php echo $withdrawal['id']; ?>">
