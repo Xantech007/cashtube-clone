@@ -1,6 +1,7 @@
 <?php
 // register.php
 require_once 'database/conn.php';
+require_once 'inc/countries.php'; // Include countries list
 
 // Function to generate a unique 5-digit passcode
 function generatePasscode($pdo) {
@@ -13,19 +14,36 @@ function generatePasscode($pdo) {
     return $passcode;
 }
 
+// Function to detect country from IP (using ipapi.co)
+function detectCountryFromIp() {
+    $ip = $_SERVER['REMOTE_ADDR'];
+    $url = "https://ipapi.co/{$ip}/country_name/";
+    $response = @file_get_contents($url); // Use @ to suppress warnings
+    if ($response === false) {
+        file_put_contents('debug.log', "Failed to fetch country from ipapi.co for IP: {$ip}\n", FILE_APPEND);
+        return 'Nigeria'; // Fallback country
+    }
+    $country = trim($response);
+    return in_array($country, $GLOBALS['countries']) ? $country : 'Nigeria'; // Ensure valid country
+}
+
 $response = ['success' => false, 'error' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     $data = json_decode($_POST['registerData'], true);
-    if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender'])) {
+    if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender']) && !empty($data['country'])) {
         $name = trim($data['name']);
         $email = trim($data['email']);
         $gender = $data['gender'];
+        $country = trim($data['country']);
 
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $response['error'] = "Invalid email format.";
             file_put_contents('debug.log', 'Invalid email format: ' . $email . "\n", FILE_APPEND);
+        } elseif (!in_array($country, $countries)) {
+            $response['error'] = "Invalid country selected.";
+            file_put_contents('debug.log', 'Invalid country: ' . $country . "\n", FILE_APPEND);
         } else {
             try {
                 // Check if email already exists
@@ -39,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                     $passcode = generatePasscode($pdo);
 
                     // Insert user into database
-                    $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$name, $email, $gender, $passcode]);
+                    $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode, country) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$name, $email, $gender, $passcode, $country]);
 
                     $response['success'] = true;
                     $response['email'] = $email;
@@ -58,6 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     echo json_encode($response);
     exit;
 }
+
+// Get detected country for pre-selection
+$detected_country = detectCountryFromIp();
 ?>
 
 <!DOCTYPE html>
@@ -175,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         }
 
         /* Form Styles */
-        .input-field {
+        .input-field, .country-select {
             width: 100%;
             height: 50px;
             font-size: 16px;
@@ -187,7 +208,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .input-field:focus {
+        .country-select {
+            appearance: none;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23333" d="M6 8.5L0 2.5h12z"/></svg>') no-repeat right 15px center;
+            background-size: 12px;
+        }
+
+        .input-field:focus, .country-select:focus {
             border-color: #6e44ff;
             box-shadow: 0 0 5px rgba(110, 68, 255, 0.3);
         }
@@ -396,7 +423,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 margin: 0 20px;
             }
 
-            .input-field {
+            .input-field, .country-select {
                 height: 45px;
                 font-size: 15px;
             }
@@ -481,6 +508,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             <form id="register-form" method="POST">
                 <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
                 <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
+                <select id="country" name="country" class="country-select" required aria-label="Country">
+                    <option value="" disabled>Select your country</option>
+                    <?php foreach ($countries as $country): ?>
+                        <option value="<?php echo htmlspecialchars($country); ?>" <?php echo $country === $detected_country ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($country); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
                 <div class="gender-options">
                     <label><input type="radio" name="gender" value="male" required aria-label="Male"> Male</label>
                     <label><input type="radio" name="gender" value="female" aria-label="Female"> Female</label>
@@ -543,7 +578,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                 setTimeout(() => {
                     notice.style.display = 'block';
                     setNoticeShown();
-                }, 2000); // Match index.php timing
+                }, 2000);
             }
         }
 
@@ -561,14 +596,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             // Get form values
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
+            const country = document.getElementById('country').value;
             const gender = document.querySelector('input[name="gender"]:checked')?.value;
 
             // Client-side validation
-            if (!name || !email || !gender) {
+            if (!name || !email || !country || !gender) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Oops...',
-                    text: 'Please fill out all fields and select a gender.',
+                    text: 'Please fill out all fields, select a country, and select a gender.',
                 });
                 return;
             }
@@ -585,7 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
             }
 
             // Prepare data
-            const data = { name, email, gender };
+            const data = { name, email, country, gender };
             console.log('Form data prepared:', data);
 
             // Send data via AJAX
