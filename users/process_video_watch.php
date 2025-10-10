@@ -1,27 +1,30 @@
 <?php
 session_start();
-require_once '../database/conn.php'; // Database connection
+require_once '../database/conn.php';
 
 header('Content-Type: application/json');
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'error' => 'User not logged in']);
     exit;
 }
 
-// Check if video_id is provided
-if (!isset($_POST['video_id']) || empty($_POST['video_id'])) {
-    echo json_encode(['success' => false, 'error' => 'Invalid video ID']);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'error' => 'Invalid request method']);
     exit;
 }
 
-$video_id = (int)$_POST['video_id'];
-$user_id = (int)$_SESSION['user_id'];
+$video_id = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
+$reward = filter_input(INPUT_POST, 'reward', FILTER_VALIDATE_FLOAT);
+
+if (!$video_id || $reward === false || $reward <= 0) {
+    echo json_encode(['success' => false, 'error' => 'Invalid video ID or reward']);
+    exit;
+}
 
 try {
-    // Verify video exists
-    $stmt = $pdo->prepare("SELECT reward FROM videos WHERE id = ?");
+    // Verify video exists and get reward
+    $stmt = $pdo->prepare("SELECT reward, title FROM videos WHERE id = ?");
     $stmt->execute([$video_id]);
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -30,37 +33,25 @@ try {
         exit;
     }
 
-    // Check if user has already watched this video
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE user_id = ? AND video_id = ? AND action = 'Watched video'");
-    $stmt->execute([$user_id, $video_id]);
-    $watch_count = $stmt->fetchColumn();
-
-    if ($watch_count > 0) {
+    // Check if video was already watched
+    $stmt = $pdo->prepare("SELECT id FROM activities WHERE user_id = ? AND video_id = ? AND action LIKE 'Watched%'");
+    $stmt->execute([$_SESSION['user_id'], $video_id]);
+    if ($stmt->fetch()) {
         echo json_encode(['success' => false, 'error' => 'Video already watched']);
         exit;
     }
 
     // Update user balance
-    $reward = $video['reward'];
     $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-    $stmt->execute([$reward, $user_id]);
+    $stmt->execute([$reward, $_SESSION['user_id']]);
 
     // Log activity
-    $stmt = $pdo->prepare("INSERT INTO activities (user_id, video_id, action, amount) VALUES (?, ?, 'Watched video', ?)");
-    $stmt->execute([$user_id, $video_id, $reward]);
+    $stmt = $pdo->prepare("INSERT INTO activities (user_id, video_id, action, amount) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$_SESSION['user_id'], $video_id, "Watched video: {$video['title']}", $reward]);
 
-    // Commit transaction
-    $pdo->commit();
-
-    // Return success response
-    echo json_encode(['success' => true, 'reward' => number_format($reward, 2)]);
+    echo json_encode(['success' => true, 'reward' => $reward]);
 } catch (PDOException $e) {
-    // Rollback on error
-    $pdo->rollBack();
-    error_log('Video watch error: ' . $e->getMessage(), 3, '../debug.log');
-    echo json_encode(['success' => false, 'error' => 'Database error occurred']);
-} catch (Exception $e) {
-    error_log('General error: ' . $e->getMessage(), 3, '../debug.log');
-    echo json_encode(['success' => false, 'error' => 'An unexpected error occurred']);
+    error_log('Process video watch error: ' . $e->getMessage(), 3, '../debug.log');
+    echo json_encode(['success' => false, 'error' => 'Database error']);
 }
 ?>
