@@ -29,11 +29,9 @@ try {
     exit;
 }
 
-// Check for success message from verification
-$success_message = null;
-if (isset($_GET['success'])) {
-    $success_message = htmlspecialchars($_GET['success']);
-}
+// Check for success or error message
+$success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
+$error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
 
 // Fetch earnings summary
 try {
@@ -287,6 +285,7 @@ try {
       color: red;
       margin-top: 10px;
       font-size: 14px;
+      text-align: center;
     }
 
     .success {
@@ -294,6 +293,40 @@ try {
       margin-top: 10px;
       font-size: 14px;
       text-align: center;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      padding: 16px 24px;
+      border-radius: 12px;
+      border: 2px solid var(--accent-color);
+      box-shadow: 0 4px 12px var(--shadow-color), 0 0 8px var(--accent-color);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 3s forwards;
+      max-width: 300px;
+      transition: transform 0.2s ease;
+    }
+
+    .notification:hover {
+      transform: scale(1.05);
+    }
+
+    .notification::before {
+      content: '🔒';
+      font-size: 1.2rem;
+      margin-right: 12px;
+      color: var(--accent-color);
+    }
+
+    .notification span {
+      font-size: 14px;
+      font-weight: 500;
     }
 
     .play-button {
@@ -401,40 +434,6 @@ try {
     .verify-btn:hover {
       background: #2563eb;
       transform: scale(1.02);
-    }
-
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--card-bg);
-      color: var(--text-color);
-      padding: 16px 24px;
-      border-radius: 12px;
-      border: 2px solid var(--accent-color);
-      box-shadow: 0 4px 12px var(--shadow-color), 0 0 8px var(--accent-color);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 3s forwards;
-      max-width: 300px;
-      transition: transform 0.2s ease;
-    }
-
-    .notification:hover {
-      transform: scale(1.05);
-    }
-
-    .notification::before {
-      content: '🔒';
-      font-size: 1.2rem;
-      margin-right: 12px;
-      color: var(--accent-color);
-    }
-
-    .notification span {
-      font-size: 14px;
-      font-weight: 500;
     }
 
     @keyframes slideInRight {
@@ -565,8 +564,13 @@ try {
     </div>
 
     <?php if ($success_message): ?>
-      <div class="notification" role="alert">
+      <div class="notification success" role="alert">
         <span><?php echo $success_message; ?></span>
+      </div>
+    <?php endif; ?>
+    <?php if ($error_message): ?>
+      <div class="notification error" role="alert">
+        <span><?php echo $error_message; ?></span>
       </div>
     <?php endif; ?>
 
