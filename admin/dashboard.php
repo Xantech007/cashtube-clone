@@ -9,6 +9,9 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once '../database/conn.php';
 
+// Set time zone to WAT
+date_default_timezone_set('Africa/Lagos');
+
 // Fetch all videos
 try {
     $stmt = $pdo->prepare("SELECT id, title, url, reward FROM videos ORDER BY id");
