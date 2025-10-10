@@ -107,12 +107,12 @@ try {
 
         .back-link, .action-btn {
             display: inline-block;
-            margin: 10px 5px;
-            padding: 10px 20px;
+            margin: 8px 4px; /* Reduced margin */
+            padding: 8px 16px; /* Reduced padding */
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px; /* Smaller font size */
             transition: background-color 0.3s ease;
         }
 
@@ -138,6 +138,12 @@ try {
 
         .action-btn.reject:hover {
             background-color: #c82333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px; /* Space between buttons */
+            justify-content: center;
         }
 
         .table-container {
@@ -211,7 +217,13 @@ try {
 
             .action-btn, .back-link {
                 width: 100%;
-                margin: 10px 0;
+                margin: 6px 0;
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
             }
 
             .requests-table img {
@@ -274,7 +286,7 @@ try {
                                 </td>
                                 <td><?php echo htmlspecialchars(ucfirst($request['status'])); ?></td>
                                 <td><?php echo htmlspecialchars($request['submitted_at']); ?></td>
-                                <td>
+                                <td class="action-buttons">
                                     <?php if ($request['status'] === 'pending'): ?>
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
