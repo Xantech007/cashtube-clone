@@ -27,18 +27,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'], $_POST[
         if ($request) {
             $user_id = $request['user_id'];
             if ($action === 'approve') {
-                // Update verification request status
                 $stmt = $pdo->prepare("UPDATE verification_requests SET status = 'approved' WHERE id = ?");
                 $stmt->execute([$request_id]);
-                // Update user verification status
                 $stmt = $pdo->prepare("UPDATE users SET verification_status = 'verified' WHERE id = ?");
                 $stmt->execute([$user_id]);
                 $_SESSION['success'] = "Verification request approved successfully.";
             } elseif ($action === 'reject') {
-                // Update verification request status
                 $stmt = $pdo->prepare("UPDATE verification_requests SET status = 'rejected' WHERE id = ?");
                 $stmt->execute([$request_id]);
-                // Update user verification status
                 $stmt = $pdo->prepare("UPDATE users SET verification_status = 'not_verified' WHERE id = ?");
                 $stmt->execute([$user_id]);
                 $_SESSION['success'] = "Verification request rejected successfully.";
@@ -105,14 +101,21 @@ try {
             font-size: 16px;
         }
 
+        .button-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
         .back-link, .action-btn {
-            display: inline-block;
-            margin: 8px 4px; /* Reduced margin */
-            padding: 8px 16px; /* Reduced padding */
+            box-sizing: border-box;
+            padding: 7px 14px;
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 13px; /* Smaller font size */
+            font-size: 12px;
             transition: background-color 0.3s ease;
         }
 
@@ -142,7 +145,7 @@ try {
 
         .action-buttons {
             display: flex;
-            gap: 8px; /* Space between buttons */
+            gap: 8px;
             justify-content: center;
         }
 
@@ -217,13 +220,15 @@ try {
 
             .action-btn, .back-link {
                 width: 100%;
+                max-width: 200px;
                 margin: 6px 0;
                 padding: 6px 12px;
-                font-size: 12px;
+                font-size: 11px;
             }
 
             .action-buttons {
                 flex-direction: column;
+                align-items: center;
             }
 
             .requests-table img {
@@ -247,7 +252,9 @@ try {
             <p class="error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></p>
         <?php endif; ?>
 
-        <a href="dashboard.php" class="back-link">Back to Dashboard</a>
+        <div class="button-container">
+            <a href="dashboard.php" class="back-link">Back to Dashboard</a>
+        </div>
 
         <!-- Verification Requests List -->
         <?php if (empty($requests)): ?>
