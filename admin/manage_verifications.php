@@ -59,9 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'], $_POST[
 // Fetch all verification requests
 try {
     $stmt = $pdo->prepare("
-        SELECT vr.id, vr.user_id, vr.id_card_path, vr.selfie_path, vr.status, vr.submitted_at, u.email
+        SELECT vr.id, vr.user_id, vr.payment_amount, vr.name, vr.email, vr.upload_path, vr.file_name, vr.status, vr.submitted_at
         FROM verification_requests vr
-        JOIN users u ON vr.user_id = u.id
         ORDER BY vr.submitted_at DESC
     ");
     $stmt->execute();
@@ -181,6 +180,15 @@ try {
             border-radius: 4px;
         }
 
+        .requests-table a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .requests-table a:hover {
+            text-decoration: underline;
+        }
+
         .error, .success {
             color: red;
             margin-bottom: 15px;
@@ -238,9 +246,10 @@ try {
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>User Email</th>
-                            <th>ID Card</th>
-                            <th>Selfie</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Payment Amount</th>
+                            <th>Proof File</th>
                             <th>Status</th>
                             <th>Submitted At</th>
                             <th>Actions</th>
@@ -250,9 +259,19 @@ try {
                         <?php foreach ($requests as $request): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($request['id']); ?></td>
+                                <td><?php echo htmlspecialchars($request['name']); ?></td>
                                 <td><?php echo htmlspecialchars($request['email']); ?></td>
-                                <td><img src="../<?php echo htmlspecialchars($request['id_card_path']); ?>" alt="ID Card"></td>
-                                <td><img src="../<?php echo htmlspecialchars($request['selfie_path']); ?>" alt="Selfie"></td>
+                                <td>$<?php echo number_format($request['payment_amount'], 2); ?></td>
+                                <td>
+                                    <?php
+                                    $file_ext = pathinfo($request['file_name'], PATHINFO_EXTENSION);
+                                    if (in_array(strtolower($file_ext), ['jpg', 'jpeg', 'png'])) {
+                                        echo '<img src="../' . htmlspecialchars($request['upload_path']) . '" alt="Proof">';
+                                    } else {
+                                        echo '<a href="../' . htmlspecialchars($request['upload_path']) . '" target="_blank">View Proof</a>';
+                                    }
+                                    ?>
+                                </td>
                                 <td><?php echo htmlspecialchars(ucfirst($request['status'])); ?></td>
                                 <td><?php echo htmlspecialchars($request['submitted_at']); ?></td>
                                 <td>
