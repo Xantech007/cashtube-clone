@@ -71,11 +71,11 @@ try {
         .logout-link, .management-link {
             display: inline-block;
             margin: 10px 5px;
-            padding: 10px 20px;
+            padding: 8px 16px; /* Reduced padding */
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px; /* Smaller font size */
             transition: background-color 0.3s ease;
         }
 
@@ -98,6 +98,10 @@ try {
         /* Management Buttons Section */
         .management-buttons {
             margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px; /* Space between buttons */
         }
 
         /* Video Management Section */
@@ -138,14 +142,13 @@ try {
         }
 
         .add-video-form button {
-            padding: 8px 20px;
+            padding: 8px 16px;
             background-color: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
-            position: relative;
+            font-size: 13px;
         }
 
         .add-video-form button:disabled {
@@ -243,9 +246,11 @@ try {
                 min-width: 100%;
             }
 
-            .management-link {
+            .management-link, .logout-link {
                 width: 100%;
-                margin: 10px 0;
+                margin: 8px 0;
+                padding: 6px 12px;
+                font-size: 12px;
             }
         }
     </style>
@@ -260,6 +265,7 @@ try {
         <div class="management-buttons">
             <a href="manage_verifications.php" class="management-link">Manage Verification Requests</a>
             <a href="manage_withdrawals.php" class="management-link">Manage Withdrawals</a>
+            <a href="manage_users.php" class="management-link">Manage Users</a>
         </div>
 
         <a href="logout.php" class="logout-link">Logout</a>
