@@ -68,14 +68,21 @@ try {
             font-size: 16px;
         }
 
+        .button-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
         .logout-link, .management-link {
-            display: inline-block;
-            margin: 10px 5px;
-            padding: 8px 16px; /* Reduced padding */
+            box-sizing: border-box;
+            padding: 7px 14px; /* Smaller padding */
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 13px; /* Smaller font size */
+            font-size: 12px; /* Smaller font size */
             transition: background-color 0.3s ease;
         }
 
@@ -93,15 +100,6 @@ try {
 
         .management-link:hover {
             background-color: #0056b3;
-        }
-
-        /* Management Buttons Section */
-        .management-buttons {
-            margin: 20px 0;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px; /* Space between buttons */
         }
 
         /* Video Management Section */
@@ -142,13 +140,13 @@ try {
         }
 
         .add-video-form button {
-            padding: 8px 16px;
+            padding: 7px 14px;
             background-color: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .add-video-form button:disabled {
@@ -246,11 +244,17 @@ try {
                 min-width: 100%;
             }
 
+            .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
             .management-link, .logout-link {
                 width: 100%;
-                margin: 8px 0;
+                max-width: 200px; /* Limit width on mobile */
+                margin: 6px 0;
                 padding: 6px 12px;
-                font-size: 12px;
+                font-size: 11px;
             }
         }
     </style>
@@ -262,13 +266,12 @@ try {
         <p>Total Registered Users: <strong><?php echo $user_count; ?></strong></p>
 
         <!-- Management Buttons -->
-        <div class="management-buttons">
+        <div class="button-container">
             <a href="manage_verifications.php" class="management-link">Manage Verification Requests</a>
             <a href="manage_withdrawals.php" class="management-link">Manage Withdrawals</a>
             <a href="manage_users.php" class="management-link">Manage Users</a>
+            <a href="logout.php" class="logout-link">Logout</a>
         </div>
-
-        <a href="logout.php" class="logout-link">Logout</a>
 
         <!-- Video Management Section -->
         <div class="video-management">
