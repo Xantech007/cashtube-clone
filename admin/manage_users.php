@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ac
 // Fetch all users
 try {
     $stmt = $pdo->prepare("
-        SELECT id, name, email, balance, verification_status, is_suspended, passcode, created_at
+        SELECT id, name, email, balance, verification_status, is_suspended, passcode, country, created_at
         FROM users
         ORDER BY created_at DESC
     ");
@@ -185,7 +185,7 @@ try {
         .users-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 900px; /* Adjusted for new column */
+            min-width: 1000px; /* Adjusted for new column */
         }
 
         .users-table th,
@@ -282,6 +282,7 @@ try {
                             <th>Verification Status</th>
                             <th>Suspended</th>
                             <th>Passcode</th>
+                            <th>Country</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -296,6 +297,7 @@ try {
                                 <td><?php echo htmlspecialchars(ucfirst($user['verification_status'])); ?></td>
                                 <td><?php echo $user['is_suspended'] ? 'Yes' : 'No'; ?></td>
                                 <td><?php echo htmlspecialchars($user['passcode'] ?? 'None'); ?></td>
+                                <td><?php echo htmlspecialchars($user['country'] ?? 'None'); ?></td>
                                 <td><?php echo htmlspecialchars($user['created_at']); ?></td>
                                 <td class="action-buttons">
                                     <form method="POST" style="display: inline;">
