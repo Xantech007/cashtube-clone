@@ -119,39 +119,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
         }
 
-        .action-btn, .back-link {
-            box-sizing: border-box;
-            padding: 7px 14px;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 12px;
-            transition: background-color 0.3s ease;
-            display: inline-block;
-        }
-
-        .action-btn {
+        .dashboard-container button {
+            padding: 5px 10px; /* Reduced padding for smaller button */
             background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px; /* Reduced font size */
+            width: 150px; /* Fixed width for consistency */
+            align-self: center; /* Center button horizontally */
         }
 
-        .action-btn:hover {
+        .dashboard-container button:hover {
             background-color: #0056b3;
         }
 
         .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 5px 10px; /* Reduced padding for smaller link */
             background-color: #6c757d;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 11px; /* Reduced font size */
+            width: 150px; /* Fixed width for consistency */
+            text-align: center; /* Center text in link */
         }
 
         .back-link:hover {
             background-color: #5a6268;
-        }
-
-        .button-container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 20px;
         }
 
         .error, .success {
@@ -170,10 +168,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             .dashboard-container input,
-            .action-btn,
+            .dashboard-container button,
             .back-link {
                 width: 100%;
-                max-width: 200px;
+                max-width: 150px; /* Maintain smaller size on mobile */
             }
         }
     </style>
@@ -199,14 +197,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" name="vcv_value" value="<?php echo htmlspecialchars($setting['vcv_value']); ?>" placeholder="Network Value (e.g., Address, IFSC Code)" required>
             <input type="text" name="verify_currency" value="<?php echo htmlspecialchars($setting['verify_currency']); ?>" placeholder="Currency (e.g., USDT, USD)" required>
             <input type="number" name="verify_amount" value="<?php echo number_format($setting['verify_amount'], 2); ?>" placeholder="Verification Amount" step="0.01" required>
-            <div class="button-container">
-                <button type="submit" class="action-btn">Update Region Setting</button>
-            </div>
+            <button type="submit">Update Region Setting</button>
         </form>
 
-        <div class="button-container">
-            <a href="manage_region_settings.php" class="back-link">Back to Region Settings</a>
-        </div>
+        <a href="manage_region_settings.php" class="back-link">Back to Region Settings</a>
     </div>
 </body>
 </html>
