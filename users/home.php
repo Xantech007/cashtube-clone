@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, balance, verification_status FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, balance, verification_status, country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -22,11 +22,41 @@ try {
     $username = htmlspecialchars($user['name']);
     $balance = number_format($user['balance'], 2);
     $verification_status = $user['verification_status'];
+    $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     session_destroy();
     header('Location: ../signin.php?error=database');
     exit;
+}
+
+// Fetch region settings based on user's country
+try {
+    $stmt = $pdo->prepare("
+        SELECT rs.section_header, rs.ch_name, rs.ch_value 
+        FROM region_settings rs 
+        WHERE rs.country = ?
+    ");
+    $stmt->execute([$user_country]);
+    $region_settings = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($region_settings) {
+        $section_header = htmlspecialchars($region_settings['section_header']);
+        $ch_name = htmlspecialchars($region_settings['ch_name']);
+        $ch_value = htmlspecialchars($region_settings['ch_value']);
+    } else {
+        // Fallback values if no region settings are found
+        $section_header = 'Withdraw Funds';
+        $ch_name = 'Bank Name';
+        $ch_value = 'Bank Account';
+        error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
+    }
+} catch (PDOException $e) {
+    error_log('Region settings fetch error: ' . $e->getMessage(), 3, '../debug.log');
+    // Fallback values on error
+    $section_header = 'Withdraw Funds';
+    $ch_name = 'Bank Name';
+    $ch_value = 'Bank Account';
 }
 
 // Check for success or error message
@@ -628,11 +658,15 @@ try {
     </div>
 
     <div class="form-card">
-      <h2 style="font-size: 24px; margin-bottom: 20px; text-align: center;">Withdraw Crypto Funds</h2>
+      <h2 style="font-size: 24px; margin-bottom: 20px; text-align: center;"><?php echo $section_header; ?></h2>
       <form id="fundForm" action="process_withdrawal.php" method="GET" role="form">
         <div class="input-container">
-          <input type="text" id="cryptoAddress" name="cryptoAddress" required aria-required="true">
-          <label for="cryptoAddress">Crypto Wallet Address</label>
+          <input type="text" id="bankName" name="bankName" required aria-required="true">
+          <label for="bankName"><?php echo $ch_name; ?></label>
+        </div>
+        <div class="input-container">
+          <input type="text" id="bankAccount" name="bankAccount" required aria-required="true">
+          <label for="bankAccount"><?php echo $ch_value; ?></label>
         </div>
         <div class="input-container">
           <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
