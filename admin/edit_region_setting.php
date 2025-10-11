@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .dashboard-container {
-            max-width: 1000px;
+            max-width: 600px;
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -106,55 +106,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .dashboard-container form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            justify-items: center;
-            max-width: 100%;
-            margin-left: auto;
-            margin-right: auto;
         }
 
         .dashboard-container input[type="text"],
         .dashboard-container input[type="number"] {
-            width: 100%;
-            padding: 6px;
+            padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 14px;
+        }
+
+        .action-btn, .back-link {
             box-sizing: border-box;
-        }
-
-        .dashboard-container button {
-            width: 200px;
-            grid-column: 1 / -1;
-            justify-self: center;
             padding: 7px 14px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .dashboard-container button:hover {
-            background-color: #0056b3;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 7px 14px;
-            background-color: #6c757d;
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
             font-size: 12px;
+            transition: background-color 0.3s ease;
+            display: inline-block;
+        }
+
+        .action-btn {
+            background-color: #007bff;
+        }
+
+        .action-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .back-link {
+            background-color: #6c757d;
         }
 
         .back-link:hover {
             background-color: #5a6268;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
         }
 
         .error, .success {
@@ -172,14 +169,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 padding: 15px;
             }
 
-            .dashboard-container form {
-                grid-template-columns: 1fr;
-            }
-
             .dashboard-container input,
-            .dashboard-container button,
+            .action-btn,
             .back-link {
                 width: 100%;
+                max-width: 200px;
             }
         }
     </style>
@@ -205,10 +199,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" name="vcv_value" value="<?php echo htmlspecialchars($setting['vcv_value']); ?>" placeholder="Network Value (e.g., Address, IFSC Code)" required>
             <input type="text" name="verify_currency" value="<?php echo htmlspecialchars($setting['verify_currency']); ?>" placeholder="Currency (e.g., USDT, USD)" required>
             <input type="number" name="verify_amount" value="<?php echo number_format($setting['verify_amount'], 2); ?>" placeholder="Verification Amount" step="0.01" required>
-            <button type="submit">Update Region Setting</button>
+            <div class="button-container">
+                <button type="submit" class="action-btn">Update Region Setting</button>
+            </div>
         </form>
 
-        <a href="manage_region_settings.php" class="back-link">Back to Region Settings</a>
+        <div class="button-container">
+            <a href="manage_region_settings.php" class="back-link">Back to Region Settings</a>
+        </div>
     </div>
 </body>
 </html>
