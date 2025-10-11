@@ -1,9 +1,18 @@
 <?php
-session_start();
+ob_start();
+session_start([
+    'cookie_path' => '/',
+    'cookie_lifetime' => 86400,
+    'cookie_secure' => isset($_SERVER['HTTPS']),
+    'cookie_httponly' => true,
+]);
+error_log('Session ID in profile.php: ' . session_id() . ', User ID: ' . ($_SESSION['user_id'] ?? 'not set'), 3, '../debug.log');
+
 require_once '../database/conn.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
+    error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
     header('Location: ../signin.php');
     exit;
 }
@@ -15,8 +24,7 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-        session_destroy();
-        header('Location: ../signin.php');
+        header('Location: ../signin.php?error=user_not_found');
         exit;
     }
     $username = htmlspecialchars($user['name']);
@@ -24,8 +32,7 @@ try {
     $crypto_address = htmlspecialchars($user['crypto_address'] ?? '');
     $balance = number_format($user['balance'], 2);
 } catch (PDOException $e) {
-    error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
-    session_destroy();
+    error_log('Database error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
     header('Location: ../signin.php?error=database');
     exit;
 }
@@ -44,7 +51,7 @@ try {
     $videos_watched = $summary['videos_watched'] ?: 0;
     $pending_withdrawals = $summary['pending_withdrawals'] ?: 0.00;
 } catch (PDOException $e) {
-    error_log('Earnings summary error: ' . $e->getMessage(), 3, '../debug.log');
+    error_log('Earnings summary error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
     $total_earned = 0.00;
     $videos_watched = 0;
     $pending_withdrawals = 0.00;
