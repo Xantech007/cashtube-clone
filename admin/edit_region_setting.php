@@ -32,7 +32,7 @@ try {
     error_log('Fetch region setting error: ' . $e->getMessage(), 3, '../debug.log');
     $_SESSION['error'] = 'Failed to load region setting: ' . $e->getMessage();
     header('Location: manage_region_settings.php');
-    exit;
+        exit;
 }
 
 // Handle form submission
@@ -88,50 +88,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-family: Arial, sans-serif;
             margin: 0;
             background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
 
         .dashboard-container {
             max-width: 600px;
-            margin: 50px auto;
+            width: 90%;
+            margin: 20px;
             padding: 20px;
             background-color: #fff;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .dashboard-container h2 {
             color: #333;
             margin-bottom: 20px;
+            text-align: center;
         }
 
         .dashboard-container form {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+            gap: 12px;
         }
 
         .dashboard-container input[type="text"],
         .dashboard-container input[type="number"] {
-            width: 100%; /* Fill container width */
-            max-width: 500px; /* Limit max width for larger screens */
-            margin: 0 auto; /* Center horizontally */
-            padding: 8px;
+            width: 100%;
+            padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
+            box-sizing: border-box;
         }
 
         .dashboard-container button {
-            padding: 5px 10px; /* Smaller button size */
+            padding: 10px;
             background-color: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 11px; /* Smaller font size */
-            width: 150px; /* Fixed width */
-            align-self: center; /* Center button horizontally */
+            font-size: 14px;
+            width: 100%;
+            max-width: 200px;
+            align-self: center;
+            margin-top: 10px;
         }
 
         .dashboard-container button:hover {
@@ -141,14 +152,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .back-link {
             display: inline-block;
             margin-top: 20px;
-            padding: 5px 10px; /* Smaller link size */
+            padding: 10px;
             background-color: #6c757d;
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 11px; /* Smaller font size */
-            width: 150px; /* Fixed width */
-            text-align: center; /* Center text in link */
+            font-size: 14px;
+            width: 100%;
+            max-width: 200px;
+            text-align: center;
         }
 
         .back-link:hover {
@@ -158,6 +170,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .error, .success {
             color: red;
             margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
         }
 
         .success {
@@ -166,15 +180,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         @media (max-width: 768px) {
             .dashboard-container {
-                margin: 20px;
+                margin: 15px;
                 padding: 15px;
             }
 
+            .dashboard-container form,
             .dashboard-container input,
             .dashboard-container button,
             .back-link {
-                width: 100%;
-                max-width: 300px; /* Adjusted max-width for mobile */
+                max-width: 100%;
             }
         }
     </style>
@@ -184,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2>Edit Region Setting</h2>
 
         <?php if (isset($_SESSION['error'])): ?>
-            <p class="error"><?php echo htmlspecialchars($_SESSION['error']); ?></p>
+            <p class="error"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></p>
         <?php endif; ?>
         <?php if (isset($_SESSION['success'])): ?>
             <p class="success"><?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?></p>
