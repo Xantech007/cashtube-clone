@@ -113,6 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .dashboard-container input[type="text"],
         .dashboard-container input[type="number"] {
+            width: 100%; /* Fill container width */
+            max-width: 500px; /* Limit max width for larger screens */
+            margin: 0 auto; /* Center horizontally */
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -120,14 +123,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .dashboard-container button {
-            padding: 5px 10px; /* Reduced padding for smaller button */
+            padding: 5px 10px; /* Smaller button size */
             background-color: #007bff;
             color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 11px; /* Reduced font size */
-            width: 150px; /* Fixed width for consistency */
+            font-size: 11px; /* Smaller font size */
+            width: 150px; /* Fixed width */
             align-self: center; /* Center button horizontally */
         }
 
@@ -138,13 +141,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .back-link {
             display: inline-block;
             margin-top: 20px;
-            padding: 5px 10px; /* Reduced padding for smaller link */
+            padding: 5px 10px; /* Smaller link size */
             background-color: #6c757d;
             color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 11px; /* Reduced font size */
-            width: 150px; /* Fixed width for consistency */
+            font-size: 11px; /* Smaller font size */
+            width: 150px; /* Fixed width */
             text-align: center; /* Center text in link */
         }
 
@@ -171,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .dashboard-container button,
             .back-link {
                 width: 100%;
-                max-width: 150px; /* Maintain smaller size on mobile */
+                max-width: 300px; /* Adjusted max-width for mobile */
             }
         }
     </style>
