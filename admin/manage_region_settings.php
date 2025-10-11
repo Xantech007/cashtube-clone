@@ -12,7 +12,7 @@ require_once '../database/conn.php';
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
-// Handle region setting actions (add, edit, delete)
+// Handle region setting actions (add, delete)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     
@@ -97,7 +97,7 @@ try {
         }
 
         .dashboard-container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -175,20 +175,29 @@ try {
 
         .add-form {
             margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
-            justify-content: center;
+            justify-items: center;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .add-form input[type="text"],
         .add-form input[type="number"] {
-            flex: 1;
-            min-width: 200px;
-            padding: 8px;
+            width: 100%;
+            padding: 6px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .add-form button {
+            width: 200px;
+            grid-column: 1 / -1;
+            justify-self: center;
         }
 
         .table-container {
@@ -197,20 +206,21 @@ try {
             overflow-y: auto;
             max-height: 400px;
             margin-top: 10px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .region-settings-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1200px;
         }
 
         .region-settings-table th,
         .region-settings-table td {
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #ddd;
             text-align: left;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .region-settings-table th {
@@ -242,22 +252,23 @@ try {
             }
 
             .add-form {
-                flex-direction: column;
+                grid-template-columns: 1fr;
             }
 
             .add-form input,
             .add-form button {
                 width: 100%;
-                min-width: unset;
             }
 
-            .region-settings-table {
-                min-width: 100%;
+            .region-settings-table th,
+            .region-settings-table td {
+                font-size: 12px;
+                padding: 6px;
             }
 
             .action-btn, .back-link {
                 width: 100%;
-                max-width: 200px;
+                max-width: 180px;
                 margin: 6px 0;
                 padding: 6px 12px;
                 font-size: 11px;
