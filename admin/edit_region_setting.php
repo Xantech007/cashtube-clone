@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .dashboard-container {
-            max-width: 600px;
+            max-width: 1000px;
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -106,20 +106,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .dashboard-container form {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
+            justify-items: center;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .dashboard-container input[type="text"],
         .dashboard-container input[type="number"] {
-            padding: 8px;
+            width: 100%;
+            padding: 6px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px;
+            box-sizing: border-box;
         }
 
         .dashboard-container button {
+            width: 200px;
+            grid-column: 1 / -1;
+            justify-self: center;
             padding: 7px 14px;
             background-color: #007bff;
             color: #fff;
@@ -161,6 +170,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .dashboard-container {
                 margin: 20px;
                 padding: 15px;
+            }
+
+            .dashboard-container form {
+                grid-template-columns: 1fr;
             }
 
             .dashboard-container input,
