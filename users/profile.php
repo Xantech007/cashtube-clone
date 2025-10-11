@@ -1,5 +1,4 @@
 <?php
-// users/profile.php
 session_start();
 require_once '../database/conn.php';
 
@@ -33,23 +32,27 @@ try {
 
 // Fetch earnings summary
 try {
-    $stmt = $pdo->prepare("SELECT SUM(amount) as total_earned FROM activities WHERE user_id = ? AND amount > 0");
-    $stmt->execute([$_SESSION['user_id']]);
-    $total_earned = $stmt->fetchColumn() ?: 0.00;
-
-    $stmt = $pdo->prepare("SELECT COUNT(*) as videos_watched FROM activities WHERE user_id = ? AND action LIKE 'Watched%'");
-    $stmt->execute([$_SESSION['user_id']]);
-    $videos_watched = $stmt->fetchColumn();
-
-    $stmt = $pdo->prepare("SELECT SUM(amount) as pending_withdrawals FROM withdrawals WHERE user_id = ? AND status = 'pending'");
-    $stmt->execute([$_SESSION['user_id']]);
-    $pending_withdrawals = $stmt->fetchColumn() ?: 0.00;
+    $stmt = $pdo->prepare("
+        SELECT 
+            (SELECT SUM(amount) FROM activities WHERE user_id = ? AND amount > 0) AS total_earned,
+            (SELECT COUNT(*) FROM activities WHERE user_id = ? AND action LIKE 'Watched%') AS videos_watched,
+            (SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status = 'pending') AS pending_withdrawals
+    ");
+    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+    $summary = $stmt->fetch(PDO::FETCH_ASSOC);
+    $total_earned = $summary['total_earned'] ?: 0.00;
+    $videos_watched = $summary['videos_watched'] ?: 0;
+    $pending_withdrawals = $summary['pending_withdrawals'] ?: 0.00;
 } catch (PDOException $e) {
     error_log('Earnings summary error: ' . $e->getMessage(), 3, '../debug.log');
     $total_earned = 0.00;
     $videos_watched = 0;
     $pending_withdrawals = 0.00;
 }
+
+// Check for success or error message
+$success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
+$error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
 ?>
 
 <!DOCTYPE html>
@@ -57,10 +60,10 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Manage your Task Tube profile, update your details, and view your earnings summary.">
-    <meta name="keywords" content="Task Tube, profile, cryptocurrency, earnings, user settings">
-    <meta name="author" content="Task Tube">
-    <title>Profile | Task Tube</title>
+    <meta name="description" content="Manage your Cash Tube profile, update your details, and view your earnings summary.">
+    <meta name="keywords" content="Cash Tube, profile, cryptocurrency, earnings, user settings">
+    <meta name="author" content="Cash Tube">
+    <title>Profile | Cash Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -105,35 +108,18 @@ try {
             background: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            width: 100%;
-            box-sizing: border-box;
+            padding-bottom: 100px;
+            transition: all 0.3s ease;
         }
 
         .container {
-            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            padding: 24px 16px;
+            padding: 24px;
+            position: relative;
         }
 
-        .profile-card,
-        .earnings-summary {
-            width: 100%;
-            max-width: 1200px;
-            margin: 24px auto;
-            padding: 28px;
-            box-sizing: border-box;
-        }
-
-        .page-header {
+        .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -141,7 +127,7 @@ try {
             animation: slideIn 0.5s ease-out;
         }
 
-        .page-header img {
+        .header img {
             width: 64px;
             height: 64px;
             margin-right: 16px;
@@ -188,6 +174,7 @@ try {
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 20px;
+            text-align: center;
         }
 
         .profile-card h2::before {
@@ -272,7 +259,8 @@ try {
             border-collapse: collapse;
         }
 
-        .earnings-table th, .earnings-table td {
+        .earnings-table th,
+        .earnings-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
@@ -290,7 +278,7 @@ try {
 
         .notification {
             position: fixed;
-            top: 80px;
+            top: 20px;
             right: 20px;
             background: var(--card-bg);
             color: var(--text-color);
@@ -298,7 +286,7 @@ try {
             border-radius: 12px;
             border: 2px solid var(--accent-color);
             box-shadow: 0 4px 12px var(--shadow-color), 0 0 8px var(--accent-color);
-            z-index: 1002;
+            z-index: 1000;
             display: flex;
             align-items: center;
             animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 3s forwards;
@@ -322,13 +310,16 @@ try {
             font-weight: 500;
         }
 
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
+        .success {
+            border-color: var(--accent-color);
         }
 
-        @keyframes fadeOut {
-            to { opacity: 0; transform: translateY(-20px); }
+        .error {
+            border-color: #ef4444;
+        }
+
+        .error::before {
+            content: '⚠️';
         }
 
         .bottom-menu {
@@ -342,20 +333,24 @@ try {
             align-items: center;
             padding: 14px 0;
             box-shadow: 0 -2px 8px var(--shadow-color);
-            z-index: 1000;
         }
 
-        .bottom-menu a {
+        .bottom-menu a,
+        .bottom-menu button {
             color: var(--menu-text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
             padding: 10px 18px;
             transition: color 0.3s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
         }
 
         .bottom-menu a.active,
-        .bottom-menu a:hover {
+        .bottom-menu a:hover,
+        .bottom-menu button:hover {
             color: var(--accent-color);
         }
 
@@ -371,19 +366,40 @@ try {
         }
 
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
         }
 
         @media (max-width: 768px) {
-            .container,
-            .profile-card,
-            .earnings-summary {
-                width: 100%;
-                padding: 20px 12px;
+            .container {
+                padding: 16px;
             }
 
-            .page-header h1 {
+            .header-text h1 {
                 font-size: 22px;
             }
 
@@ -395,10 +411,11 @@ try {
             .notification {
                 max-width: 250px;
                 right: 10px;
-                top: 70px;
+                top: 10px;
             }
 
-            .earnings-table th, .earnings-table td {
+            .earnings-table th,
+            .earnings-table td {
                 padding: 8px;
                 font-size: 14px;
             }
@@ -406,79 +423,85 @@ try {
     </style>
 </head>
 <body>
-    <?php include 'inc/header.php'; ?>
-    <?php include 'inc/navbar.php'; ?>
-
     <div id="gradient"></div>
-    <div class="main-content">
-        <div class="container" role="main">
-            <div class="page-header">
-                <div style="display: flex; align-items: center;">
-                    <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
-                    <div class="header-text">
-                        <h1>Your Profile, <?php echo $username; ?>!</h1>
-                        <p>Manage your account details and view your earnings.</p>
-                    </div>
+    <div class="container" role="main">
+        <div class="header">
+            <div style="display: flex; align-items: center;">
+                <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
+                <div class="header-text">
+                    <h1>Hello, <?php echo $username; ?>!</h1>
+                    <p>Manage your account details and view your earnings.</p>
                 </div>
-                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
             </div>
-
-            <div class="profile-card">
-                <h2>Profile Settings</h2>
-                <form id="profileForm" role="form">
-                    <div class="input-container">
-                        <input type="text" id="name" name="name" value="<?php echo $username; ?>" required aria-required="true">
-                        <label for="name">Full Name</label>
-                    </div>
-                    <div class="input-container">
-                        <input type="email" id="email" name="email" value="<?php echo $email; ?>" required aria-required="true">
-                        <label for="email">Email Address</label>
-                    </div>
-                    <div class="input-container">
-                        <input type="password" id="passcode" name="passcode" aria-describedby="passcodeHelp">
-                        <label for="passcode">New Passcode (leave blank to keep current)</label>
-                        <small id="passcodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Passcode must be 5 digits.</small>
-                    </div>
-                    <div class="input-container">
-                        <input type="text" id="cryptoAddress" name="cryptoAddress" value="<?php echo $crypto_address; ?>">
-                        <label for="cryptoAddress">Crypto Wallet Address</label>
-                    </div>
-                    <button type="submit" class="submit-btn" aria-label="Update profile">Update Profile</button>
-                </form>
-            </div>
-
-            <div class="earnings-summary">
-                <h2>Earnings Summary</h2>
-                <table class="earnings-table">
-                    <thead>
-                        <tr>
-                            <th>Metric</th>
-                            <th>Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Current Balance</td>
-                            <td>$<?php echo $balance; ?></td>
-                        </tr>
-                        <tr>
-                            <td>Total Earned</td>
-                            <td>$<?php echo number_format($total_earned, 2); ?></td>
-                        </tr>
-                        <tr>
-                            <td>Videos Watched</td>
-                            <td><?php echo $videos_watched; ?></td>
-                        </tr>
-                        <tr>
-                            <td>Pending Withdrawals</td>
-                            <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="notificationContainer"></div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
         </div>
+
+        <?php if ($success_message): ?>
+            <div class="notification success" role="alert">
+                <span><?php echo $success_message; ?></span>
+            </div>
+        <?php endif; ?>
+        <?php if ($error_message): ?>
+            <div class="notification error" role="alert">
+                <span><?php echo $error_message; ?></span>
+            </div>
+        <?php endif; ?>
+
+        <div class="profile-card">
+            <h2>Profile Settings</h2>
+            <form id="profileForm" role="form">
+                <div class="input-container">
+                    <input type="text" id="name" name="name" value="<?php echo $username; ?>" required aria-required="true">
+                    <label for="name">Full Name</label>
+                </div>
+                <div class="input-container">
+                    <input type="email" id="email" name="email" value="<?php echo $email; ?>" required aria-required="true">
+                    <label for="email">Email Address</label>
+                </div>
+                <div class="input-container">
+                    <input type="password" id="passcode" name="passcode" aria-describedby="passcodeHelp">
+                    <label for="passcode">New Passcode (leave blank to keep current)</label>
+                    <small id="passcodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Passcode must be 5 digits.</small>
+                </div>
+                <div class="input-container">
+                    <input type="text" id="cryptoAddress" name="cryptoAddress" value="<?php echo $crypto_address; ?>">
+                    <label for="cryptoAddress">Crypto Wallet Address</label>
+                </div>
+                <button type="submit" class="submit-btn" aria-label="Update profile">Update Profile</button>
+            </form>
+        </div>
+
+        <div class="earnings-summary">
+            <h2>Earnings Summary</h2>
+            <table class="earnings-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Current Balance</td>
+                        <td>$<?php echo $balance; ?></td>
+                    </tr>
+                    <tr>
+                        <td>Total Earned</td>
+                        <td>$<?php echo number_format($total_earned, 2); ?></td>
+                    </tr>
+                    <tr>
+                        <td>Videos Watched</td>
+                        <td><?php echo $videos_watched; ?></td>
+                    </tr>
+                    <tr>
+                        <td>Pending Withdrawals</td>
+                        <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="notificationContainer"></div>
     </div>
 
     <div class="bottom-menu" role="navigation">
@@ -486,12 +509,9 @@ try {
         <a href="profile.php" class="active">Profile</a>
         <a href="history.php">History</a>
         <a href="support.php">Support</a>
-        <a href="../about.php">About</a>
+        <button id="logoutBtn" aria-label="Log out">Logout</button>
     </div>
 
-    <?php include 'inc/footer.php'; ?>
-
-    <!-- LiveChat Integration -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
@@ -544,6 +564,45 @@ try {
             item.addEventListener('click', () => {
                 menuItems.forEach((menuItem) => menuItem.classList.remove('active'));
                 item.classList.add('active');
+            });
+        });
+
+        // Logout Button
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            Swal.fire({
+                title: 'Log out?',
+                text: 'Are you sure you want to log out?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, log out'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'logout.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                window.location.href = '../signin.php';
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Failed to log out. Please try again.'
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Server Error',
+                                text: 'An error occurred while logging out.'
+                            });
+                        }
+                    });
+                }
             });
         });
 
@@ -630,7 +689,7 @@ try {
                         notification.setAttribute('role', 'alert');
                         notification.innerHTML = `<span>${message}</span>`;
                         notificationContainer.appendChild(notification);
-                        notification.style.top = `${80 + index * 80}px`;
+                        notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
                     });
                 },
@@ -655,6 +714,7 @@ try {
         var step = 0;
         var colorIndices = [0, 1, 2, 3];
         var gradientSpeed = 0.002;
+        const gradientElement = document.getElementById('gradient');
 
         function updateGradient() {
             var c0_0 = colors[colorIndices[0]];
@@ -670,9 +730,7 @@ try {
             var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
             var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
             var color2 = `rgb(${r2},${g2},${b2})`;
-            $('#gradient').css({
-                background: `linear-gradient(135deg, ${color1}, ${color2})`
-            });
+            gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
             step += gradientSpeed;
             if (step >= 1) {
                 step %= 1;
@@ -681,9 +739,10 @@ try {
                 colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
                 colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
             }
+            requestAnimationFrame(updateGradient);
         }
 
-        setInterval(updateGradient, 10);
+        requestAnimationFrame(updateGradient);
 
         // Context Menu Disable
         document.addEventListener('contextmenu', function(event) {
