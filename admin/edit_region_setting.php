@@ -7,6 +7,7 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 require_once '../database/conn.php';
+require_once '../inc/countries.php'; // Include the countries file
 
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
@@ -40,7 +41,7 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $country = trim($_POST['country']);
     $section_header = trim($_POST['section_header']);
-    $crypto = isset($_POST['crypto']) ? 1 : 0; // Toggle switch for crypto
+    $crypto = isset($_POST['crypto']) ? 1 : 0;
     $channel = trim($_POST['channel']);
     $ch_name = trim($_POST['ch_name']);
     $ch_value = trim($_POST['ch_value']);
@@ -132,7 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .dashboard-container input[type="text"],
-        .dashboard-container input[type="number"] {
+        .dashboard-container input[type="number"],
+        .dashboard-container select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -141,23 +143,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-sizing: border-box;
         }
 
+        .dashboard-container select {
+            background-color: #fff;
+            cursor: pointer;
+        }
+
         .dashboard-container .crypto-toggle {
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Align content to the left */
+            justify-content: flex-start;
             width: 100%;
-            gap: 10px; /* Space between label and checkbox */
+            gap: 10px;
         }
 
         .dashboard-container .crypto-toggle label {
             font-size: 14px;
             color: #333;
-            order: -1; /* Ensure label appears before checkbox */
+            order: -1;
         }
 
         .dashboard-container .crypto-toggle input[type="checkbox"] {
-            width: auto; /* Checkbox should not take full width */
-            margin: 0; /* Remove default margins */
+            width: auto;
+            margin: 0;
         }
 
         .dashboard-container input#channel {
@@ -223,6 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             .dashboard-container form,
             .dashboard-container input,
+            .dashboard-container select,
             .dashboard-container button,
             .back-link {
                 max-width: 100%;
@@ -240,12 +248,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     channelInput.classList.add('active');
                 } else {
                     channelInput.classList.remove('active');
-                    channelInput.value = ''; // Clear channel input when crypto is off
+                    channelInput.value = '';
                 }
             }
 
             cryptoCheckbox.addEventListener('change', toggleChannelInput);
-            toggleChannelInput(); // Initial check
+            toggleChannelInput();
         });
     </script>
 </head>
@@ -261,7 +269,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form action="edit_region_setting.php?id=<?php echo $id; ?>" method="POST">
-            <input type="text" name="country" value="<?php echo htmlspecialchars($setting['country']); ?>" placeholder="Country" required>
+            <select name="country" required>
+                <option value="" disabled>Select Country</option>
+                <?php foreach ($countries as $country): ?>
+                    <option value="<?php echo htmlspecialchars($country); ?>" <?php echo $setting['country'] === $country ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($country); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
             <input type="text" name="section_header" value="<?php echo htmlspecialchars($setting['section_header']); ?>" placeholder="Withdraw Section Heading (e.g., Withdraw with bank/crypto)" required>
             <div class="crypto-toggle">
                 <label for="crypto">Enable Crypto</label>
