@@ -19,11 +19,12 @@ if (!isset($_SESSION['user_id'])) {
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, email, crypto_address, balance FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, email, crypto_address, balance, country, verification_status FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+        session_destroy();
         header('Location: ../signin.php?error=user_not_found');
         exit;
     }
@@ -31,8 +32,11 @@ try {
     $email = htmlspecialchars($user['email'] ?? '');
     $crypto_address = htmlspecialchars($user['crypto_address'] ?? '');
     $balance = number_format($user['balance'], 2);
+    $country = htmlspecialchars($user['country'] ?? '');
+    $verification_status = $user['verification_status'] ?? 'unverified';
 } catch (PDOException $e) {
     error_log('Database error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
+    session_destroy();
     header('Location: ../signin.php?error=database');
     exit;
 }
@@ -41,15 +45,16 @@ try {
 try {
     $stmt = $pdo->prepare("
         SELECT 
-            (SELECT SUM(amount) FROM activities WHERE user_id = ? AND amount > 0) AS total_earned,
-            (SELECT COUNT(*) FROM activities WHERE user_id = ? AND action LIKE 'Watched%') AS videos_watched,
-            (SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status = 'pending') AS pending_withdrawals
+            COALESCE(SUM(amount), 0) AS total_earned,
+            COALESCE(COUNT(CASE WHEN action LIKE 'Watched%' THEN 1 END), 0) AS videos_watched,
+            COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status = 'pending'), 0) AS pending_withdrawals
+        FROM activities WHERE user_id = ? AND amount > 0
     ");
-    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
     $summary = $stmt->fetch(PDO::FETCH_ASSOC);
-    $total_earned = $summary['total_earned'] ?: 0.00;
-    $videos_watched = $summary['videos_watched'] ?: 0;
-    $pending_withdrawals = $summary['pending_withdrawals'] ?: 0.00;
+    $total_earned = $summary['total_earned'];
+    $videos_watched = $summary['videos_watched'];
+    $pending_withdrawals = $summary['pending_withdrawals'];
 } catch (PDOException $e) {
     error_log('Earnings summary error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
     $total_earned = 0.00;
@@ -169,12 +174,33 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             transform: scale(1.02);
         }
 
+        .balance-card {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            color: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            margin: 24px 0;
+            box-shadow: 0 6px 16px var(--shadow-color);
+            animation: slideIn 0.5s ease-out 0.2s backwards;
+        }
+
+        .balance-card p {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .balance-card h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
         .profile-card {
             background: var(--card-bg);
             border-radius: 16px;
             padding: 28px;
             box-shadow: 0 6px 16px var(--shadow-color);
-            animation: slideIn 0.5s ease-out 0.2s backwards;
+            animation: slideIn 0.5s ease-out 0.3s backwards;
         }
 
         .profile-card h2 {
@@ -195,7 +221,8 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             margin-bottom: 28px;
         }
 
-        .input-container input {
+        .input-container input,
+        .input-container select {
             width: 100%;
             padding: 14px 0;
             font-size: 16px;
@@ -208,7 +235,8 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         }
 
         .input-container input:focus,
-        .input-container input:valid {
+        .input-container input:valid,
+        .input-container select:focus {
             border-bottom-color: var(--accent-color);
         }
 
@@ -223,7 +251,8 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         }
 
         .input-container input:focus ~ label,
-        .input-container input:valid ~ label {
+        .input-container input:valid ~ label,
+        .input-container select:focus ~ label {
             top: -18px;
             font-size: 12px;
             color: var(--accent-color);
@@ -247,12 +276,31 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             transform: scale(1.02);
         }
 
+        .verify-btn {
+            width: 100%;
+            padding: 14px;
+            background: #3b82f6;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .verify-btn:hover {
+            background: #2563eb;
+            transform: scale(1.02);
+        }
+
         .earnings-summary {
             background: var(--card-bg);
             border-radius: 16px;
             padding: 28px;
             box-shadow: 0 6px 16px var(--shadow-color);
-            animation: slideIn 0.5s ease-out 0.3s backwards;
+            animation: slideIn 0.5s ease-out 0.4s backwards;
         }
 
         .earnings-summary h2 {
@@ -312,21 +360,21 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             color: var(--accent-color);
         }
 
+        .notification.error::before {
+            content: '⚠️';
+        }
+
         .notification span {
             font-size: 14px;
             font-weight: 500;
-        }
-
-        .success {
-            border-color: var(--accent-color);
         }
 
         .error {
             border-color: #ef4444;
         }
 
-        .error::before {
-            content: '⚠️';
+        .success {
+            border-color: var(--accent-color);
         }
 
         .bottom-menu {
@@ -410,6 +458,10 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 font-size: 22px;
             }
 
+            .balance-card h2 {
+                font-size: 30px;
+            }
+
             .profile-card h2,
             .earnings-summary h2 {
                 font-size: 20px;
@@ -454,9 +506,14 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             </div>
         <?php endif; ?>
 
+        <div class="balance-card">
+            <p>Available Crypto Balance</p>
+            <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
+        </div>
+
         <div class="profile-card">
             <h2>Profile Settings</h2>
-            <form id="profileForm" role="form">
+            <form id="profileForm" action="process_profile_update.php" method="POST" role="form">
                 <div class="input-container">
                     <input type="text" id="name" name="name" value="<?php echo $username; ?>" required aria-required="true">
                     <label for="name">Full Name</label>
@@ -474,7 +531,20 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                     <input type="text" id="cryptoAddress" name="cryptoAddress" value="<?php echo $crypto_address; ?>">
                     <label for="cryptoAddress">Crypto Wallet Address</label>
                 </div>
+                <div class="input-container">
+                    <select id="country" name="country" required aria-required="true">
+                        <option value="" disabled <?php echo empty($country) ? 'selected' : ''; ?>>Select Country</option>
+                        <option value="US" <?php echo $country === 'US' ? 'selected' : ''; ?>>United States</option>
+                        <option value="NG" <?php echo $country === 'NG' ? 'selected' : ''; ?>>Nigeria</option>
+                        <option value="UK" <?php echo $country === 'UK' ? 'selected' : ''; ?>>United Kingdom</option>
+                        <!-- Add more countries as needed -->
+                    </select>
+                    <label for="country">Country</label>
+                </div>
                 <button type="submit" class="submit-btn" aria-label="Update profile">Update Profile</button>
+                <?php if ($verification_status !== 'verified'): ?>
+                    <button type="button" class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">Verify Account</button>
+                <?php endif; ?>
             </form>
         </div>
 
@@ -542,13 +612,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             !n.__lc.asyncInit && e.init();
             n.LiveChatWidget = n.LiveChatWidget || e;
         })(window, document, [].slice);
-    </script>
-    <noscript>
-        <a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>,
-        powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
-    </noscript>
 
-    <script>
         // Dark Mode Toggle
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
@@ -620,6 +684,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             const email = document.getElementById('email').value.trim();
             const passcode = document.getElementById('passcode').value.trim();
             const cryptoAddress = document.getElementById('cryptoAddress').value.trim();
+            const country = document.getElementById('country').value;
 
             if (!name) {
                 Swal.fire({
@@ -648,10 +713,19 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 return;
             }
 
+            if (!country) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Country',
+                    text: 'Please select a country.'
+                });
+                return;
+            }
+
             $.ajax({
                 url: 'process_profile_update.php',
                 type: 'POST',
-                data: { name, email, passcode, cryptoAddress },
+                data: { name, email, passcode, cryptoAddress, country },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
@@ -662,7 +736,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            location.reload();
+                            window.location.href = 'profile.php?success=Profile updated successfully';
                         });
                     } else {
                         Swal.fire({
@@ -690,11 +764,12 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 type: 'GET',
                 dataType: 'json',
                 success: function(notifications) {
+                    notificationContainer.innerHTML = '';
                     notifications.forEach((message, index) => {
                         const notification = document.createElement('div');
-                        notification.className = 'notification';
+                        notification.className = `notification ${message.type || 'success'}`;
                         notification.setAttribute('role', 'alert');
-                        notification.innerHTML = `<span>${message}</span>`;
+                        notification.innerHTML = `<span>${message.text}</span>`;
                         notificationContainer.appendChild(notification);
                         notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
@@ -710,51 +785,15 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         setInterval(fetchNotifications, 20000);
 
         // Gradient Animation
-        var colors = [
-            [62, 35, 255],
-            [60, 255, 60],
-            [255, 35, 98],
-            [45, 175, 230],
-            [255, 0, 255],
-            [255, 128, 0]
-        ];
-        var step = 0;
-        var colorIndices = [0, 1, 2, 3];
-        var gradientSpeed = 0.002;
         const gradientElement = document.getElementById('gradient');
-
-        function updateGradient() {
-            var c0_0 = colors[colorIndices[0]];
-            var c0_1 = colors[colorIndices[1]];
-            var c1_0 = colors[colorIndices[2]];
-            var c1_1 = colors[colorIndices[3]];
-            var istep = 1 - step;
-            var r1 = Math.round(istep * c0_0[0] + step * c0_1[0]);
-            var g1 = Math.round(istep * c0_0[1] + step * c0_1[1]);
-            var b1 = Math.round(istep * c0_0[2] + step * c0_1[2]);
-            var color1 = `rgb(${r1},${g1},${b1})`;
-            var r2 = Math.round(istep * c1_0[0] + step * c1_1[0]);
-            var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
-            var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
-            var color2 = `rgb(${r2},${g2},${b2})`;
-            gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
-            step += gradientSpeed;
-            if (step >= 1) {
-                step %= 1;
-                colorIndices[0] = colorIndices[1];
-                colorIndices[2] = colorIndices[3];
-                colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
-                colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
-            }
-            requestAnimationFrame(updateGradient);
-        }
-
-        requestAnimationFrame(updateGradient);
-
-        // Context Menu Disable
-        document.addEventListener('contextmenu', function(event) {
-            event.preventDefault();
-        });
+        gradientElement.style.animation = 'gradientAnimation 10s ease infinite';
     </script>
+    <style>
+        @keyframes gradientAnimation {
+            0% { background: linear-gradient(135deg, rgb(62, 35, 255), rgb(60, 255, 60)); }
+            50% { background: linear-gradient(135deg, rgb(255, 35, 98), rgb(45, 175, 230)); }
+            100% { background: linear-gradient(135deg, rgb(62, 35, 255), rgb(60, 255, 60)); }
+        }
+    </style>
 </body>
 </html>
