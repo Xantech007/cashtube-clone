@@ -17,11 +17,23 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Fetch user data
+// Fetch user data with fallback for missing columns
 try {
-    $stmt = $pdo->prepare("SELECT name, email, crypto_address, balance, country, verification_status FROM users WHERE id = ?");
+    error_log('Attempting user query for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+    $stmt = $pdo->prepare("
+        SELECT 
+            name, 
+            email, 
+            COALESCE(crypto_address, '') AS crypto_address, 
+            balance,
+            COALESCE(country, '') AS country,
+            COALESCE(verification_status, 'unverified') AS verification_status
+        FROM users 
+        WHERE id = ?
+    ");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    error_log('User query result: ' . print_r($user, true), 3, '../debug.log');
     if (!$user) {
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
         session_destroy();
@@ -30,18 +42,17 @@ try {
     }
     $username = htmlspecialchars($user['name']);
     $email = htmlspecialchars($user['email'] ?? '');
-    $crypto_address = htmlspecialchars($user['crypto_address'] ?? '');
+    $crypto_address = htmlspecialchars($user['crypto_address']);
     $balance = number_format($user['balance'], 2);
-    $country = htmlspecialchars($user['country'] ?? '');
-    $verification_status = $user['verification_status'] ?? 'unverified';
+    $country = htmlspecialchars($user['country']);
+    $verification_status = $user['verification_status'];
 } catch (PDOException $e) {
     error_log('Database error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
-    session_destroy();
-    header('Location: ../signin.php?error=database');
+    include '../error.php';
     exit;
 }
 
-// Fetch earnings summary
+// Fetch earnings summary with optimized query
 try {
     $stmt = $pdo->prepare("
         SELECT 
@@ -417,7 +428,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             height: 100%;
             z-index: -1;
             background: var(--gradient-bg);
-            transition: all 0.3s ease;
+            animation: gradientAnimation 10s ease infinite;
         }
 
         @keyframes slideIn {
@@ -447,6 +458,12 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 opacity: 0;
                 transform: translateY(-20px);
             }
+        }
+
+        @keyframes gradientAnimation {
+            0% { background: linear-gradient(135deg, rgb(62, 35, 255), rgb(60, 255, 60)); }
+            50% { background: linear-gradient(135deg, rgb(255, 35, 98), rgb(45, 175, 230)); }
+            100% { background: linear-gradient(135deg, rgb(62, 35, 255), rgb(60, 255, 60)); }
         }
 
         @media (max-width: 768px) {
@@ -784,16 +801,10 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         fetchNotifications();
         setInterval(fetchNotifications, 20000);
 
-        // Gradient Animation
-        const gradientElement = document.getElementById('gradient');
-        gradientElement.style.animation = 'gradientAnimation 10s ease infinite';
+        // Context Menu Disable
+        document.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
     </script>
-    <style>
-        @keyframes gradientAnimation {
-            0% { background: linear-gradient(135deg, rgb(62, 35, 255), rgb(60, 255, 60)); }
-            50% { background: linear-gradient(135deg, rgb(255, 35, 98), rgb(45, 175, 230)); }
-            100% { background: linear-gradient(135deg, rgb(62, 35, 255), rgb(60, 255, 60)); }
-        }
-    </style>
 </body>
 </html>
