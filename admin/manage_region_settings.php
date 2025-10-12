@@ -8,6 +8,7 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 require_once '../database/conn.php';
+require_once '../inc/countries.php'; // Include the countries file
 
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
@@ -107,7 +108,7 @@ try {
         }
 
         .dashboard-container {
-            max-width: 1400px; /* Increased to accommodate more columns */
+            max-width: 1400px;
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -196,6 +197,7 @@ try {
 
         .add-form input[type="text"],
         .add-form input[type="number"],
+        .add-form select,
         .add-form input[type="checkbox"] {
             width: 100%;
             padding: 6px;
@@ -205,23 +207,28 @@ try {
             box-sizing: border-box;
         }
 
+        .add-form select {
+            background-color: #fff;
+            cursor: pointer;
+        }
+
         .add-form .crypto-toggle {
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Align content to the left */
+            justify-content: flex-start;
             width: 100%;
-            gap: 10px; /* Space between label and checkbox */
+            gap: 10px;
         }
 
         .add-form .crypto-toggle label {
             font-size: 13px;
             color: #333;
-            order: -1; /* Ensure label appears before checkbox */
+            order: -1;
         }
 
         .add-form .crypto-toggle input[type="checkbox"] {
-            width: auto; /* Checkbox should not take full width */
-            margin: 0; /* Remove default margins */
+            width: auto;
+            margin: 0;
         }
 
         .add-form input#channel {
@@ -282,7 +289,6 @@ try {
             color: green;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .dashboard-container {
                 margin: 20px;
@@ -294,6 +300,7 @@ try {
             }
 
             .add-form input,
+            .add-form select,
             .add-form button {
                 width: 100%;
             }
@@ -329,12 +336,12 @@ try {
                     channelInput.classList.add('active');
                 } else {
                     channelInput.classList.remove('active');
-                    channelInput.value = ''; // Clear channel input when crypto is off
+                    channelInput.value = '';
                 }
             }
 
             cryptoCheckbox.addEventListener('change', toggleChannelInput);
-            toggleChannelInput(); // Initial check
+            toggleChannelInput();
         });
     </script>
 </head>
@@ -359,7 +366,12 @@ try {
 
         <!-- Add Region Setting Form -->
         <form action="manage_region_settings.php" method="POST" class="add-form">
-            <input type="text" name="country" placeholder="Country" required>
+            <select name="country" required>
+                <option value="" disabled selected>Select Country</option>
+                <?php foreach ($countries as $country): ?>
+                    <option value="<?php echo htmlspecialchars($country); ?>"><?php echo htmlspecialchars($country); ?></option>
+                <?php endforeach; ?>
+            </select>
             <input type="text" name="section_header" placeholder="Withdraw Section Heading (e.g., Withdraw with bank/crypto)" required>
             <div class="crypto-toggle">
                 <label for="crypto">Enable Crypto</label>
