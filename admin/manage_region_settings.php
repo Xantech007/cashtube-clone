@@ -208,13 +208,20 @@ try {
         .add-form .crypto-toggle {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; /* Align content to the left */
             width: 100%;
+            gap: 10px; /* Space between label and checkbox */
         }
 
         .add-form .crypto-toggle label {
-            margin-left: 10px;
             font-size: 13px;
+            color: #333;
+            order: -1; /* Ensure label appears before checkbox */
+        }
+
+        .add-form .crypto-toggle input[type="checkbox"] {
+            width: auto; /* Checkbox should not take full width */
+            margin: 0; /* Remove default margins */
         }
 
         .add-form input#channel {
@@ -355,8 +362,8 @@ try {
             <input type="text" name="country" placeholder="Country" required>
             <input type="text" name="section_header" placeholder="Withdraw Section Heading (e.g., Withdraw with bank/crypto)" required>
             <div class="crypto-toggle">
-                <input type="checkbox" id="crypto" name="crypto">
                 <label for="crypto">Enable Crypto</label>
+                <input type="checkbox" id="crypto" name="crypto">
             </div>
             <input type="text" id="channel" name="channel" placeholder="Channel (e.g., Coin)">
             <input type="text" name="ch_name" placeholder="Channel Name (e.g., Bank Name/Network)" required>
