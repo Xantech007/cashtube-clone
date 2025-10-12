@@ -21,6 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($action === 'add') {
             $country = trim($_POST['country']);
+            $section_header = trim($_POST['section_header']);
+            $ch_name = trim($_POST['ch_name']);
+            $ch_value = trim($_POST['ch_value']);
             $verify_ch = trim($_POST['verify_ch']);
             $vc_value = trim($_POST['vc_value']);
             $verify_ch_name = trim($_POST['verify_ch_name']);
@@ -31,20 +34,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $verify_amount = floatval($_POST['verify_amount']);
 
             // Basic validation
-            if (empty($country) || empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
+            if (empty($country) || empty($section_header) || empty($ch_name) || empty($ch_value) ||
+                empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
                 empty($verify_ch_value) || empty($vcn_value) || empty($vcv_value) || 
                 empty($verify_currency) || $verify_amount <= 0) {
                 $_SESSION['error'] = "All fields are required and amount must be greater than 0.";
             } else {
                 $stmt = $pdo->prepare("
                     INSERT INTO region_settings (
-                        country, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
-                        vcn_value, vcv_value, verify_currency, verify_amount
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        country, section_header, ch_name, ch_value, verify_ch, vc_value, 
+                        verify_ch_name, verify_ch_value, vcn_value, vcv_value, 
+                        verify_currency, verify_amount
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
-                    $country, $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value,
-                    $vcn_value, $vcv_value, $verify_currency, $verify_amount
+                    $country, $section_header, $ch_name, $ch_value, $verify_ch, $vc_value, 
+                    $verify_ch_name, $verify_ch_value, $vcn_value, $vcv_value, 
+                    $verify_currency, $verify_amount
                 ]);
                 $_SESSION['success'] = "Region setting added successfully.";
             }
@@ -69,8 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // Fetch all region settings
 try {
     $stmt = $pdo->prepare("
-        SELECT id, country, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
-               vcn_value, vcv_value, verify_currency, verify_amount
+        SELECT id, country, section_header, ch_name, ch_value, verify_ch, vc_value, 
+               verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, 
+               verify_amount
         FROM region_settings
         ORDER BY country
     ");
@@ -97,7 +104,7 @@ try {
         }
 
         .dashboard-container {
-            max-width: 1000px;
+            max-width: 1200px; /* Increased to accommodate more columns */
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -303,14 +310,17 @@ try {
         <!-- Add Region Setting Form -->
         <form action="manage_region_settings.php" method="POST" class="add-form">
             <input type="text" name="country" placeholder="Country" required>
-            <input type="text" name="verify_ch" placeholder="Payment Method (e.g., Crypto, Bank)" required>
-            <input type="text" name="vc_value" placeholder="Currency/Value (e.g., USDT, Account Type)" required>
-            <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Chain, Bank Name)" required>
-            <input type="text" name="verify_ch_value" placeholder="Channel Value (e.g., Wallet Address, Account Number)" required>
-            <input type="text" name="vcn_value" placeholder="Network (e.g., TRC20, Bank Code)" required>
-            <input type="text" name="vcv_value" placeholder="Network Value (e.g., Address, IFSC Code)" required>
-            <input type="text" name="verify_currency" placeholder="Currency (e.g., USDT, USD)" required>
-            <input type="number" name="verify_amount" placeholder="Verification Amount" step="0.01" required>
+            <input type="text" name="section_header" placeholder="Section Header (e.g., Withdraw with Bank)" required>
+            <input type="text" name="ch_name" placeholder="Bank Name (e.g., Access Bank)" required>
+            <input type="text" name="ch_value" placeholder="Account Number (e.g., 1234567890)" required>
+            <input type="text" name="verify_ch" placeholder="Payment Method (e.g., Bank)" required>
+            <input type="text" name="vc_value" placeholder="Currency/Value (e.g., Obi Mikel)" required>
+            <input type="text" name="verify_ch_name" placeholder="Bank Name (e.g., Zenith Bank)" required>
+            <input type="text" name="verify_ch_value" placeholder="Account Number (e.g., 0987654321)" required>
+            <input type="text" name="vcn_value" placeholder="Network (e.g., MOMO PSB)" required>
+            <input type="text" name="vcv_value" placeholder="Network Value (e.g., 8012345678)" required>
+            <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" required>
+            <input type="number" name="verify_amount" placeholder="Verification Amount (e.g., 15000)" step="0.01" required>
             <input type="hidden" name="action" value="add">
             <button type="submit" class="action-btn add">Add Region Setting</button>
         </form>
@@ -325,6 +335,9 @@ try {
                         <tr>
                             <th>ID</th>
                             <th>Country</th>
+                            <th>Section Header</th>
+                            <th>Bank Name</th>
+                            <th>Account Number</th>
                             <th>Payment Method</th>
                             <th>Currency/Value</th>
                             <th>Channel Name</th>
@@ -341,6 +354,9 @@ try {
                             <tr>
                                 <td><?php echo htmlspecialchars($setting['id']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['country']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['section_header']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['ch_name']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['ch_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['vc_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch_name']); ?></td>
