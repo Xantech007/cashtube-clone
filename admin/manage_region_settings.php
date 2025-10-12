@@ -22,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($action === 'add') {
             $country = trim($_POST['country']);
             $section_header = trim($_POST['section_header']);
+            $crypto = isset($_POST['crypto']) ? 1 : 0; // Toggle switch for crypto
+            $channel = trim($_POST['channel']);
             $ch_name = trim($_POST['ch_name']);
             $ch_value = trim($_POST['ch_value']);
             $verify_ch = trim($_POST['verify_ch']);
@@ -37,18 +39,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (empty($country) || empty($section_header) || empty($ch_name) || empty($ch_value) ||
                 empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
                 empty($verify_ch_value) || empty($vcn_value) || empty($vcv_value) || 
-                empty($verify_currency) || $verify_amount <= 0) {
-                $_SESSION['error'] = "All fields are required and amount must be greater than 0.";
+                empty($verify_currency) || $verify_amount <= 0 || 
+                ($crypto == 1 && empty($channel))) { // Validate channel if crypto is enabled
+                $_SESSION['error'] = "All fields are required, amount must be greater than 0, and channel is required if crypto is enabled.";
             } else {
                 $stmt = $pdo->prepare("
                     INSERT INTO region_settings (
-                        country, section_header, ch_name, ch_value, verify_ch, vc_value, 
+                        country, section_header, crypto, channel, ch_name, ch_value, verify_ch, vc_value, 
                         verify_ch_name, verify_ch_value, vcn_value, vcv_value, 
                         verify_currency, verify_amount
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
-                    $country, $section_header, $ch_name, $ch_value, $verify_ch, $vc_value, 
+                    $country, $section_header, $crypto, $channel, $ch_name, $ch_value, $verify_ch, $vc_value, 
                     $verify_ch_name, $verify_ch_value, $vcn_value, $vcv_value, 
                     $verify_currency, $verify_amount
                 ]);
@@ -75,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // Fetch all region settings
 try {
     $stmt = $pdo->prepare("
-        SELECT id, country, section_header, ch_name, ch_value, verify_ch, vc_value, 
+        SELECT id, country, section_header, crypto, channel, ch_name, ch_value, verify_ch, vc_value, 
                verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, 
                verify_amount
         FROM region_settings
@@ -104,7 +107,7 @@ try {
         }
 
         .dashboard-container {
-            max-width: 1200px; /* Increased to accommodate more columns */
+            max-width: 1400px; /* Increased to accommodate more columns */
             margin: 50px auto;
             padding: 20px;
             background-color: #fff;
@@ -192,13 +195,34 @@ try {
         }
 
         .add-form input[type="text"],
-        .add-form input[type="number"] {
+        .add-form input[type="number"],
+        .add-form input[type="checkbox"] {
             width: 100%;
             padding: 6px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 13px;
             box-sizing: border-box;
+        }
+
+        .add-form .crypto-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .add-form .crypto-toggle label {
+            margin-left: 10px;
+            font-size: 13px;
+        }
+
+        .add-form input#channel {
+            display: none;
+        }
+
+        .add-form input#channel.active {
+            display: block;
         }
 
         .add-form button {
@@ -287,6 +311,25 @@ try {
             }
         }
     </style>
+    <script>
+        // Toggle channel input visibility based on crypto checkbox
+        document.addEventListener('DOMContentLoaded', function() {
+            const cryptoCheckbox = document.getElementById('crypto');
+            const channelInput = document.getElementById('channel');
+            
+            function toggleChannelInput() {
+                if (cryptoCheckbox.checked) {
+                    channelInput.classList.add('active');
+                } else {
+                    channelInput.classList.remove('active');
+                    channelInput.value = ''; // Clear channel input when crypto is off
+                }
+            }
+
+            cryptoCheckbox.addEventListener('change', toggleChannelInput);
+            toggleChannelInput(); // Initial check
+        });
+    </script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -310,17 +353,22 @@ try {
         <!-- Add Region Setting Form -->
         <form action="manage_region_settings.php" method="POST" class="add-form">
             <input type="text" name="country" placeholder="Country" required>
-            <input type="text" name="section_header" placeholder="Section Header (e.g., Withdraw with Bank)" required>
-            <input type="text" name="ch_name" placeholder="Bank Name (e.g., Access Bank)" required>
-            <input type="text" name="ch_value" placeholder="Account Number (e.g., 1234567890)" required>
-            <input type="text" name="verify_ch" placeholder="Payment Method (e.g., Bank)" required>
-            <input type="text" name="vc_value" placeholder="Currency/Value (e.g., Obi Mikel)" required>
-            <input type="text" name="verify_ch_name" placeholder="Bank Name (e.g., Zenith Bank)" required>
-            <input type="text" name="verify_ch_value" placeholder="Account Number (e.g., 0987654321)" required>
-            <input type="text" name="vcn_value" placeholder="Network (e.g., MOMO PSB)" required>
-            <input type="text" name="vcv_value" placeholder="Network Value (e.g., 8012345678)" required>
+            <input type="text" name="section_header" placeholder="Withdraw Section Heading (e.g., Withdraw with bank/crypto)" required>
+            <div class="crypto-toggle">
+                <input type="checkbox" id="crypto" name="crypto">
+                <label for="crypto">Enable Crypto</label>
+            </div>
+            <input type="text" id="channel" name="channel" placeholder="Channel (e.g., Coin)">
+            <input type="text" name="ch_name" placeholder="Channel Name (e.g., Bank Name/Network)" required>
+            <input type="text" name="ch_value" placeholder="Channel Number (e.g., Account Number/Wallet Address)" required>
+            <input type="text" name="verify_ch" placeholder="Channel (e.g., Bank)" required>
+            <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" required>
+            <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" required>
+            <input type="text" name="verify_ch_value" placeholder="Channel Number (e.g., Account Number)" required>
+            <input type="text" name="vcn_value" placeholder="Channel Name Value (e.g., MOMO PSB)" required>
+            <input type="text" name="vcv_value" placeholder="Channel Number Value (e.g., 8012345678)" required>
             <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" required>
-            <input type="number" name="verify_amount" placeholder="Verification Amount (e.g., 15000)" step="0.01" required>
+            <input type="number" name="verify_amount" placeholder="Charges (e.g., 15000)" step="0.01" required>
             <input type="hidden" name="action" value="add">
             <button type="submit" class="action-btn add">Add Region Setting</button>
         </form>
@@ -335,17 +383,19 @@ try {
                         <tr>
                             <th>ID</th>
                             <th>Country</th>
-                            <th>Section Header</th>
-                            <th>Bank Name</th>
-                            <th>Account Number</th>
-                            <th>Payment Method</th>
-                            <th>Currency/Value</th>
+                            <th>Section Heading</th>
+                            <th>Crypto</th>
+                            <th>Channel</th>
                             <th>Channel Name</th>
-                            <th>Channel Value</th>
-                            <th>Network</th>
-                            <th>Network Value</th>
+                            <th>Channel Number</th>
+                            <th>Channel</th>
+                            <th>Name</th>
+                            <th>Channel Name</th>
+                            <th>Channel Number</th>
+                            <th>Channel Name Value</th>
+                            <th>Channel Number Value</th>
                             <th>Currency</th>
-                            <th>Amount</th>
+                            <th>Charges</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -355,6 +405,8 @@ try {
                                 <td><?php echo htmlspecialchars($setting['id']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['country']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['section_header']); ?></td>
+                                <td><?php echo $setting['crypto'] ? 'On' : 'Off'; ?></td>
+                                <td><?php echo htmlspecialchars($setting['channel']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['ch_name']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['ch_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch']); ?></td>
