@@ -16,7 +16,8 @@ $id = $_GET['id'] ?? 0;
 // Fetch existing region setting
 try {
     $stmt = $pdo->prepare("
-        SELECT id, country, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
+        SELECT id, country, section_header, crypto, channel, ch_name, ch_value, 
+               verify_ch, vc_value, verify_ch_name, verify_ch_value, 
                vcn_value, vcv_value, verify_currency, verify_amount
         FROM region_settings 
         WHERE id = ?
@@ -32,12 +33,17 @@ try {
     error_log('Fetch region setting error: ' . $e->getMessage(), 3, '../debug.log');
     $_SESSION['error'] = 'Failed to load region setting: ' . $e->getMessage();
     header('Location: manage_region_settings.php');
-        exit;
+    exit;
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $country = trim($_POST['country']);
+    $section_header = trim($_POST['section_header']);
+    $crypto = isset($_POST['crypto']) ? 1 : 0; // Toggle switch for crypto
+    $channel = trim($_POST['channel']);
+    $ch_name = trim($_POST['ch_name']);
+    $ch_value = trim($_POST['ch_value']);
     $verify_ch = trim($_POST['verify_ch']);
     $vc_value = trim($_POST['vc_value']);
     $verify_ch_name = trim($_POST['verify_ch_name']);
@@ -48,21 +54,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $verify_amount = floatval($_POST['verify_amount']);
 
     // Basic validation
-    if (empty($country) || empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
+    if (empty($country) || empty($section_header) || empty($ch_name) || empty($ch_value) ||
+        empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
         empty($verify_ch_value) || empty($vcn_value) || empty($vcv_value) || 
-        empty($verify_currency) || $verify_amount <= 0) {
-        $_SESSION['error'] = "All fields are required and amount must be greater than 0.";
+        empty($verify_currency) || $verify_amount <= 0 || 
+        ($crypto == 1 && empty($channel))) {
+        $_SESSION['error'] = "All fields are required, amount must be greater than 0, and channel is required if crypto is enabled.";
     } else {
         try {
             $stmt = $pdo->prepare("
                 UPDATE region_settings 
-                SET country = ?, verify_ch = ?, vc_value = ?, verify_ch_name = ?, 
-                    verify_ch_value = ?, vcn_value = ?, vcv_value = ?, 
-                    verify_currency = ?, verify_amount = ?
+                SET country = ?, section_header = ?, crypto = ?, channel = ?, 
+                    ch_name = ?, ch_value = ?, verify_ch = ?, vc_value = ?, 
+                    verify_ch_name = ?, verify_ch_value = ?, vcn_value = ?, 
+                    vcv_value = ?, verify_currency = ?, verify_amount = ?
                 WHERE id = ?
             ");
             $stmt->execute([
-                $country, $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value,
+                $country, $section_header, $crypto, $channel, $ch_name, $ch_value,
+                $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value,
                 $vcn_value, $vcv_value, $verify_currency, $verify_amount, $id
             ]);
 
@@ -131,6 +141,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-sizing: border-box;
         }
 
+        .dashboard-container .crypto-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Align content to the left */
+            width: 100%;
+            gap: 10px; /* Space between label and checkbox */
+        }
+
+        .dashboard-container .crypto-toggle label {
+            font-size: 14px;
+            color: #333;
+            order: -1; /* Ensure label appears before checkbox */
+        }
+
+        .dashboard-container .crypto-toggle input[type="checkbox"] {
+            width: auto; /* Checkbox should not take full width */
+            margin: 0; /* Remove default margins */
+        }
+
+        .dashboard-container input#channel {
+            display: none;
+        }
+
+        .dashboard-container input#channel.active {
+            display: block;
+        }
+
         .dashboard-container button {
             padding: 10px;
             background-color: #007bff;
@@ -192,6 +229,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     </style>
+    <script>
+        // Toggle channel input visibility based on crypto checkbox
+        document.addEventListener('DOMContentLoaded', function() {
+            const cryptoCheckbox = document.getElementById('crypto');
+            const channelInput = document.getElementById('channel');
+            
+            function toggleChannelInput() {
+                if (cryptoCheckbox.checked) {
+                    channelInput.classList.add('active');
+                } else {
+                    channelInput.classList.remove('active');
+                    channelInput.value = ''; // Clear channel input when crypto is off
+                }
+            }
+
+            cryptoCheckbox.addEventListener('change', toggleChannelInput);
+            toggleChannelInput(); // Initial check
+        });
+    </script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -206,14 +262,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form action="edit_region_setting.php?id=<?php echo $id; ?>" method="POST">
             <input type="text" name="country" value="<?php echo htmlspecialchars($setting['country']); ?>" placeholder="Country" required>
-            <input type="text" name="verify_ch" value="<?php echo htmlspecialchars($setting['verify_ch']); ?>" placeholder="Payment Method (e.g., Crypto, Bank)" required>
-            <input type="text" name="vc_value" value="<?php echo htmlspecialchars($setting['vc_value']); ?>" placeholder="Currency/Value (e.g., USDT, Account Type)" required>
-            <input type="text" name="verify_ch_name" value="<?php echo htmlspecialchars($setting['verify_ch_name']); ?>" placeholder="Channel Name (e.g., Chain, Bank Name)" required>
-            <input type="text" name="verify_ch_value" value="<?php echo htmlspecialchars($setting['verify_ch_value']); ?>" placeholder="Channel Value (e.g., Wallet Address, Account Number)" required>
-            <input type="text" name="vcn_value" value="<?php echo htmlspecialchars($setting['vcn_value']); ?>" placeholder="Network (e.g., TRC20, Bank Code)" required>
-            <input type="text" name="vcv_value" value="<?php echo htmlspecialchars($setting['vcv_value']); ?>" placeholder="Network Value (e.g., Address, IFSC Code)" required>
-            <input type="text" name="verify_currency" value="<?php echo htmlspecialchars($setting['verify_currency']); ?>" placeholder="Currency (e.g., USDT, USD)" required>
-            <input type="number" name="verify_amount" value="<?php echo number_format($setting['verify_amount'], 2); ?>" placeholder="Verification Amount" step="0.01" required>
+            <input type="text" name="section_header" value="<?php echo htmlspecialchars($setting['section_header']); ?>" placeholder="Withdraw Section Heading (e.g., Withdraw with bank/crypto)" required>
+            <div class="crypto-toggle">
+                <label for="crypto">Enable Crypto</label>
+                <input type="checkbox" id="crypto" name="crypto" <?php echo $setting['crypto'] ? 'checked' : ''; ?>>
+            </div>
+            <input type="text" id="channel" name="channel" value="<?php echo htmlspecialchars($setting['channel']); ?>" placeholder="Channel (e.g., Coin)">
+            <input type="text" name="ch_name" value="<?php echo htmlspecialchars($setting['ch_name']); ?>" placeholder="Channel Name (e.g., Bank Name/Network)" required>
+            <input type="text" name="ch_value" value="<?php echo htmlspecialchars($setting['ch_value']); ?>" placeholder="Channel Number (e.g., Account Number/Wallet Address)" required>
+            <input type="text" name="verify_ch" value="<?php echo htmlspecialchars($setting['verify_ch']); ?>" placeholder="Channel (e.g., Bank)" required>
+            <input type="text" name="vc_value" value="<?php echo htmlspecialchars($setting['vc_value']); ?>" placeholder="Name (e.g., Obi Mikel)" required>
+            <input type="text" name="verify_ch_name" value="<?php echo htmlspecialchars($setting['verify_ch_name']); ?>" placeholder="Channel Name (e.g., Bank Name)" required>
+            <input type="text" name="verify_ch_value" value="<?php echo htmlspecialchars($setting['verify_ch_value']); ?>" placeholder="Channel Number (e.g., Account Number)" required>
+            <input type="text" name="vcn_value" value="<?php echo htmlspecialchars($setting['vcn_value']); ?>" placeholder="Channel Name Value (e.g., MOMO PSB)" required>
+            <input type="text" name="vcv_value" value="<?php echo htmlspecialchars($setting['vcv_value']); ?>" placeholder="Channel Number Value (e.g., 8012345678)" required>
+            <input type="text" name="verify_currency" value="<?php echo htmlspecialchars($setting['verify_currency']); ?>" placeholder="Currency (e.g., NGN)" required>
+            <input type="number" name="verify_amount" value="<?php echo number_format($setting['verify_amount'], 2); ?>" placeholder="Charges (e.g., 15000)" step="0.01" required>
             <button type="submit">Update Region Setting</button>
         </form>
 
