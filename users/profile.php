@@ -30,6 +30,18 @@ try {
     exit;
 }
 
+// Include countries list
+try {
+    require_once '../inc/countries.php';
+    // Ensure $countries is defined in countries.php as an array
+    if (!isset($countries) || !is_array($countries)) {
+        throw new Exception('Countries list not defined or invalid in countries.php');
+    }
+} catch (Exception $e) {
+    error_log('Failed to include countries.php: ' . $e->getMessage(), 3, '../debug.log');
+    $countries = ['US' => 'United States', 'NG' => 'Nigeria', 'UK' => 'United Kingdom']; // Fallback
+}
+
 // Fetch user data
 try {
     error_log('Attempting user query for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
@@ -69,28 +81,6 @@ try {
     exit;
 }
 
-// Fetch earnings summary
-$total_earned = 0.00;
-$videos_watched = 0;
-$pending_withdrawals = 0.00;
-try {
-    $stmt = $pdo->prepare("
-        SELECT 
-            COALESCE(SUM(amount), 0) AS total_earned,
-            COALESCE(COUNT(CASE WHEN action LIKE 'Watched%' THEN 1 END), 0) AS videos_watched,
-            COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status = 'pending'), 0) AS pending_withdrawals
-        FROM activities WHERE user_id = ? AND amount > 0
-    ");
-    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
-    $summary = $stmt->fetch(PDO::FETCH_ASSOC);
-    $total_earned = $summary['total_earned'];
-    $videos_watched = $summary['videos_watched'];
-    $pending_withdrawals = $summary['pending_withdrawals'];
-} catch (PDOException $e) {
-    error_log('Earnings summary error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
-    // Continue with default values
-}
-
 // Check for success or error message
 $success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
 $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
@@ -101,8 +91,8 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Manage your Cash Tube profile, update your details, and view your earnings summary.">
-    <meta name="keywords" content="Cash Tube, profile, earnings, user settings">
+    <meta name="description" content="Manage your Cash Tube profile and update your details.">
+    <meta name="keywords" content="Cash Tube, profile, user settings">
     <meta name="author" content="Cash Tube">
     <title>Profile | Cash Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -264,8 +254,9 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         }
 
         .input-container input:focus,
-        .input-container input:valid,
-        .input-container select:focus {
+        .input-container input:not(:placeholder-shown),
+        .input-container select:focus,
+        .input-container select:not(:placeholder-shown) {
             border-bottom-color: var(--accent-color);
         }
 
@@ -280,8 +271,9 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         }
 
         .input-container input:focus ~ label,
-        .input-container input:valid ~ label,
-        .input-container select:focus ~ label {
+        .input-container input:not(:placeholder-shown) ~ label,
+        .input-container select:focus ~ label,
+        .input-container select:not(:value="") ~ label {
             top: -18px;
             font-size: 12px;
             color: var(--accent-color);
@@ -322,42 +314,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         .verify-btn:hover {
             background: #2563eb;
             transform: scale(1.02);
-        }
-
-        .earnings-summary {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 28px;
-            box-shadow: 0 6px 16px var(--shadow-color);
-            animation: slideIn 0.5s ease-out 0.4s backwards;
-        }
-
-        .earnings-summary h2 {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .earnings-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .earnings-table th,
-        .earnings-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .earnings-table th {
-            font-weight: 600;
-            color: var(--subtext-color);
-        }
-
-        .earnings-table td {
-            font-weight: 700;
-            color: var(--accent-color);
         }
 
         .notification {
@@ -497,8 +453,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 font-size: 30px;
             }
 
-            .profile-card h2,
-            .earnings-summary h2 {
+            .profile-card h2 {
                 font-size: 20px;
             }
 
@@ -506,12 +461,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 max-width: 250px;
                 right: 10px;
                 top: 10px;
-            }
-
-            .earnings-table th,
-            .earnings-table td {
-                padding: 8px;
-                font-size: 14px;
             }
         }
     </style>
@@ -524,7 +473,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
                 <div class="header-text">
                     <h1>Hello, <?php echo $username; ?>!</h1>
-                    <p>Manage your account details and view your earnings.</p>
+                    <p>Manage your account details.</p>
                 </div>
             </div>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
@@ -550,25 +499,26 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             <h2>Profile Settings</h2>
             <form id="profileForm" action="process_profile_update.php" method="POST" role="form">
                 <div class="input-container">
-                    <input type="text" id="name" name="name" value="<?php echo $username; ?>" required aria-required="true">
+                    <input type="text" id="name" name="name" value="<?php echo $username; ?>" placeholder=" " required aria-required="true">
                     <label for="name">Full Name</label>
                 </div>
                 <div class="input-container">
-                    <input type="email" id="email" name="email" value="<?php echo $email; ?>" required aria-required="true">
+                    <input type="email" id="email" name="email" value="<?php echo $email; ?>" placeholder=" " required aria-required="true">
                     <label for="email">Email Address</label>
                 </div>
                 <div class="input-container">
-                    <input type="password" id="passcode" name="passcode" aria-describedby="passcodeHelp">
+                    <input type="password" id="passcode" name="passcode" placeholder=" " aria-describedby="passcodeHelp">
                     <label for="passcode">New Passcode (leave blank to keep current)</label>
                     <small id="passcodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Passcode must be 5 digits.</small>
                 </div>
                 <div class="input-container">
                     <select id="country" name="country" required aria-required="true">
                         <option value="" disabled <?php echo empty($country) ? 'selected' : ''; ?>>Select Country</option>
-                        <option value="US" <?php echo $country === 'US' ? 'selected' : ''; ?>>United States</option>
-                        <option value="NG" <?php echo $country === 'NG' ? 'selected' : ''; ?>>Nigeria</option>
-                        <option value="UK" <?php echo $country === 'UK' ? 'selected' : ''; ?>>United Kingdom</option>
-                        <!-- Add more countries as needed -->
+                        <?php foreach ($countries as $code => $name): ?>
+                            <option value="<?php echo htmlspecialchars($code); ?>" <?php echo $country === $code ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($name); ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                     <label for="country">Country</label>
                 </div>
@@ -577,36 +527,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                     <button type="button" class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">Verify Account</button>
                 <?php endif; ?>
             </form>
-        </div>
-
-        <div class="earnings-summary">
-            <h2>Earnings Summary</h2>
-            <table class="earnings-table">
-                <thead>
-                    <tr>
-                        <th>Metric</th>
-                        <th>Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Current Balance</td>
-                        <td>$<?php echo $balance; ?></td>
-                    </tr>
-                    <tr>
-                        <td>Total Earned</td>
-                        <td>$<?php echo number_format($total_earned, 2); ?></td>
-                    </tr>
-                    <tr>
-                        <td>Videos Watched</td>
-                        <td><?php echo $videos_watched; ?></td>
-                    </tr>
-                    <tr>
-                        <td>Pending Withdrawals</td>
-                        <td>$<?php echo number_format($pending_withdrawals, 2); ?></td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
 
         <div id="notificationContainer"></div>
@@ -667,6 +587,18 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 menuItems.forEach((menuItem) => menuItem.classList.remove('active'));
                 item.classList.add('active');
             });
+        });
+
+        // Initialize Label Positions
+        document.querySelectorAll('.input-container input, .input-container select').forEach((input) => {
+            if (input.value !== '' || input.tagName === 'SELECT') {
+                const label = input.nextElementSibling;
+                if (label && label.tagName === 'LABEL') {
+                    label.style.top = '-18px';
+                    label.style.fontSize = '12px';
+                    label.style.color = 'var(--accent-color)';
+                }
+            }
         });
 
         // Logout Button
