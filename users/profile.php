@@ -243,7 +243,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         .input-container input,
         .input-container select {
             width: 100%;
-            padding: 14px 0;
+            padding: 16px 8px;
             font-size: 16px;
             border: none;
             border-bottom: 2px solid var(--border-color);
@@ -254,16 +254,14 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         }
 
         .input-container input:focus,
-        .input-container input:not(:placeholder-shown),
-        .input-container select:focus,
-        .input-container select:not(:placeholder-shown) {
+        .input-container select:focus {
             border-bottom-color: var(--accent-color);
         }
 
         .input-container label {
             position: absolute;
-            top: 14px;
-            left: 0;
+            top: 16px;
+            left: 8px;
             font-size: 16px;
             color: var(--subtext-color);
             pointer-events: none;
@@ -273,8 +271,17 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         .input-container input:focus ~ label,
         .input-container input:not(:placeholder-shown) ~ label,
         .input-container select:focus ~ label,
-        .input-container select:not(:value="") ~ label {
+        .input-container select:not([value=""]) ~ label {
             top: -18px;
+            left: 0;
+            font-size: 12px;
+            color: var(--accent-color);
+        }
+
+        .input-container input.has-value ~ label,
+        .input-container select.has-value ~ label {
+            top: -18px;
+            left: 0;
             font-size: 12px;
             color: var(--accent-color);
         }
@@ -589,16 +596,28 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             });
         });
 
-        // Initialize Label Positions
-        document.querySelectorAll('.input-container input, .input-container select').forEach((input) => {
-            if (input.value !== '' || input.tagName === 'SELECT') {
-                const label = input.nextElementSibling;
-                if (label && label.tagName === 'LABEL') {
-                    label.style.top = '-18px';
-                    label.style.fontSize = '12px';
-                    label.style.color = 'var(--accent-color)';
+        // Initialize and Update Label Positions
+        function updateLabelPosition(input) {
+            const label = input.nextElementSibling;
+            if (label && label.tagName === 'LABEL') {
+                if (input.value !== '' || (input.tagName === 'SELECT' && input.value !== '')) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
                 }
             }
+        }
+
+        document.querySelectorAll('.input-container input, .input-container select').forEach((input) => {
+            updateLabelPosition(input); // Initialize on load
+            input.addEventListener('input', () => updateLabelPosition(input)); // Update on input
+            input.addEventListener('focus', () => {
+                const label = input.nextElementSibling;
+                if (label && label.tagName === 'LABEL') {
+                    label.classList.add('active');
+                }
+            });
+            input.addEventListener('blur', () => updateLabelPosition(input)); // Update on blur
         });
 
         // Logout Button
