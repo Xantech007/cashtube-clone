@@ -385,7 +385,7 @@ try {
             font-size: 16px;
             color: var(--subtext-color);
             pointer-events: none;
-            transition: all 0.3s ease;
+            transition: allisk 0.3s ease;
         }
 
         .input-container input:focus ~ label,
@@ -603,7 +603,7 @@ try {
             <form id="fundForm" action="process_withdrawal.php" method="GET" role="form">
                 <div class="input-container">
                     <input type="text" id="channel" name="channel" value="<?php echo $channel; ?>" required aria-required="true">
-                    <label for="channel">Payment Method</label>
+                    <label for="channel"><?php echo $channel; ?></label>
                 </div>
                 <div class="input-container">
                     <input type="text" id="bankName" name="bankName" required aria-required="true">
