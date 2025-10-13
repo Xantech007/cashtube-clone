@@ -33,13 +33,13 @@ try {
 // Include countries list
 try {
     require_once '../inc/countries.php';
-    // Ensure $countries is defined in countries.php as an array
+    // Ensure $countries is defined as an array
     if (!isset($countries) || !is_array($countries)) {
         throw new Exception('Countries list not defined or invalid in countries.php');
     }
 } catch (Exception $e) {
     error_log('Failed to include countries.php: ' . $e->getMessage(), 3, '../debug.log');
-    $countries = ['US' => 'United States', 'NG' => 'Nigeria', 'UK' => 'United Kingdom']; // Fallback
+    $countries = ['United States', 'Nigeria', 'United Kingdom']; // Fallback
 }
 
 // Fetch user data
@@ -72,7 +72,7 @@ try {
     $verification_status = $user['verification_status'];
 
     // Validate country against $countries
-    if ($country && !array_key_exists($country, $countries)) {
+    if ($country && !in_array($country, $countries)) {
         error_log('User country not in countries list: ' . $country, 3, '../debug.log');
         $country = ''; // Default to empty to select "Select Country"
     }
@@ -528,8 +528,8 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 <div class="input-container">
                     <select id="country" name="country" required aria-required="true">
                         <option value="" <?php echo empty($country) ? 'selected' : ''; ?>>Select Country</option>
-                        <?php foreach ($countries as $code => $name): ?>
-                            <option value="<?php echo htmlspecialchars($code); ?>" <?php echo strcasecmp($country, $code) === 0 ? 'selected' : ''; ?>>
+                        <?php foreach ($countries as $index => $name): ?>
+                            <option value="<?php echo htmlspecialchars($name); ?>" <?php echo $country === $name ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($name); ?>
                             </option>
                         <?php endforeach; ?>
