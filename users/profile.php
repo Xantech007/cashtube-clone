@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 ob_start();
 session_start([
     'cookie_path' => '/',
@@ -8,26 +12,34 @@ session_start([
 ]);
 error_log('Session ID in profile.php: ' . session_id() . ', User ID: ' . ($_SESSION['user_id'] ?? 'not set'), 3, '../debug.log');
 
-require_once '../database/conn.php';
-
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
     header('Location: ../signin.php');
+    ob_end_flush();
     exit;
 }
 
-// Fetch user data with fallback for missing columns
+// Include database connection
+try {
+    require_once '../database/conn.php';
+} catch (Exception $e) {
+    error_log('Failed to include conn.php: ' . $e->getMessage(), 3, '../debug.log');
+    echo 'Failed to connect to database. Check logs for details.';
+    ob_end_flush();
+    exit;
+}
+
+// Fetch user data
 try {
     error_log('Attempting user query for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
     $stmt = $pdo->prepare("
         SELECT 
             name, 
             email, 
-            COALESCE(crypto_address, '') AS crypto_address, 
             balance,
             COALESCE(country, '') AS country,
-            COALESCE(verification_status, 'unverified') AS verification_status
+            verification_status
         FROM users 
         WHERE id = ?
     ");
@@ -38,21 +50,29 @@ try {
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
         session_destroy();
         header('Location: ../signin.php?error=user_not_found');
+        ob_end_flush();
         exit;
     }
     $username = htmlspecialchars($user['name']);
-    $email = htmlspecialchars($user['email'] ?? '');
-    $crypto_address = htmlspecialchars($user['crypto_address']);
+    $email = htmlspecialchars($user['email']);
     $balance = number_format($user['balance'], 2);
     $country = htmlspecialchars($user['country']);
     $verification_status = $user['verification_status'];
 } catch (PDOException $e) {
     error_log('Database error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
-    include '../error.php';
+    if (file_exists('../error.php')) {
+        include '../error.php';
+    } else {
+        echo 'Database error occurred: ' . htmlspecialchars($e->getMessage());
+    }
+    ob_end_flush();
     exit;
 }
 
-// Fetch earnings summary with optimized query
+// Fetch earnings summary
+$total_earned = 0.00;
+$videos_watched = 0;
+$pending_withdrawals = 0.00;
 try {
     $stmt = $pdo->prepare("
         SELECT 
@@ -68,9 +88,7 @@ try {
     $pending_withdrawals = $summary['pending_withdrawals'];
 } catch (PDOException $e) {
     error_log('Earnings summary error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
-    $total_earned = 0.00;
-    $videos_watched = 0;
-    $pending_withdrawals = 0.00;
+    // Continue with default values
 }
 
 // Check for success or error message
@@ -84,7 +102,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Manage your Cash Tube profile, update your details, and view your earnings summary.">
-    <meta name="keywords" content="Cash Tube, profile, cryptocurrency, earnings, user settings">
+    <meta name="keywords" content="Cash Tube, profile, earnings, user settings">
     <meta name="author" content="Cash Tube">
     <title>Profile | Cash Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -524,7 +542,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         <?php endif; ?>
 
         <div class="balance-card">
-            <p>Available Crypto Balance</p>
+            <p>Available Balance</p>
             <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
         </div>
 
@@ -543,10 +561,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                     <input type="password" id="passcode" name="passcode" aria-describedby="passcodeHelp">
                     <label for="passcode">New Passcode (leave blank to keep current)</label>
                     <small id="passcodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Passcode must be 5 digits.</small>
-                </div>
-                <div class="input-container">
-                    <input type="text" id="cryptoAddress" name="cryptoAddress" value="<?php echo $crypto_address; ?>">
-                    <label for="cryptoAddress">Crypto Wallet Address</label>
                 </div>
                 <div class="input-container">
                     <select id="country" name="country" required aria-required="true">
@@ -700,7 +714,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
             const passcode = document.getElementById('passcode').value.trim();
-            const cryptoAddress = document.getElementById('cryptoAddress').value.trim();
             const country = document.getElementById('country').value;
 
             if (!name) {
@@ -742,7 +755,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             $.ajax({
                 url: 'process_profile_update.php',
                 type: 'POST',
-                data: { name, email, passcode, cryptoAddress, country },
+                data: { name, email, passcode, country },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
@@ -808,3 +821,4 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
     </script>
 </body>
 </html>
+<?php ob_end_flush(); ?>
