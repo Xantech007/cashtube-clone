@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../database/conn.php';
+require_once '../inc/countries.php'; // Include countries list for validation
 
 header('Content-Type: application/json');
 
@@ -24,15 +25,15 @@ if ($passcode && !preg_match('/^\d{5}$/', $passcode)) {
     exit;
 }
 
-if (!$country) {
-    echo json_encode(['success' => false, 'error' => 'Country is required']);
+if (!$country || !in_array($country, $countries)) {
+    echo json_encode(['success' => false, 'error' => 'Invalid country selected']);
     exit;
 }
 
 try {
     $updates = ['name' => $name, 'email' => $email, 'country' => $country];
     if ($passcode) {
-        $updates['passcode'] = password_hash($passcode, PASSWORD_BCRYPT);
+        $updates['passcode'] = $passcode; // Store passcode in plain text
     }
 
     $sql = "UPDATE users SET " . implode(', ', array_map(fn($key) => "$key = :$key", array_keys($updates))) . " WHERE id = :id";
