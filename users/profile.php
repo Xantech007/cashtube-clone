@@ -70,6 +70,12 @@ try {
     $balance = number_format($user['balance'], 2);
     $country = htmlspecialchars($user['country']);
     $verification_status = $user['verification_status'];
+
+    // Validate country against $countries
+    if ($country && !array_key_exists($country, $countries)) {
+        error_log('User country not in countries list: ' . $country, 3, '../debug.log');
+        $country = ''; // Default to empty to select "Select Country"
+    }
 } catch (PDOException $e) {
     error_log('Database error in profile.php: ' . $e->getMessage(), 3, '../debug.log');
     if (file_exists('../error.php')) {
@@ -271,7 +277,8 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         .input-container input:focus ~ label,
         .input-container input:not(:placeholder-shown) ~ label,
         .input-container select:focus ~ label,
-        .input-container select:not([value=""]) ~ label {
+        .input-container select:not([value=""]) ~ label,
+        .input-container .active {
             top: -18px;
             left: 0;
             font-size: 12px;
@@ -520,9 +527,9 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 </div>
                 <div class="input-container">
                     <select id="country" name="country" required aria-required="true">
-                        <option value="" disabled <?php echo empty($country) ? 'selected' : ''; ?>>Select Country</option>
+                        <option value="" <?php echo empty($country) ? 'selected' : ''; ?>>Select Country</option>
                         <?php foreach ($countries as $code => $name): ?>
-                            <option value="<?php echo htmlspecialchars($code); ?>" <?php echo $country === $code ? 'selected' : ''; ?>>
+                            <option value="<?php echo htmlspecialchars($code); ?>" <?php echo strcasecmp($country, $code) === 0 ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($name); ?>
                             </option>
                         <?php endforeach; ?>
@@ -602,8 +609,10 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             if (label && label.tagName === 'LABEL') {
                 if (input.value !== '' || (input.tagName === 'SELECT' && input.value !== '')) {
                     label.classList.add('active');
+                    input.classList.add('has-value');
                 } else {
                     label.classList.remove('active');
+                    input.classList.remove('has-value');
                 }
             }
         }
