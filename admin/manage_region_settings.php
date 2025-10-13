@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $vc_value = trim($_POST['vc_value']);
             $verify_ch_name = trim($_POST['verify_ch_name']);
             $verify_ch_value = trim($_POST['verify_ch_value']);
+            $verify_medium = trim($_POST['verify_medium']); // New field
             $vcn_value = trim($_POST['vcn_value']);
             $vcv_value = trim($_POST['vcv_value']);
             $verify_currency = trim($_POST['verify_currency']);
@@ -42,18 +43,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 empty($verify_ch_value) || empty($vcn_value) || empty($vcv_value) || 
                 empty($verify_currency) || $verify_amount <= 0 || 
                 ($crypto == 1 && empty($channel))) { // Validate channel if crypto is enabled
-                $_SESSION['error'] = "All fields are required, amount must be greater than 0, and channel is required if crypto is enabled.";
+                $_SESSION['error'] = "All fields except Verify Medium are required, amount must be greater than 0, and channel is required if crypto is enabled.";
             } else {
                 $stmt = $pdo->prepare("
                     INSERT INTO region_settings (
                         country, section_header, crypto, channel, ch_name, ch_value, verify_ch, vc_value, 
-                        verify_ch_name, verify_ch_value, vcn_value, vcv_value, 
+                        verify_ch_name, verify_ch_value, verify_medium, vcn_value, vcv_value, 
                         verify_currency, verify_amount
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
                     $country, $section_header, $crypto, $channel, $ch_name, $ch_value, $verify_ch, $vc_value, 
-                    $verify_ch_name, $verify_ch_value, $vcn_value, $vcv_value, 
+                    $verify_ch_name, $verify_ch_value, $verify_medium, $vcn_value, $vcv_value, 
                     $verify_currency, $verify_amount
                 ]);
                 $_SESSION['success'] = "Region setting added successfully.";
@@ -80,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 try {
     $stmt = $pdo->prepare("
         SELECT id, country, section_header, crypto, channel, ch_name, ch_value, verify_ch, vc_value, 
-               verify_ch_name, verify_ch_value, vcn_value, vcv_value, verify_currency, 
+               verify_ch_name, verify_ch_value, verify_medium, vcn_value, vcv_value, verify_currency, 
                verify_amount
         FROM region_settings
         ORDER BY country
@@ -384,6 +385,7 @@ try {
             <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" required>
             <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" required>
             <input type="text" name="verify_ch_value" placeholder="Channel Number (e.g., Account Number)" required>
+            <input type="text" name="verify_medium" placeholder="Verify Medium (e.g., Payment Method)">
             <input type="text" name="vcn_value" placeholder="Channel Name Value (e.g., MOMO PSB)" required>
             <input type="text" name="vcv_value" placeholder="Channel Number Value (e.g., 8012345678)" required>
             <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" required>
@@ -411,6 +413,7 @@ try {
                             <th>Name</th>
                             <th>Channel Name</th>
                             <th>Channel Number</th>
+                            <th>Verify Medium</th>
                             <th>Channel Name Value</th>
                             <th>Channel Number Value</th>
                             <th>Currency</th>
@@ -425,13 +428,14 @@ try {
                                 <td><?php echo htmlspecialchars($setting['country']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['section_header']); ?></td>
                                 <td><?php echo $setting['crypto'] ? 'On' : 'Off'; ?></td>
-                                <td><?php echo htmlspecialchars($setting['channel']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['channel'] ?? ''); ?></td>
                                 <td><?php echo htmlspecialchars($setting['ch_name']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['ch_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['vc_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch_name']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch_value']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['verify_medium'] ?? 'Payment Method'); ?></td>
                                 <td><?php echo htmlspecialchars($setting['vcn_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['vcv_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_currency']); ?></td>
