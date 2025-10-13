@@ -88,13 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $proof_file = $_FILES['proof_file'] ?? null;
 
     if (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
-        $error = 'Please upload a payment proof file.';
+        $error = 'Please upload a payment receipt.';
     } else {
         // Validate file
-        $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
+        $allowed_types = ['image/jpeg', 'image/png'];
         $max_size = 5 * 1024 * 1024; // 5MB
         if (!in_array($proof_file['type'], $allowed_types) || $proof_file['size'] > $max_size) {
-            $error = 'Invalid file type or size. Please upload a JPG, PNG, or PDF file (max 5MB).';
+            $error = 'Invalid file type or size. Please upload a JPG or PNG file (max 5MB).';
         } else {
             // Create upload directory if it doesn't exist
             $upload_dir = '../users/proofs/';
@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } else {
-                $error = 'Failed to upload proof file. Please try again.';
+                $error = 'Failed to upload payment receipt. Please try again.';
             }
         }
     }
@@ -561,29 +561,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p><strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> <?php echo htmlspecialchars($vcn_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <span class="copyable" data-copy="<?php echo htmlspecialchars($vcv_value); ?>" title="Press and hold to copy"><?php echo htmlspecialchars($vcv_value); ?></span></p>
-                    <p>After completing the payment, upload a screenshot or proof of payment below. Your verification request will be reviewed within 48 hours.</p>
+                    <p>After completing the payment, upload a payment receipt below. Your verification request will be reviewed within 48 hours.</p>
                     
                     <h3>Important Notes</h3>
                     <?php if ($crypto): ?>
                         <ul>
                             <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
-                            <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender wallet, receiver wallet, amount, network, timestamp).</li>
-                            <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
+                            <li>Upload a clear payment receipt.</li>
+                            <li>Supported file types: JPG, PNG (max size: 5MB).</li>
                             <li>Verification may take up to 48 hours to process.</li>
                         </ul>
                     <?php else: ?>
                         <ul>
                             <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
-                            <li>Upload a clear screenshot or PDF showing the transaction details (e.g., sender, receiver, amount, timestamp).</li>
-                            <li>Supported file types: JPG, PNG, PDF (max size: 5MB).</li>
+                            <li>Upload a clear payment receipt.</li>
+                            <li>Supported file types: JPG, PNG (max size: 5MB).</li>
                             <li>Verification may take up to 48 hours to process.</li>
                         </ul>
                     <?php endif; ?>
                 </div>
                 <form action="verify_account.php" method="POST" enctype="multipart/form-data">
                     <div class="input-container">
-                        <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required placeholder=" ">
-                        <label for="proof_file">Upload Payment Proof</label>
+                        <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png" required placeholder=" ">
+                        <label for="proof_file">Upload Payment Receipt</label>
                     </div>
                     <button type="submit" class="submit-btn">Submit Verification</button>
                 </form>
