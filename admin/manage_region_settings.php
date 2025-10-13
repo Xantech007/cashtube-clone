@@ -13,51 +13,74 @@ require_once '../inc/countries.php'; // Include the countries file
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
-// Handle region setting actions (add, delete)
+// Handle region setting actions (add_dashboard, add_verification, delete)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     
     try {
         $pdo->beginTransaction();
 
-        if ($action === 'add') {
+        if ($action === 'add_dashboard') {
             $country = trim($_POST['country']);
             $section_header = trim($_POST['section_header']);
-            $crypto = isset($_POST['crypto']) ? 1 : 0; // Toggle switch for crypto
+            $crypto = isset($_POST['crypto']) ? 1 : 0;
             $channel = trim($_POST['channel']);
             $ch_name = trim($_POST['ch_name']);
             $ch_value = trim($_POST['ch_value']);
+
+            // Validation
+            if (empty($country) || empty($section_header) || empty($ch_name) || empty($ch_value) || 
+                ($crypto == 1 && empty($channel))) {
+                $_SESSION['error'] = "All Dashboard fields are required, and Channel is required if Crypto is enabled.";
+            } else {
+                // Check if country already exists
+                $stmt = $pdo->prepare("SELECT id FROM region_settings WHERE country = ?");
+                $stmt->execute([$country]);
+                if ($stmt->fetch()) {
+                    $_SESSION['error'] = "Region settings for this country already exist.";
+                } else {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO region_settings (country, section_header, crypto, channel, ch_name, ch_value)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([$country, $section_header, $crypto, $channel, $ch_name, $ch_value]);
+                    $_SESSION['success'] = "Dashboard settings added successfully.";
+                }
+            }
+        } elseif ($action === 'add_verification') {
+            $country = trim($_POST['country']);
             $verify_ch = trim($_POST['verify_ch']);
             $vc_value = trim($_POST['vc_value']);
             $verify_ch_name = trim($_POST['verify_ch_name']);
             $verify_ch_value = trim($_POST['verify_ch_value']);
-            $verify_medium = trim($_POST['verify_medium']); // New field
+            $verify_medium = trim($_POST['verify_medium']);
             $vcn_value = trim($_POST['vcn_value']);
             $vcv_value = trim($_POST['vcv_value']);
             $verify_currency = trim($_POST['verify_currency']);
             $verify_amount = floatval($_POST['verify_amount']);
 
-            // Basic validation
-            if (empty($country) || empty($section_header) || empty($ch_name) || empty($ch_value) ||
-                empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
+            // Validation
+            if (empty($country) || empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
                 empty($verify_ch_value) || empty($vcn_value) || empty($vcv_value) || 
-                empty($verify_currency) || $verify_amount <= 0 || 
-                ($crypto == 1 && empty($channel))) { // Validate channel if crypto is enabled
-                $_SESSION['error'] = "All fields except Verify Medium are required, amount must be greater than 0, and channel is required if crypto is enabled.";
+                empty($verify_currency) || $verify_amount <= 0) {
+                $_SESSION['error'] = "All Verification fields except Verify Medium are required, and amount must be greater than 0.";
             } else {
+                // Update existing row for the country
                 $stmt = $pdo->prepare("
-                    INSERT INTO region_settings (
-                        country, section_header, crypto, channel, ch_name, ch_value, verify_ch, vc_value, 
-                        verify_ch_name, verify_ch_value, verify_medium, vcn_value, vcv_value, 
-                        verify_currency, verify_amount
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    UPDATE region_settings 
+                    SET verify_ch = ?, vc_value = ?, verify_ch_name = ?, verify_ch_value = ?, 
+                        verify_medium = ?, vcn_value = ?, vcv_value = ?, verify_currency = ?, verify_amount = ?
+                    WHERE country = ?
                 ");
-                $stmt->execute([
-                    $country, $section_header, $crypto, $channel, $ch_name, $ch_value, $verify_ch, $vc_value, 
-                    $verify_ch_name, $verify_ch_value, $verify_medium, $vcn_value, $vcv_value, 
-                    $verify_currency, $verify_amount
+                $result = $stmt->execute([
+                    $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value, $verify_medium, 
+                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $country
                 ]);
-                $_SESSION['success'] = "Region setting added successfully.";
+                if ($stmt->rowCount() === 0) {
+                    $_SESSION['error'] = "No Dashboard settings found for this country. Add Dashboard settings first.";
+                } else {
+                    $_SESSION['success'] = "Verification settings updated successfully.";
+                }
             }
         } elseif ($action === 'delete') {
             $id = intval($_POST['id']);
@@ -121,6 +144,14 @@ try {
         .dashboard-container h2 {
             color: #333;
             margin-bottom: 20px;
+        }
+
+        .dashboard-container h3 {
+            color: #333;
+            margin: 30px 0 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
         }
 
         .dashboard-container p {
@@ -365,7 +396,8 @@ try {
             <a href="dashboard.php" class="back-link">Back to Dashboard</a>
         </div>
 
-        <!-- Add Region Setting Form -->
+        <!-- Dashboard Section -->
+        <h3>Dashboard Section</h3>
         <form action="manage_region_settings.php" method="POST" class="add-form">
             <select name="country" required>
                 <option value="" disabled selected>Select Country</option>
@@ -373,7 +405,7 @@ try {
                     <option value="<?php echo htmlspecialchars($country); ?>"><?php echo htmlspecialchars($country); ?></option>
                 <?php endforeach; ?>
             </select>
-            <input type="text" name="section_header" placeholder="Withdraw Section Heading (e.g., Withdraw with bank/crypto)" required>
+            <input type="text" name="section_header" placeholder="Section Heading (e.g., Withdraw with bank/crypto)" required>
             <div class="crypto-toggle">
                 <label for="crypto">Enable Crypto</label>
                 <input type="checkbox" id="crypto" name="crypto">
@@ -381,22 +413,13 @@ try {
             <input type="text" id="channel" name="channel" placeholder="Channel (e.g., Coin)">
             <input type="text" name="ch_name" placeholder="Channel Name (e.g., Bank Name/Network)" required>
             <input type="text" name="ch_value" placeholder="Channel Number (e.g., Account Number/Wallet Address)" required>
-            <input type="text" name="verify_ch" placeholder="Channel (e.g., Bank)" required>
-            <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" required>
-            <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" required>
-            <input type="text" name="verify_ch_value" placeholder="Channel Number (e.g., Account Number)" required>
-            <input type="text" name="verify_medium" placeholder="Verify Medium (e.g., Payment Method)">
-            <input type="text" name="vcn_value" placeholder="Channel Name Value (e.g., MOMO PSB)" required>
-            <input type="text" name="vcv_value" placeholder="Channel Number Value (e.g., 8012345678)" required>
-            <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" required>
-            <input type="number" name="verify_amount" placeholder="Charges (e.g., 15000)" step="0.01" required>
-            <input type="hidden" name="action" value="add">
-            <button type="submit" class="action-btn add">Add Region Setting</button>
+            <input type="hidden" name="action" value="add_dashboard">
+            <button type="submit" class="action-btn add">Add Dashboard Settings</button>
         </form>
 
-        <!-- Region Settings List -->
+        <!-- Dashboard Settings Table -->
         <?php if (empty($region_settings)): ?>
-            <p>No region settings available.</p>
+            <p>No Dashboard settings available.</p>
         <?php else: ?>
             <div class="table-container">
                 <table class="region-settings-table">
@@ -409,6 +432,66 @@ try {
                             <th>Channel</th>
                             <th>Channel Name</th>
                             <th>Channel Number</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($region_settings as $setting): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($setting['id']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['country']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['section_header']); ?></td>
+                                <td><?php echo $setting['crypto'] ? 'On' : 'Off'; ?></td>
+                                <td><?php echo htmlspecialchars($setting['channel'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($setting['ch_name']); ?></td>
+                                <td><?php echo htmlspecialchars($setting['ch_value']); ?></td>
+                                <td class="action-buttons">
+                                    <a href="edit_region_setting.php?id=<?php echo $setting['id']; ?>&section=dashboard" class="action-btn edit">Edit</a>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="id" value="<?php echo $setting['id']; ?>">
+                                        <input type="hidden" name="action" value="delete">
+                                        <button type="submit" class="action-btn delete" onclick="return confirm('Are you sure you want to delete this region setting? This will remove both Dashboard and Verification settings.');">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+
+        <!-- Verification Section -->
+        <h3>Verification Section</h3>
+        <form action="manage_region_settings.php" method="POST" class="add-form">
+            <select name="country" required>
+                <option value="" disabled selected>Select Country</option>
+                <?php foreach ($region_settings as $setting): ?>
+                    <option value="<?php echo htmlspecialchars($setting['country']); ?>"><?php echo htmlspecialchars($setting['country']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <input type="text" name="verify_ch" placeholder="Channel (e.g., Bank)" required>
+            <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" required>
+            <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" required>
+            <input type="text" name="verify_ch_value" placeholder="Channel Number (e.g., Account Number)" required>
+            <input type="text" name="verify_medium" placeholder="Verify Medium (e.g., Payment Method)">
+            <input type="text" name="vcn_value" placeholder="Channel Name Value (e.g., MOMO PSB)" required>
+            <input type="text" name="vcv_value" placeholder="Channel Number Value (e.g., 8012345678)" required>
+            <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" required>
+            <input type="number" name="verify_amount" placeholder="Charges (e.g., 15000)" step="0.01" required>
+            <input type="hidden" name="action" value="add_verification">
+            <button type="submit" class="action-btn add">Add Verification Settings</button>
+        </form>
+
+        <!-- Verification Settings Table -->
+        <?php if (empty($region_settings)): ?>
+            <p>No Verification settings available.</p>
+        <?php else: ?>
+            <div class="table-container">
+                <table class="region-settings-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Country</th>
                             <th>Channel</th>
                             <th>Name</th>
                             <th>Channel Name</th>
@@ -426,11 +509,6 @@ try {
                             <tr>
                                 <td><?php echo htmlspecialchars($setting['id']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['country']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['section_header']); ?></td>
-                                <td><?php echo $setting['crypto'] ? 'On' : 'Off'; ?></td>
-                                <td><?php echo htmlspecialchars($setting['channel'] ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($setting['ch_name']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['ch_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['vc_value']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_ch_name']); ?></td>
@@ -441,11 +519,11 @@ try {
                                 <td><?php echo htmlspecialchars($setting['verify_currency']); ?></td>
                                 <td><?php echo number_format($setting['verify_amount'], 2); ?></td>
                                 <td class="action-buttons">
-                                    <a href="edit_region_setting.php?id=<?php echo $setting['id']; ?>" class="action-btn edit">Edit</a>
+                                    <a href="edit_region_setting.php?id=<?php echo $setting['id']; ?>&section=verification" class="action-btn edit">Edit</a>
                                     <form method="POST" style="display: inline;">
                                         <input type="hidden" name="id" value="<?php echo $setting['id']; ?>">
                                         <input type="hidden" name="action" value="delete">
-                                        <button type="submit" class="action-btn delete" onclick="return confirm('Are you sure you want to delete this region setting?');">Delete</button>
+                                        <button type="submit" class="action-btn delete" onclick="return confirm('Are you sure you want to delete this region setting? This will remove both Dashboard and Verification settings.');">Delete</button>
                                     </form>
                                 </td>
                             </tr>
