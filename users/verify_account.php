@@ -560,7 +560,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the details below:</p>
                     <p><strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> <?php echo htmlspecialchars($vcn_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?></p>
-                    <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <span class="copyable" data-copy="<?php echo htmlspecialchars($vcv_value); ?>" title="Press and hold to copy"><?php echo htmlspecialchars($vcv_value); ?></span></p>
+                    <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <span class="copyable" data-copy="<?php echo htmlspecialchars($vcv_value); ?>" title="Tap to copy on mobile, press and hold on desktop"><?php echo htmlspecialchars($vcv_value); ?></span></p>
                     <p>After completing the payment, upload a payment receipt below. Your verification request will be reviewed within 48 hours.</p>
                     
                     <h3>Important Notes</h3>
@@ -718,47 +718,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         });
 
-        // Press and Hold to Copy
+        // Touch-to-Copy for Mobile, Press-and-Hold for Desktop
         const copyableElements = document.querySelectorAll('.copyable');
         let pressTimer;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         copyableElements.forEach(element => {
-            const startCopy = () => {
-                pressTimer = setTimeout(() => {
-                    const textToCopy = element.getAttribute('data-copy');
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Copied!',
-                            text: `${textToCopy} copied to clipboard.`,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    }).catch(err => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Copy Failed',
-                            text: 'Unable to copy text. Please try again.',
-                            timer: 2000
-                        });
-                        console.error('Copy error:', err);
+            const copyText = () => {
+                const textToCopy = element.getAttribute('data-copy');
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Copied!',
+                        text: `${textToCopy} copied to clipboard.`,
+                        timer: 1500,
+                        showConfirmButton: false
                     });
-                }, 500); // 500ms hold time
+                }).catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Copy Failed',
+                        text: 'Unable to copy text. Please try again.',
+                        timer: 2000
+                    });
+                    console.error('Copy error:', err);
+                });
             };
 
-            const cancelCopy = () => {
-                clearTimeout(pressTimer);
-            };
-
-            // Desktop: mousedown and mouseup
-            element.addEventListener('mousedown', startCopy);
-            element.addEventListener('mouseup', cancelCopy);
-            element.addEventListener('mouseleave', cancelCopy);
-
-            // Mobile: touchstart and touchend
-            element.addEventListener('touchstart', startCopy);
-            element.addEventListener('touchend', cancelCopy);
-            element.addEventListener('touchcancel', cancelCopy);
+            if (isMobile) {
+                // Mobile: Single tap to copy
+                element.addEventListener('click', (event) => {
+                    event.preventDefault(); // Prevent default touch behavior
+                    copyText();
+                });
+            } else {
+                // Desktop: Press and hold for 500ms
+                const startCopy = () => {
+                    pressTimer = setTimeout(copyText, 500);
+                };
+                const cancelCopy = () => {
+                    clearTimeout(pressTimer);
+                };
+                element.addEventListener('mousedown', startCopy);
+                element.addEventListener('mouseup', cancelCopy);
+                element.addEventListener('mouseleave', cancelCopy);
+            }
         });
 
         // Notification Handling
