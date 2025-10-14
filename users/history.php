@@ -1,27 +1,31 @@
 <?php
-// users/history.php
 session_start();
 require_once '../database/conn.php';
 
+// Set time zone to UTC
+date_default_timezone_set('UTC');
+
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
+    error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
     header('Location: ../signin.php');
     exit;
 }
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, balance FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, balance, COALESCE(country, '') AS country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
         session_destroy();
-        header('Location: ../signin.php');
+        header('Location: ../signin.php?error=user_not_found');
         exit;
     }
     $username = htmlspecialchars($user['name']);
     $balance = number_format($user['balance'], 2);
+    $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     session_destroy();
@@ -29,27 +33,68 @@ try {
     exit;
 }
 
-// Fetch activity history
+// Fetch region settings for labels
 try {
-    $stmt = $pdo->prepare("SELECT action, amount, created_at FROM activities WHERE user_id = ? ORDER BY created_at DESC");
-    $stmt->execute([$_SESSION['user_id']]);
-    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(ch_name, 'Bank Name') AS ch_name, 
+               COALESCE(ch_value, 'Bank Account') AS ch_value, 
+               COALESCE(channel, 'Bank') AS channel_label
+        FROM region_settings 
+        WHERE country = ?
+    ");
+    $stmt->execute([$user_country]);
+    $region_settings = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($region_settings) {
+        $ch_name = htmlspecialchars($region_settings['ch_name']);
+        $ch_value = htmlspecialchars($region_settings['ch_value']);
+        $channel_label = htmlspecialchars($region_settings['channel_label']);
+    } else {
+        $ch_name = 'Bank Name';
+        $ch_value = 'Bank Account';
+        $channel_label = 'Bank';
+        error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
+    }
 } catch (PDOException $e) {
-    error_log('Activity history error: ' . $e->getMessage(), 3, '../debug.log');
-    $activities = [];
+    error_log('Region settings fetch error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
+    $ch_name = 'Bank Name';
+    $ch_value = 'Bank Account';
+    $channel_label = 'Bank';
+}
+
+// Fetch activity and withdrawal history
+try {
+    // Fetch activities
+    $stmt = $pdo->prepare("
+        SELECT action, amount, created_at, NULL AS ref_number, NULL AS status, 
+               NULL AS channel, NULL AS bank_name, NULL AS bank_account, 'activity' AS source
+        FROM activities 
+        WHERE user_id = ?
+        UNION ALL
+        SELECT 'Withdrawal' AS action, amount, created_at, ref_number, status, 
+               channel, bank_name, bank_account, 'withdrawal' AS source
+        FROM withdrawals 
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    ");
+    $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+    $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('History fetch error: ' . $e->getMessage(), 3, '../debug.log');
+    $history = [];
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="View your activity history on Task Tube, including video watches and withdrawals.">
-    <meta name="keywords" content="Task Tube, history, activity log, cryptocurrency, earnings">
-    <meta name="author" content="Task Tube">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="View your activity and withdrawal history on Task Tube, including video watches and withdrawals." />
+    <meta name="keywords" content="Task Tube, history, activity log, withdrawals, earnings" />
+    <meta name="author" content="Task Tube" />
     <title>History | Task Tube</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -93,34 +138,18 @@ try {
             background: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            width: 100%;
-            box-sizing: border-box;
+            padding-bottom: 100px;
+            transition: all 0.3s ease;
         }
 
         .container {
-            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            padding: 24px 16px;
+            padding: 24px;
+            position: relative;
         }
 
-        .history-section {
-            width: 100%;
-            max-width: 1200px;
-            margin: 24px auto;
-            padding: 28px;
-            box-sizing: border-box;
-        }
-
-        .page-header {
+        .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -128,7 +157,7 @@ try {
             animation: slideIn 0.5s ease-out;
         }
 
-        .page-header img {
+        .header img {
             width: 64px;
             height: 64px;
             margin-right: 16px;
@@ -168,21 +197,26 @@ try {
             border-radius: 16px;
             padding: 28px;
             box-shadow: 0 6px 16px var(--shadow-color);
-            animation: slideIn 0.5s ease-out 0.2s backwards;
+            margin: 24px 0;
+            animation: slideIn 0.5s ease-out 0.6s backwards;
         }
 
         .history-section h2 {
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 20px;
+            color: var(--accent-color);
         }
 
         .history-table {
             width: 100%;
+            max-width: 100%;
             border-collapse: collapse;
+            font-size: 16px;
         }
 
-        .history-table th, .history-table td {
+        .history-table th,
+        .history-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
@@ -194,7 +228,7 @@ try {
         }
 
         .history-table td {
-            font-size: 16px;
+            font-weight: 500;
             color: var(--text-color);
         }
 
@@ -205,7 +239,7 @@ try {
 
         .notification {
             position: fixed;
-            top: 80px;
+            top: 20px;
             right: 20px;
             background: var(--card-bg);
             color: var(--text-color);
@@ -213,7 +247,7 @@ try {
             border-radius: 12px;
             border: 2px solid var(--accent-color);
             box-shadow: 0 4px 12px var(--shadow-color), 0 0 8px var(--accent-color);
-            z-index: 1002;
+            z-index: 1000;
             display: flex;
             align-items: center;
             animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 3s forwards;
@@ -232,18 +266,31 @@ try {
             color: var(--accent-color);
         }
 
+        .notification.error::before {
+            content: '⚠️';
+        }
+
         .notification span {
             font-size: 14px;
             font-weight: 500;
         }
 
         @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         @keyframes fadeOut {
-            to { opacity: 0; transform: translateY(-20px); }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
         }
 
         .bottom-menu {
@@ -257,20 +304,24 @@ try {
             align-items: center;
             padding: 14px 0;
             box-shadow: 0 -2px 8px var(--shadow-color);
-            z-index: 1000;
         }
 
-        .bottom-menu a {
+        .bottom-menu a,
+        .bottom-menu button {
             color: var(--menu-text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
             padding: 10px 18px;
             transition: color 0.3s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
         }
 
         .bottom-menu a.active,
-        .bottom-menu a:hover {
+        .bottom-menu a:hover,
+        .bottom-menu button:hover {
             color: var(--accent-color);
         }
 
@@ -285,85 +336,85 @@ try {
             transition: all 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         @media (max-width: 768px) {
-            .container,
-            .history-section {
-                width: 100%;
-                padding: 20px 12px;
+            .container {
+                padding: 16px;
             }
 
-            .page-header h1 {
+            .header-text h1 {
                 font-size: 22px;
             }
 
-            .history-section h2 {
-                font-size: 20px;
+            .history-section {
+                padding: 20px;
+            }
+
+            .history-table {
+                font-size: 14px;
             }
 
             .notification {
                 max-width: 250px;
                 right: 10px;
-                top: 70px;
-            }
-
-            .history-table th, .history-table td {
-                padding: 8px;
-                font-size: 14px;
+                top: 10px;
             }
         }
     </style>
 </head>
 <body>
-    <?php include 'inc/header.php'; ?>
-    <?php include 'inc/navbar.php'; ?>
-
     <div id="gradient"></div>
-    <div class="main-content">
-        <div class="container" role="main">
-            <div class="page-header">
-                <div style="display: flex; align-items: center;">
-                    <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
-                    <div class="header-text">
-                        <h1>Activity History, <?php echo $username; ?>!</h1>
-                        <p>View your past actions and earnings.</p>
-                    </div>
+    <div class="container" role="main">
+        <div class="header">
+            <div style="display: flex; align-items: center;">
+                <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
+                <div class="header-text">
+                    <h1>Activity History, <?php echo $username; ?>!</h1>
+                    <p>View your past actions and withdrawals.</p>
                 </div>
-                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
             </div>
-
-            <div class="history-section">
-                <h2>Your Activity History</h2>
-                <?php if ($activities): ?>
-                    <table class="history-table">
-                        <thead>
-                            <tr>
-                                <th>Action</th>
-                                <th>Amount</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($activities as $activity): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($activity['action']); ?></td>
-                                    <td class="amount">$<?php echo number_format($activity['amount'], 2); ?></td>
-                                    <td><?php echo date('M d, Y H:i', strtotime($activity['created_at'])); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p>No activity history available.</p>
-                <?php endif; ?>
-            </div>
-
-            <div id="notificationContainer"></div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
         </div>
+
+        <div class="history-section">
+            <h2>Your Activity & Withdrawal History</h2>
+            <?php if ($history): ?>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Details</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($history as $item): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($item['action']); ?></td>
+                                <td>
+                                    <?php if ($item['source'] === 'withdrawal'): ?>
+                                        <?php echo htmlspecialchars($channel_label); ?>: <?php echo htmlspecialchars($item['channel']); ?><br>
+                                        <?php echo htmlspecialchars($ch_name); ?>: <?php echo htmlspecialchars($item['bank_name']); ?><br>
+                                        <?php echo htmlspecialchars($ch_value); ?>: <?php echo htmlspecialchars($item['bank_account']); ?><br>
+                                        Ref: <?php echo htmlspecialchars($item['ref_number']); ?>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                                <td class="amount">$<?php echo number_format($item['amount'], 2); ?></td>
+                                <td><?php echo $item['source'] === 'withdrawal' ? htmlspecialchars(ucfirst($item['status'])) : '-'; ?></td>
+                                <td><?php echo gmdate('F j, Y, g:i A T', strtotime($item['created_at'])); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <p>No activity or withdrawal history available.</p>
+            <?php endif; ?>
+        </div>
+
+        <div id="notificationContainer"></div>
     </div>
 
     <div class="bottom-menu" role="navigation">
@@ -371,12 +422,9 @@ try {
         <a href="profile.php">Profile</a>
         <a href="history.php" class="active">History</a>
         <a href="support.php">Support</a>
-        <a href="../about.php">About</a>
+        <button id="logoutBtn" aria-label="Log out">Logout</button>
     </div>
 
-    <?php include 'inc/footer.php'; ?>
-
-    <!-- LiveChat Integration -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
@@ -400,13 +448,7 @@ try {
             !n.__lc.asyncInit && e.init();
             n.LiveChatWidget = n.LiveChatWidget || e;
         })(window, document, [].slice);
-    </script>
-    <noscript>
-        <a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>,
-        powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
-    </noscript>
 
-    <script>
         // Dark Mode Toggle
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
@@ -432,7 +474,46 @@ try {
             });
         });
 
-        // Withdrawal Notifications
+        // Logout Button
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            Swal.fire({
+                title: 'Log out?',
+                text: 'Are you sure you want to log out?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, log out'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'logout.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                window.location.href = '../signin.php';
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Failed to log out. Please try again.'
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Server Error',
+                                text: 'An error occurred while logging out.'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // Notification Handling
         const notificationContainer = document.getElementById('notificationContainer');
         function fetchNotifications() {
             $.ajax({
@@ -440,13 +521,14 @@ try {
                 type: 'GET',
                 dataType: 'json',
                 success: function(notifications) {
+                    notificationContainer.innerHTML = '';
                     notifications.forEach((message, index) => {
                         const notification = document.createElement('div');
-                        notification.className = 'notification';
+                        notification.className = `notification ${message.type || 'success'}`;
                         notification.setAttribute('role', 'alert');
-                        notification.innerHTML = `<span>${message}</span>`;
+                        notification.innerHTML = `<span>${message.text}</span>`;
                         notificationContainer.appendChild(notification);
-                        notification.style.top = `${80 + index * 80}px`;
+                        notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
                     });
                 },
@@ -471,6 +553,7 @@ try {
         var step = 0;
         var colorIndices = [0, 1, 2, 3];
         var gradientSpeed = 0.002;
+        const gradientElement = document.getElementById('gradient');
 
         function updateGradient() {
             var c0_0 = colors[colorIndices[0]];
@@ -486,9 +569,7 @@ try {
             var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
             var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
             var color2 = `rgb(${r2},${g2},${b2})`;
-            $('#gradient').css({
-                background: `linear-gradient(135deg, ${color1}, ${color2})`
-            });
+            gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
             step += gradientSpeed;
             if (step >= 1) {
                 step %= 1;
@@ -497,9 +578,10 @@ try {
                 colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
                 colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
             }
+            requestAnimationFrame(updateGradient);
         }
 
-        setInterval(updateGradient, 10);
+        requestAnimationFrame(updateGradient);
 
         // Context Menu Disable
         document.addEventListener('contextmenu', function(event) {
