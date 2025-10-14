@@ -47,6 +47,38 @@ if ($verification_status !== 'verified') {
     exit;
 }
 
+// Fetch region settings for labels
+try {
+    $stmt = $pdo->prepare("
+        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel
+        FROM region_settings 
+        WHERE country = ?
+    ");
+    $stmt->execute([$user_country]);
+    $region_settings = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($region_settings) {
+        $section_header = htmlspecialchars($region_settings['section_header']);
+        $ch_name = htmlspecialchars($region_settings['ch_name']);
+        $ch_value = htmlspecialchars($region_settings['ch_value']);
+        $channel_label = htmlspecialchars($region_settings['channel']);
+    } else {
+        // Fallback values if no region settings are found
+        $section_header = 'Withdraw Funds';
+        $ch_name = 'Bank Name';
+        $ch_value = 'Bank Account';
+        $channel_label = 'Bank';
+        error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
+    }
+} catch (PDOException $e) {
+    error_log('Region settings fetch error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
+    // Fallback values on error
+    $section_header = 'Withdraw Funds';
+    $ch_name = 'Bank Name';
+    $ch_value = 'Bank Account';
+    $channel_label = 'Bank';
+}
+
 // Process withdrawal
 $channel = filter_var($_POST['channel'] ?? '', FILTER_SANITIZE_STRING);
 $bank_name = filter_var($_POST['bank_name'] ?? '', FILTER_SANITIZE_STRING);
@@ -55,52 +87,38 @@ $amount = filter_var($_POST['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
 $error = null;
 
 if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount > 0) {
-    // Validate channel against region_settings
-    try {
-        $stmt = $pdo->prepare("SELECT channel FROM region_settings WHERE country = ?");
-        $stmt->execute([$user_country]);
-        $region_settings = $stmt->fetch(PDO::FETCH_ASSOC);
-        $valid_channel = $region_settings ? $region_settings['channel'] : 'Bank';
+    if ($amount > $balance) {
+        error_log('Insufficient balance for user ID: ' . $_SESSION['user_id'] . ', requested: ' . $amount . ', available: ' . $balance, 3, '../debug.log');
+        $error = 'Insufficient balance for withdrawal.';
+    } elseif ($amount <= 0) {
+        error_log('Invalid amount for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount, 3, '../debug.log');
+        $error = 'Invalid withdrawal amount.';
+    } else {
+        try {
+            $pdo->beginTransaction();
 
-        if ($channel !== $valid_channel) {
-            error_log('Invalid channel for user ID: ' . $_SESSION['user_id'] . ', provided: ' . $channel . ', expected: ' . $valid_channel, 3, '../debug.log');
-            $error = 'Invalid withdrawal channel selected.';
-        } elseif ($amount > $balance) {
-            error_log('Insufficient balance for user ID: ' . $_SESSION['user_id'] . ', requested: ' . $amount . ', available: ' . $balance, 3, '../debug.log');
-            $error = 'Insufficient balance for withdrawal.';
-        } elseif ($amount <= 0) {
-            error_log('Invalid amount for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount, 3, '../debug.log');
-            $error = 'Invalid withdrawal amount.';
-        } else {
-            try {
-                $pdo->beginTransaction();
+            // Deduct amount from balance
+            $new_balance = $balance - $amount;
+            $stmt = $pdo->prepare("UPDATE users SET balance = ? WHERE id = ?");
+            $stmt->execute([$new_balance, $_SESSION['user_id']]);
 
-                // Deduct amount from balance
-                $new_balance = $balance - $amount;
-                $stmt = $pdo->prepare("UPDATE users SET balance = ? WHERE id = ?");
-                $stmt->execute([$new_balance, $_SESSION['user_id']]);
+            // Generate unique reference number
+            $ref_number = strtoupper(substr(uniqid(), 0, 10));
 
-                // Generate unique reference number
-                $ref_number = strtoupper(substr(uniqid(), 0, 10));
+            // Insert withdrawal record
+            $stmt = $pdo->prepare("
+                INSERT INTO withdrawals (user_id, amount, channel, bank_name, bank_account, ref_number, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->execute([$_SESSION['user_id'], $amount, $channel, $bank_name, $bank_account, $ref_number]);
 
-                // Insert withdrawal record
-                $stmt = $pdo->prepare("
-                    INSERT INTO withdrawals (user_id, amount, channel, bank_name, bank_account, ref_number, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending')
-                ");
-                $stmt->execute([$_SESSION['user_id'], $amount, $channel, $bank_name, $bank_account, $ref_number]);
-
-                $pdo->commit();
-                error_log('Withdrawal request created for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount . ', channel: ' . $channel, 3, '../debug.log');
-            } catch (PDOException $e) {
-                $pdo->rollBack();
-                error_log('Withdrawal error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
-                $error = 'An error occurred while processing your withdrawal.';
-            }
+            $pdo->commit();
+            error_log('Withdrawal request created for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount . ', channel: ' . $channel, 3, '../debug.log');
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            error_log('Withdrawal error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
+            $error = 'An error occurred while processing your withdrawal.';
         }
-    } catch (PDOException $e) {
-        error_log('Region settings fetch error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
-        $error = 'Failed to validate withdrawal channel.';
     }
 } else {
     error_log('Invalid withdrawal inputs for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
@@ -456,15 +474,15 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
                         <td><?php echo date('F j, Y, g:i A T'); ?></td>
                     </tr>
                     <tr>
-                        <th>Withdrawal Method</th>
+                        <th><?php echo htmlspecialchars($ch_name); ?></th>
                         <td><?php echo htmlspecialchars($channel); ?></td>
                     </tr>
                     <tr>
-                        <th>Bank Name</th>
+                        <th><?php echo htmlspecialchars($channel_label); ?></th>
                         <td><?php echo htmlspecialchars($bank_name); ?></td>
                     </tr>
                     <tr>
-                        <th>Bank Account</th>
+                        <th><?php echo htmlspecialchars($ch_value); ?></th>
                         <td><?php echo htmlspecialchars($bank_account); ?></td>
                     </tr>
                     <tr>
