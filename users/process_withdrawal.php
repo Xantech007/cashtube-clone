@@ -474,11 +474,11 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
                         <td><?php echo date('F j, Y, g:i A T'); ?></td>
                     </tr>
                     <tr>
-                        <th><?php echo htmlspecialchars($ch_name); ?></th>
+                        <th><?php echo htmlspecialchars($channel_label); ?></th>
                         <td><?php echo htmlspecialchars($channel); ?></td>
                     </tr>
                     <tr>
-                        <th><?php echo htmlspecialchars($channel_label); ?></th>
+                        <th><?php echo htmlspecialchars($ch_name); ?></th>
                         <td><?php echo htmlspecialchars($bank_name); ?></td>
                     </tr>
                     <tr>
