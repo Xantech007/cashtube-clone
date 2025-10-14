@@ -78,6 +78,7 @@ try {
     ");
     $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
     $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    error_log('Fetched ' . count($history) . ' history records for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
 } catch (PDOException $e) {
     error_log('History fetch error: ' . $e->getMessage(), 3, '../debug.log');
     $history = [];
@@ -452,8 +453,9 @@ try {
                                         <?php if ($item['source'] === 'withdrawal'): ?>
                                             <?php
                                             $status = $item['status'];
-                                            $display_status = $status === 'success' ? 'Completed' : ($status === 'failed' ? 'Rejected' : 'Pending');
-                                            $status_class = $status === 'success' ? 'status-completed' : ($status === 'failed' ? 'status-rejected' : 'status-pending');
+                                            $display_status = $status === 'approved' ? 'Completed' : ($status === 'rejected' ? 'Rejected' : 'Pending');
+                                            $status_class = $status === 'approved' ? 'status-completed' : ($status === 'rejected' ? 'status-rejected' : 'status-pending');
+                                            error_log("Displaying withdrawal ID {$item['id']} with status: $display_status (raw: $status)", 3, '../debug.log');
                                             ?>
                                             <span class="status-box <?php echo $status_class; ?>">
                                                 <?php echo htmlspecialchars($display_status); ?>
