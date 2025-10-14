@@ -7,76 +7,104 @@ date_default_timezone_set('Africa/Lagos');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
+    error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
     header('Location: ../signin.php');
+    exit;
+}
+
+// Validate CSRF token
+if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    error_log('CSRF validation failed for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+    header('Location: home.php?error=Invalid+CSRF+token');
     exit;
 }
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, balance, verification_status FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, balance, verification_status, COALESCE(country, '') AS country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
+        error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
         session_destroy();
-        header('Location: ../signin.php');
+        header('Location: ../signin.php?error=user_not_found');
         exit;
     }
     $username = htmlspecialchars($user['name']);
     $balance = $user['balance'];
     $verification_status = $user['verification_status'];
+    $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
-    header('Location: ../signin.php?error=database');
+    header('Location: home.php?error=Database+error');
     exit;
 }
 
 // Check verification status
 if ($verification_status !== 'verified') {
+    error_log('User ID: ' . $_SESSION['user_id'] . ' not verified for withdrawal', 3, '../debug.log');
     header('Location: home.php?error=Please+verify+your+account+before+withdrawing+funds');
     exit;
 }
 
 // Process withdrawal
-$amount = isset($_GET['amount']) ? floatval($_GET['amount']) : 0;
-$wallet_address = isset($_GET['cryptoAddress']) ? trim($_GET['cryptoAddress']) : '';
+$channel = filter_var($_POST['channel'] ?? '', FILTER_SANITIZE_STRING);
+$bank_name = filter_var($_POST['bank_name'] ?? '', FILTER_SANITIZE_STRING);
+$bank_account = filter_var($_POST['bank_account'] ?? '', FILTER_SANITIZE_STRING);
+$amount = filter_var($_POST['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
 $error = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_address)) {
-    // Validate withdrawal
-    if ($amount > $balance) {
-        $error = 'Insufficient balance for withdrawal.';
-    } elseif ($amount <= 0) {
-        $error = 'Invalid withdrawal amount.';
-    } else {
-        try {
-            // Start transaction
-            $pdo->beginTransaction();
+if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount > 0) {
+    // Validate channel against region_settings
+    try {
+        $stmt = $pdo->prepare("SELECT channel FROM region_settings WHERE country = ?");
+        $stmt->execute([$user_country]);
+        $region_settings = $stmt->fetch(PDO::FETCH_ASSOC);
+        $valid_channel = $region_settings ? $region_settings['channel'] : 'Bank';
 
-            // Deduct amount from balance
-            $new_balance = $balance - $amount;
-            $stmt = $pdo->prepare("UPDATE users SET balance = ? WHERE id = ?");
-            $stmt->execute([$new_balance, $_SESSION['user_id']]);
+        if ($channel !== $valid_channel) {
+            error_log('Invalid channel for user ID: ' . $_SESSION['user_id'] . ', provided: ' . $channel . ', expected: ' . $valid_channel, 3, '../debug.log');
+            $error = 'Invalid withdrawal channel selected.';
+        } elseif ($amount > $balance) {
+            error_log('Insufficient balance for user ID: ' . $_SESSION['user_id'] . ', requested: ' . $amount . ', available: ' . $balance, 3, '../debug.log');
+            $error = 'Insufficient balance for withdrawal.';
+        } elseif ($amount <= 0) {
+            error_log('Invalid amount for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount, 3, '../debug.log');
+            $error = 'Invalid withdrawal amount.';
+        } else {
+            try {
+                $pdo->beginTransaction();
 
-            // Generate unique reference number
-            $ref_number = strtoupper(substr(uniqid(), 0, 10));
+                // Deduct amount from balance
+                $new_balance = $balance - $amount;
+                $stmt = $pdo->prepare("UPDATE users SET balance = ? WHERE id = ?");
+                $stmt->execute([$new_balance, $_SESSION['user_id']]);
 
-            // Insert withdrawal record
-            $stmt = $pdo->prepare("
-                INSERT INTO withdrawals (user_id, amount, wallet_address, ref_number, status)
-                VALUES (?, ?, ?, ?, 'pending')
-            ");
-            $stmt->execute([$_SESSION['user_id'], $amount, $wallet_address, $ref_number]);
+                // Generate unique reference number
+                $ref_number = strtoupper(substr(uniqid(), 0, 10));
 
-            // Commit transaction
-            $pdo->commit();
-        } catch (PDOException $e) {
-            $pdo->rollBack();
-            error_log('Withdrawal error: ' . $e->getMessage(), 3, '../debug.log');
-            $error = 'An error occurred while processing your withdrawal.';
+                // Insert withdrawal record
+                $stmt = $pdo->prepare("
+                    INSERT INTO withdrawals (user_id, amount, channel, bank_name, bank_account, ref_number, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                ");
+                $stmt->execute([$_SESSION['user_id'], $amount, $channel, $bank_name, $bank_account, $ref_number]);
+
+                $pdo->commit();
+                error_log('Withdrawal request created for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount . ', channel: ' . $channel, 3, '../debug.log');
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                error_log('Withdrawal error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
+                $error = 'An error occurred while processing your withdrawal.';
+            }
         }
+    } catch (PDOException $e) {
+        error_log('Region settings fetch error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
+        $error = 'Failed to validate withdrawal channel.';
     }
 } else {
-    $error = 'Invalid withdrawal request.';
+    error_log('Invalid withdrawal inputs for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+    $error = 'Please fill in all required fields.';
 }
 ?>
 
@@ -85,10 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Withdrawal receipt for your Cash Tube crypto withdrawal." />
-    <meta name="keywords" content="Cash Tube, withdrawal, cryptocurrency, receipt" />
-    <meta name="author" content="Cash Tube" />
-    <title>Withdrawal Receipt | Cash Tube</title>
+    <meta name="description" content="Withdrawal receipt for your Task Tube withdrawal." />
+    <meta name="keywords" content="Task Tube, withdrawal, bank, receipt" />
+    <meta name="author" content="Task Tube" />
+    <title>Withdrawal Receipt | Task Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -298,6 +326,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
             color: var(--accent-color);
         }
 
+        .notification.error::before {
+            content: '⚠️';
+        }
+
         .notification span {
             font-size: 14px;
             font-weight: 500;
@@ -364,17 +396,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
             transition: all 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
         @media (max-width: 768px) {
             .container {
                 padding: 16px;
@@ -412,7 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
                 <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
                 <div class="header-text">
                     <h1>Withdrawal Receipt</h1>
-                    <p>Details of your crypto withdrawal</p>
+                    <p>Details of your withdrawal</p>
                 </div>
             </div>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
@@ -436,11 +457,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
                     </tr>
                     <tr>
                         <th>Withdrawal Method</th>
-                        <td>Crypto</td>
+                        <td><?php echo htmlspecialchars($channel); ?></td>
                     </tr>
                     <tr>
-                        <th>Crypto Wallet Address</th>
-                        <td><?php echo htmlspecialchars($wallet_address); ?></td>
+                        <th>Bank Name</th>
+                        <td><?php echo htmlspecialchars($bank_name); ?></td>
+                    </tr>
+                    <tr>
+                        <th>Bank Account</th>
+                        <td><?php echo htmlspecialchars($bank_account); ?></td>
                     </tr>
                     <tr>
                         <th>From</th>
@@ -489,13 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
             !n.__lc.asyncInit && e.init();
             n.LiveChatWidget = n.LiveChatWidget || e;
         })(window, document, [].slice);
-    </script>
-    <noscript>
-        <a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>, 
-        powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
-    </noscript>
 
-    <script>
         // Dark Mode Toggle
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
@@ -570,11 +589,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $amount > 0 && !empty($wallet_addres
                 type: 'GET',
                 dataType: 'json',
                 success: function(notifications) {
+                    notificationContainer.innerHTML = '';
                     notifications.forEach((message, index) => {
                         const notification = document.createElement('div');
-                        notification.className = 'notification';
+                        notification.className = `notification ${message.type || 'success'}`;
                         notification.setAttribute('role', 'alert');
-                        notification.innerHTML = `<span>${message}</span>`;
+                        notification.innerHTML = `<span>${message.text}</span>`;
                         notificationContainer.appendChild(notification);
                         notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
