@@ -64,7 +64,6 @@ try {
 
 // Fetch activity and withdrawal history
 try {
-    // Fetch activities
     $stmt = $pdo->prepare("
         SELECT action, amount, created_at, NULL AS ref_number, NULL AS status, 
                NULL AS channel, NULL AS bank_name, NULL AS bank_account, 'activity' AS source
@@ -208,10 +207,18 @@ try {
             color: var(--accent-color);
         }
 
+        .table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 400px;
+            margin-top: 10px;
+        }
+
         .history-table {
             width: 100%;
-            max-width: 100%;
             border-collapse: collapse;
+            min-width: 800px;
             font-size: 16px;
         }
 
@@ -225,6 +232,10 @@ try {
         .history-table th {
             font-weight: 600;
             color: var(--subtext-color);
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            z-index: 1;
         }
 
         .history-table td {
@@ -378,37 +389,39 @@ try {
         <div class="history-section">
             <h2>Your Activity & Withdrawal History</h2>
             <?php if ($history): ?>
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Action</th>
-                            <th>Details</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($history as $item): ?>
+                <div class="table-container">
+                    <table class="history-table">
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($item['action']); ?></td>
-                                <td>
-                                    <?php if ($item['source'] === 'withdrawal'): ?>
-                                        <?php echo htmlspecialchars($channel_label); ?>: <?php echo htmlspecialchars($item['channel']); ?><br>
-                                        <?php echo htmlspecialchars($ch_name); ?>: <?php echo htmlspecialchars($item['bank_name']); ?><br>
-                                        <?php echo htmlspecialchars($ch_value); ?>: <?php echo htmlspecialchars($item['bank_account']); ?><br>
-                                        Ref: <?php echo htmlspecialchars($item['ref_number']); ?>
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
-                                </td>
-                                <td class="amount">$<?php echo number_format($item['amount'], 2); ?></td>
-                                <td><?php echo $item['source'] === 'withdrawal' ? htmlspecialchars(ucfirst($item['status'])) : '-'; ?></td>
-                                <td><?php echo gmdate('F j, Y, g:i A T', strtotime($item['created_at'])); ?></td>
+                                <th>Action</th>
+                                <th>Details</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($history as $item): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($item['action']); ?></td>
+                                    <td>
+                                        <?php if ($item['source'] === 'withdrawal'): ?>
+                                            <?php echo htmlspecialchars($channel_label); ?>: <?php echo htmlspecialchars($item['channel']); ?><br>
+                                            <?php echo htmlspecialchars($ch_name); ?>: <?php echo htmlspecialchars($item['bank_name']); ?><br>
+                                            <?php echo htmlspecialchars($ch_value); ?>: <?php echo htmlspecialchars($item['bank_account']); ?><br>
+                                            Ref: <?php echo htmlspecialchars($item['ref_number']); ?>
+                                        <?php else: ?>
+                                            -
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="amount">$<?php echo number_format($item['amount'], 2); ?></td>
+                                    <td><?php echo $item['source'] === 'withdrawal' ? htmlspecialchars(ucfirst($item['status'])) : '-'; ?></td>
+                                    <td><?php echo gmdate('F j, Y, g:i A T', strtotime($item['created_at'])); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php else: ?>
                 <p>No activity or withdrawal history available.</p>
             <?php endif; ?>
@@ -506,7 +519,7 @@ try {
                                 icon: 'error',
                                 title: 'Server Error',
                                 text: 'An error occurred while logging out.'
-                            });
+                                });
                         }
                     });
                 }
