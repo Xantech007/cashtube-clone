@@ -90,6 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = $stmt->execute([$new_passcode, $_SESSION['user_id']]);
 
         if ($success) {
+            // Update session passcode to maintain consistency
+            $_SESSION['passcode'] = $new_passcode;
             error_log('Passcode updated successfully for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
@@ -99,9 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'error' => 'Failed to update passcode']);
         }
     } catch (PDOException $e) {
-        error_log('Database error in process_change_passcode.php: ' . $e->getMessage(), 3, '../debug.log');
+        error_log('Database error in process_change_passcode.php: ' . $e->getMessage() . ' | Code: ' . $e->getCode() . ' | Line: ' . $e->getLine(), 3, '../debug.log');
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Database error occurred']);
+        echo json_encode(['success' => false, 'error' => 'Database error occurred: ' . $e->getMessage()]);
+        ob_end_flush();
+        exit;
     }
 } else {
     error_log('Invalid request method in process_change_passcode.php', 3, '../debug.log');
