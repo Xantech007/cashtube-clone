@@ -9,7 +9,7 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once '../database/conn.php';
 
-// Set time zone to WAT
+// Set time zone to UTC
 date_default_timezone_set('Africa/Lagos');
 
 // Handle withdrawal actions
@@ -49,12 +49,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdrawal_id'], $_PO
     exit;
 }
 
-// Fetch all withdrawal requests
+// Fetch all withdrawal requests with region settings
 try {
     $stmt = $pdo->prepare("
-        SELECT w.id, w.user_id, w.amount, w.wallet_address, w.ref_number, w.status, w.created_at, u.email
+        SELECT 
+            w.id, w.user_id, w.amount, w.channel, w.bank_name, w.bank_account, w.ref_number, w.status, w.created_at, 
+            u.email, u.country, 
+            COALESCE(rs.ch_name, 'Bank Name') AS ch_name, 
+            COALESCE(rs.ch_value, 'Bank Account') AS ch_value, 
+            COALESCE(rs.channel, 'Bank') AS channel_label
         FROM withdrawals w
         JOIN users u ON w.user_id = u.id
+        LEFT JOIN region_settings rs ON u.country = rs.country
         ORDER BY w.created_at DESC
     ");
     $stmt->execute();
@@ -158,7 +164,7 @@ try {
         .withdrawals-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 800px;
+            min-width: 1000px;
         }
 
         .withdrawals-table th,
@@ -246,7 +252,9 @@ try {
                             <th>ID</th>
                             <th>User Email</th>
                             <th>Amount ($)</th>
-                            <th>Wallet Address</th>
+                            <th>Channel</th>
+                            <th>Bank Name</th>
+                            <th>Bank Account</th>
                             <th>Ref Number</th>
                             <th>Status</th>
                             <th>Created At</th>
@@ -259,10 +267,12 @@ try {
                                 <td><?php echo htmlspecialchars($withdrawal['id']); ?></td>
                                 <td><?php echo htmlspecialchars($withdrawal['email']); ?></td>
                                 <td><?php echo number_format($withdrawal['amount'], 2); ?></td>
-                                <td><?php echo htmlspecialchars($withdrawal['wallet_address']); ?></td>
+                                <td><?php echo htmlspecialchars($withdrawal['channel']); ?> (<?php echo htmlspecialchars($withdrawal['channel_label']); ?>)</td>
+                                <td><?php echo htmlspecialchars($withdrawal['bank_name']); ?> (<?php echo htmlspecialchars($withdrawal['ch_name']); ?>)</td>
+                                <td><?php echo htmlspecialchars($withdrawal['bank_account']); ?> (<?php echo htmlspecialchars($withdrawal['ch_value']); ?>)</td>
                                 <td><?php echo htmlspecialchars($withdrawal['ref_number']); ?></td>
                                 <td><?php echo htmlspecialchars(ucfirst($withdrawal['status'])); ?></td>
-                                <td><?php echo htmlspecialchars($withdrawal['created_at']); ?></td>
+                                <td><?php echo htmlspecialchars(gmdate('F j, Y, g:i A T', strtotime($withdrawal['created_at']))); ?></td>
                                 <td class="action-buttons">
                                     <?php if ($withdrawal['status'] === 'pending'): ?>
                                         <form method="POST" style="display: inline;">
