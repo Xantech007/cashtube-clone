@@ -529,11 +529,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                     <label for="email">Email Address</label>
                 </div>
                 <div class="input-container">
-                    <input type="password" id="passcode" name="passcode" placeholder=" " aria-describedby="passcodeHelp">
-                    <label for="passcode">New Passcode (leave blank to keep current)</label>
-                    <small id="passcodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Passcode must be 5 digits.</small>
-                </div>
-                <div class="input-container">
                     <select id="country" name="country" required aria-required="true">
                         <option value="" <?php echo empty($country) ? 'selected' : ''; ?>>Select Country</option>
                         <?php foreach ($countries as $index => $name): ?>
@@ -682,7 +677,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             event.preventDefault();
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
-            const passcode = document.getElementById('passcode').value.trim();
             const country = document.getElementById('country').value;
 
             if (!name) {
@@ -703,15 +697,6 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 return;
             }
 
-            if (passcode && !/^\d{5}$/.test(passcode)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Passcode',
-                    text: 'Passcode must be exactly 5 digits or leave blank to keep current.'
-                });
-                return;
-            }
-
             if (!country) {
                 Swal.fire({
                     icon: 'error',
@@ -724,7 +709,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             $.ajax({
                 url: 'process_profile_update.php',
                 type: 'POST',
-                data: { name, email, passcode, country },
+                data: { name, email, country },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
