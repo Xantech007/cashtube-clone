@@ -1,45 +1,78 @@
 <?php
-// users/support.php
 session_start();
 require_once '../database/conn.php';
 
+// Set time zone to UTC
+date_default_timezone_set('UTC');
+
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
+    error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
     header('Location: ../signin.php');
     exit;
 }
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, balance, COALESCE(country, '') AS country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
         error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
         session_destroy();
-        header('Location: ../signin.php');
+        header('Location: ../signin.php?error=user_not_found');
         exit;
     }
     $username = htmlspecialchars($user['name']);
-    $email = htmlspecialchars($user['email'] ?? '');
+    $balance = number_format($user['balance'], 2);
+    $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     session_destroy();
     header('Location: ../signin.php?error=database');
     exit;
 }
+
+// Fetch region settings for labels
+try {
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(ch_name, 'Bank Name') AS ch_name, 
+               COALESCE(ch_value, 'Bank Account') AS ch_value, 
+               COALESCE(channel, 'Bank') AS channel_label
+        FROM region_settings 
+        WHERE country = ?
+    ");
+    $stmt->execute([$user_country]);
+    $region_settings = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($region_settings) {
+        $ch_name = htmlspecialchars($region_settings['ch_name']);
+        $ch_value = htmlspecialchars($region_settings['ch_value']);
+        $channel_label = htmlspecialchars($region_settings['channel_label']);
+    } else {
+        $ch_name = 'Bank Name';
+        $ch_value = 'Bank Account';
+        $channel_label = 'Bank';
+        error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
+    }
+} catch (PDOException $e) {
+    error_log('Region settings fetch error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
+    $ch_name = 'Bank Name';
+    $ch_value = 'Bank Account';
+    $channel_label = 'Bank';
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Contact Task Tube support for assistance with your account or platform issues.">
-    <meta name="keywords" content="Task Tube, support, contact, help, cryptocurrency">
-    <meta name="author" content="Task Tube">
-    <title>Support | Task Tube</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Contact Task Tube's support team 24/7 via WhatsApp for assistance with your account, login, or general inquiries." />
+    <meta name="keywords" content="Task Tube, contact support, earn money online, watch ads, customer service" />
+    <meta name="author" content="Task Tube" />
+    <title>Contact Support | Task Tube</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -56,6 +89,9 @@ try {
             --accent-hover: #16a34a;
             --menu-bg: #1a1a1a;
             --menu-text: #ffffff;
+            --status-completed: #22c55e;
+            --status-pending: #eab308;
+            --status-rejected: #ef4444;
         }
 
         [data-theme="dark"] {
@@ -70,6 +106,9 @@ try {
             --accent-hover: #22c55e;
             --menu-bg: #111827;
             --menu-text: #e5e7eb;
+            --status-completed: #34d399;
+            --status-pending: #facc15;
+            --status-rejected: #f87171;
         }
 
         * {
@@ -83,34 +122,18 @@ try {
             background: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            width: 100%;
-            box-sizing: border-box;
+            padding-bottom: 100px;
+            transition: all 0.3s ease;
         }
 
         .container {
-            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            padding: 24px 16px;
+            padding: 24px;
+            position: relative;
         }
 
-        .support-section {
-            width: 100%;
-            max-width: 1200px;
-            margin: 24px auto;
-            padding: 28px;
-            box-sizing: border-box;
-        }
-
-        .page-header {
+        .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -118,7 +141,7 @@ try {
             animation: slideIn 0.5s ease-out;
         }
 
-        .page-header img {
+        .header img {
             width: 64px;
             height: 64px;
             margin-right: 16px;
@@ -153,96 +176,120 @@ try {
             transform: scale(1.02);
         }
 
-        .support-section {
+        .contact-section {
             background: var(--card-bg);
             border-radius: 16px;
             padding: 28px;
             box-shadow: 0 6px 16px var(--shadow-color);
-            animation: slideIn 0.5s ease-out 0.2s backwards;
+            margin: 24px 0;
+            animation: slideIn 0.5s ease-out 0.6s backwards;
         }
 
-        .support-section h2 {
+        .contact-section h2 {
             font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+        }
+
+        .contact-section p {
+            font-size: 16px;
+            color: var(--subtext-color);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .contact-info p strong {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .contact-info p a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        .contact-info p a:hover {
+            text-decoration: underline;
+        }
+
+        .contact-section ul {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .contact-section ul li {
+            font-size: 16px;
+            color: var(--subtext-color);
+            line-height: 1.6;
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .contact-section ul li::before {
+            content: '\f058';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--accent-color);
+            position: absolute;
+            left: 0;
+            top: 2px;
+        }
+
+        .cta-banner {
+            background: var(--gradient-bg);
+            color: var(--text-color);
+            text-align: center;
+            padding: 60px 20px;
+            border-radius: 16px;
+            margin: 40px 0;
+            box-shadow: 0 6px 16px var(--shadow-color);
+        }
+
+        .cta-banner h2 {
+            font-size: 32px;
             font-weight: 600;
             margin-bottom: 20px;
         }
 
-        .support-section h2::before {
-            content: '📞';
-            font-size: 1.2rem;
-            margin-right: 8px;
-        }
-
-        .input-container {
-            position: relative;
-            margin-bottom: 28px;
-        }
-
-        .input-container input,
-        .input-container textarea {
-            width: 100%;
-            padding: 14px 0;
-            font-size: 16px;
-            border: none;
-            border-bottom: 2px solid var(--border-color);
-            background: transparent;
-            color: var(--text-color);
-            outline: none;
-            transition: border-color 0.3s ease;
-        }
-
-        .input-container textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .input-container input:focus,
-        .input-container input:valid,
-        .input-container textarea:focus,
-        .input-container textarea:valid {
-            border-bottom-color: var(--accent-color);
-        }
-
-        .input-container label {
-            position: absolute;
-            top: 14px;
-            left: 0;
-            font-size: 16px;
-            color: var(--subtext-color);
-            pointer-events: none;
-            transition: all 0.3s ease;
-        }
-
-        .input-container input:focus ~ label,
-        .input-container input:valid ~ label,
-        .input-container textarea:focus ~ label,
-        .input-container textarea:valid ~ label {
-            top: -18px;
-            font-size: 12px;
-            color: var(--accent-color);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 14px;
-            background: var(--accent-color);
+        .cta-banner .btn {
+            background-color: var(--accent-color);
             color: #fff;
-            font-size: 16px;
+            padding: 15px 40px;
+            font-size: 18px;
             font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
         }
 
-        .submit-btn:hover {
-            background: var(--accent-hover);
-            transform: scale(1.02);
+        .cta-banner .btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .signup-link .btn {
+            background-color: var(--accent-color);
+            color: #fff;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .signup-link .btn:hover {
+            background-color: var(--accent-hover);
         }
 
         .notification {
             position: fixed;
-            top: 80px;
+            top: 20px;
             right: 20px;
             background: var(--card-bg);
             color: var(--text-color);
@@ -250,7 +297,7 @@ try {
             border-radius: 12px;
             border: 2px solid var(--accent-color);
             box-shadow: 0 4px 12px var(--shadow-color), 0 0 8px var(--accent-color);
-            z-index: 1002;
+            z-index: 1000;
             display: flex;
             align-items: center;
             animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 3s forwards;
@@ -269,18 +316,31 @@ try {
             color: var(--accent-color);
         }
 
+        .notification.error::before {
+            content: '⚠️';
+        }
+
         .notification span {
             font-size: 14px;
             font-weight: 500;
         }
 
         @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         @keyframes fadeOut {
-            to { opacity: 0; transform: translateY(-20px); }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
         }
 
         .bottom-menu {
@@ -294,20 +354,24 @@ try {
             align-items: center;
             padding: 14px 0;
             box-shadow: 0 -2px 8px var(--shadow-color);
-            z-index: 1000;
         }
 
-        .bottom-menu a {
+        .bottom-menu a,
+        .bottom-menu button {
             color: var(--menu-text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
             padding: 10px 18px;
             transition: color 0.3s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
         }
 
         .bottom-menu a.active,
-        .bottom-menu a:hover {
+        .bottom-menu a:hover,
+        .bottom-menu button:hover {
             color: var(--accent-color);
         }
 
@@ -322,73 +386,100 @@ try {
             transition: all 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         @media (max-width: 768px) {
-            .container,
-            .support-section {
-                width: 100%;
-                padding: 20px 12px;
+            .container {
+                padding: 16px;
             }
 
-            .page-header h1 {
+            .header-text h1 {
                 font-size: 22px;
             }
 
-            .support-section h2 {
-                font-size: 20px;
+            .contact-section {
+                padding: 20px;
+            }
+
+            .cta-banner h2 {
+                font-size: 28px;
+            }
+
+            .cta-banner .btn {
+                padding: 12px 30px;
+                font-size: 16px;
             }
 
             .notification {
                 max-width: 250px;
                 right: 10px;
-                top: 70px;
+                top: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-text h1 {
+                font-size: 20px;
+            }
+
+            .contact-section {
+                padding: 15px;
+            }
+
+            .cta-banner {
+                padding: 40px 15px;
+            }
+
+            .cta-banner h2 {
+                font-size: 24px;
             }
         }
     </style>
 </head>
 <body>
-    <?php include 'inc/header.php'; ?>
-    <?php include 'inc/navbar.php'; ?>
-
     <div id="gradient"></div>
-    <div class="main-content">
-        <div class="container" role="main">
-            <div class="page-header">
-                <div style="display: flex; align-items: center;">
-                    <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
-                    <div class="header-text">
-                        <h1>Contact Support, <?php echo $username; ?>!</h1>
-                        <p>We're here to help with any issues or questions.</p>
-                    </div>
+    <div class="container" role="main">
+        <div class="header">
+            <div style="display: flex; align-items: center;">
+                <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
+                <div class="header-text">
+                    <h1>Contact Support, <?php echo $username; ?>!</h1>
+                    <p>Reach out to our 24/7 support team.</p>
                 </div>
-                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
             </div>
-
-            <div class="support-section">
-                <h2>Submit a Support Request</h2>
-                <form id="supportForm" role="form">
-                    <div class="input-container">
-                        <input type="email" id="email" name="email" value="<?php echo $email; ?>" required aria-required="true" readonly>
-                        <label for="email">Email Address</label>
-                    </div>
-                    <div class="input-container">
-                        <input type="text" id="subject" name="subject" required aria-required="true">
-                        <label for="subject">Subject</label>
-                    </div>
-                    <div class="input-container">
-                        <textarea id="message" name="message" required aria-required="true"></textarea>
-                        <label for="message">Message</label>
-                    </div>
-                    <button type="submit" class="submit-btn" aria-label="Submit support request">Submit</button>
-                </form>
-            </div>
-
-            <div id="notificationContainer"></div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
         </div>
+
+        <div class="contact-section">
+            <h2>Get in Touch</h2>
+            <p>
+                We're here to help with any questions or issues you may have! At Task Tube, our dedicated support team is available 24/7. Whether you need help with your account, login, or have general inquiries, feel free to reach out.
+            </p>
+
+            <div class="contact-info">
+                <h2>Contact Information</h2>
+                <p><i class="fab fa-whatsapp"></i> WhatsApp Contact: <strong><a href="https://wa.me/+447438783028" target="_blank">+44 7438 783028</a></strong></p>
+                <p><i class="far fa-clock"></i> Availability: <strong>24/7</strong></p>
+                <p><i class="fas fa-hourglass-half"></i> Response Time: <strong>Usually within 24 hours</strong></p>
+            </div>
+
+            <div class="categories">
+                <h2>We Can Help With:</h2>
+                <ul>
+                    <li>Technical Support for Login/Access Issues</li>
+                    <li>Verification Requests</li>
+                </ul>
+            </div>
+
+            <p class="signup-link">
+                Not yet a member? <a href="register.php" class="btn">Sign Up Now</a>
+            </p>
+        </div>
+
+        <div class="cta-banner">
+            <h2>Need Help? Contact Us Now!</h2>
+            <a href="https://wa.me/+447438783028" target="_blank" class="btn" onclick="console.log('CTA button clicked')">Message Us on WhatsApp</a>
+        </div>
+
+        <div id="notificationContainer"></div>
     </div>
 
     <div class="bottom-menu" role="navigation">
@@ -396,12 +487,9 @@ try {
         <a href="profile.php">Profile</a>
         <a href="history.php">History</a>
         <a href="support.php" class="active">Support</a>
-        <a href="../about.php">About</a>
+        <button id="logoutBtn" aria-label="Log out">Logout</button>
     </div>
 
-    <?php include 'inc/footer.php'; ?>
-
-    <!-- LiveChat Integration -->
     <script>
         window.__lc = window.__lc || {};
         window.__lc.license = 15808029;
@@ -425,13 +513,7 @@ try {
             !n.__lc.asyncInit && e.init();
             n.LiveChatWidget = n.LiveChatWidget || e;
         })(window, document, [].slice);
-    </script>
-    <noscript>
-        <a href="https://www.livechat.com/chat-with/15808029/" rel="nofollow">Chat with us</a>,
-        powered by <a href="https://www.livechat.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
-    </noscript>
 
-    <script>
         // Dark Mode Toggle
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
@@ -457,65 +539,46 @@ try {
             });
         });
 
-        // Support Form Submission
-        document.getElementById('supportForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const subject = document.getElementById('subject').value.trim();
-            const message = document.getElementById('message').value.trim();
-
-            if (!subject) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Subject',
-                    text: 'Please enter a subject for your support request.'
-                });
-                return;
-            }
-
-            if (!message) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Message',
-                    text: 'Please enter a message for your support request.'
-                });
-                return;
-            }
-
-            $.ajax({
-                url: 'process_support.php',
-                type: 'POST',
-                data: { subject: subject, message: message },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Support Request Submitted',
-                            text: 'Your request has been submitted successfully!',
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            document.getElementById('supportForm').reset();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: response.error || 'Failed to submit support request. Please try again.'
-                        });
-                    }
-                },
-                error: function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Server Error',
-                        text: 'An error occurred. Please try again later.'
+        // Logout Button
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            Swal.fire({
+                title: 'Log out?',
+                text: 'Are you sure you want to log out?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, log out'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'logout.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                window.location.href = '../signin.php';
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Failed to log out. Please try again.'
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Server Error',
+                                text: 'An error occurred while logging out.'
+                            });
+                        }
                     });
                 }
             });
         });
 
-        // Withdrawal Notifications
+        // Notification Handling
         const notificationContainer = document.getElementById('notificationContainer');
         function fetchNotifications() {
             $.ajax({
@@ -523,13 +586,14 @@ try {
                 type: 'GET',
                 dataType: 'json',
                 success: function(notifications) {
+                    notificationContainer.innerHTML = '';
                     notifications.forEach((message, index) => {
                         const notification = document.createElement('div');
-                        notification.className = 'notification';
+                        notification.className = `notification ${message.type || 'success'}`;
                         notification.setAttribute('role', 'alert');
-                        notification.innerHTML = `<span>${message}</span>`;
+                        notification.innerHTML = `<span>${message.text}</span>`;
                         notificationContainer.appendChild(notification);
-                        notification.style.top = `${80 + index * 80}px`;
+                        notification.style.top = `${20 + index * 80}px`;
                         setTimeout(() => notification.remove(), 3500);
                     });
                 },
@@ -554,6 +618,7 @@ try {
         var step = 0;
         var colorIndices = [0, 1, 2, 3];
         var gradientSpeed = 0.002;
+        const gradientElement = document.getElementById('gradient');
 
         function updateGradient() {
             var c0_0 = colors[colorIndices[0]];
@@ -569,9 +634,7 @@ try {
             var g2 = Math.round(istep * c1_0[1] + step * c1_1[1]);
             var b2 = Math.round(istep * c1_0[2] + step * c1_1[2]);
             var color2 = `rgb(${r2},${g2},${b2})`;
-            $('#gradient').css({
-                background: `linear-gradient(135deg, ${color1}, ${color2})`
-            });
+            gradientElement.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
             step += gradientSpeed;
             if (step >= 1) {
                 step %= 1;
@@ -580,13 +643,16 @@ try {
                 colorIndices[1] = (colorIndices[1] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
                 colorIndices[3] = (colorIndices[3] + Math.floor(1 + Math.random() * (colors.length - 1))) % colors.length;
             }
+            requestAnimationFrame(updateGradient);
         }
 
-        setInterval(updateGradient, 10);
+        requestAnimationFrame(updateGradient);
 
         // Context Menu Disable
         document.addEventListener('contextmenu', function(event) {
-            event.preventDefault();
+            if (!event.target.closest('a')) {
+                event.preventDefault();
+            }
         });
     </script>
 </body>
