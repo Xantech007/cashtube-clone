@@ -64,7 +64,6 @@ try {
 
 // Fetch activity and withdrawal history
 try {
-    // Fetch activities
     $stmt = $pdo->prepare("
         SELECT action, amount, created_at, NULL AS ref_number, NULL AS status, 
                NULL AS channel, NULL AS bank_name, NULL AS bank_account, 'activity' AS source
@@ -111,6 +110,9 @@ try {
             --accent-hover: #16a34a;
             --menu-bg: #1a1a1a;
             --menu-text: #ffffff;
+            --status-completed: #22c55e;
+            --status-pending: #eab308;
+            --status-rejected: #ef4444;
         }
 
         [data-theme="dark"] {
@@ -125,6 +127,9 @@ try {
             --accent-hover: #22c55e;
             --menu-bg: #111827;
             --menu-text: #e5e7eb;
+            --status-completed: #34d399;
+            --status-pending: #facc15;
+            --status-rejected: #f87171;
         }
 
         * {
@@ -247,6 +252,29 @@ try {
             color: var(--accent-color);
         }
 
+        .status-box {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .status-completed {
+            background-color: var(--status-completed);
+        }
+
+        .status-pending {
+            background-color: var(--status-pending);
+        }
+
+        .status-rejected {
+            background-color: var(--status-rejected);
+        }
+
         .notification {
             position: fixed;
             top: 20px;
@@ -363,6 +391,12 @@ try {
                 font-size: 14px;
             }
 
+            .status-box {
+                font-size: 12px;
+                padding: 3px 6px;
+                min-width: 70px;
+            }
+
             .notification {
                 max-width: 250px;
                 right: 10px;
@@ -414,7 +448,20 @@ try {
                                         <?php endif; ?>
                                     </td>
                                     <td class="amount">$<?php echo number_format($item['amount'], 2); ?></td>
-                                    <td><?php echo $item['source'] === 'withdrawal' ? htmlspecialchars(ucfirst($item['status'])) : '-'; ?></td>
+                                    <td>
+                                        <?php if ($item['source'] === 'withdrawal'): ?>
+                                            <?php
+                                            $status = $item['status'];
+                                            $display_status = $status === 'success' ? 'Completed' : ($status === 'failed' ? 'Rejected' : 'Pending');
+                                            $status_class = $status === 'success' ? 'status-completed' : ($status === 'failed' ? 'status-rejected' : 'status-pending');
+                                            ?>
+                                            <span class="status-box <?php echo $status_class; ?>">
+                                                <?php echo htmlspecialchars($display_status); ?>
+                                            </span>
+                                        <?php else: ?>
+                                            -
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo gmdate('F j, Y, g:i A T', strtotime($item['created_at'])); ?></td>
                                 </tr>
                             <?php endforeach; ?>
