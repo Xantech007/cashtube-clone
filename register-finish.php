@@ -152,6 +152,13 @@ if ($email) {
             text-align: center;
             margin-bottom: 20px;
             user-select: all;
+            cursor: pointer; /* Indicates the element is clickable */
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .passcode-box:hover {
+            background: #e8e8e8; /* Subtle hover effect */
+            border-color: #6e44ff; /* Matches theme color */
         }
 
         .error-message {
@@ -460,6 +467,67 @@ if ($email) {
                     link.parentElement.classList.add('active');
                 }
             });
+
+            // Tap to Copy Passcode
+            const passcodeBox = document.querySelector('.passcode-box');
+            if (passcodeBox) {
+                passcodeBox.addEventListener('click', function() {
+                    const passcode = passcodeBox.textContent.trim();
+                    if (navigator.clipboard && window.isSecureContext) {
+                        // Use Clipboard API for secure contexts
+                        navigator.clipboard.writeText(passcode).then(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Passcode Copied!',
+                                text: 'Your passcode has been copied to the clipboard.',
+                                showConfirmButton: false,
+                                timer: 1500,
+                                toast: true,
+                                position: 'top-end',
+                                background: '#fff',
+                                color: '#333',
+                            });
+                        }).catch(err => {
+                            console.error('Failed to copy passcode: ', err);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Copy Failed',
+                                text: 'Unable to copy passcode. Please select and copy manually.',
+                                confirmButtonColor: '#6e44ff',
+                            });
+                        });
+                    } else {
+                        // Fallback for non-secure contexts or older browsers
+                        const textarea = document.createElement('textarea');
+                        textarea.value = passcode;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                            document.execCommand('copy');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Passcode Copied!',
+                                text: 'Your passcode has been copied to the clipboard.',
+                                showConfirmButton: false,
+                                timer: 1500,
+                                toast: true,
+                                position: 'top-end',
+                                background: '#fff',
+                                color: '#333',
+                            });
+                        } catch (err) {
+                            console.error('Fallback copy failed: ', err);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Copy Failed',
+                                text: 'Unable to copy passcode. Please select and copy manually.',
+                                confirmButtonColor: '#6e44ff',
+                            });
+                        }
+                        document.body.removeChild(textarea);
+                    }
+                });
+            }
         });
 
         // Notice Popup
