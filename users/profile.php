@@ -311,7 +311,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             transform: scale(1.02);
         }
 
-        .verify-btn {
+        .verify-btn, .change-passcode-btn {
             width: 100%;
             padding: 14px;
             background: #3b82f6;
@@ -325,9 +325,17 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             margin-top: 20px;
         }
 
-        .verify-btn:hover {
+        .verify-btn:hover, .change-passcode-btn:hover {
             background: #2563eb;
             transform: scale(1.02);
+        }
+
+        .change-passcode-btn {
+            background: #10b981;
+        }
+
+        .change-passcode-btn:hover {
+            background: #059669;
         }
 
         .notification {
@@ -540,6 +548,7 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
                 <?php if ($verification_status !== 'verified'): ?>
                     <button type="button" class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">Verify Account</button>
                 <?php endif; ?>
+                <button type="button" class="change-passcode-btn" onclick="window.location.href='change_passcode.php'" aria-label="Change passcode">Change Passcode</button>
             </form>
         </div>
 
