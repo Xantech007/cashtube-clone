@@ -89,14 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE users SET passcode = ? WHERE id = ?");
         $success = $stmt->execute([$new_passcode, $_SESSION['user_id']]);
 
-        if ($success) {
-            // Update session passcode to maintain consistency
+        if ($success && $stmt->rowCount() > 0) {
+            // Update session passcode
             $_SESSION['passcode'] = $new_passcode;
             error_log('Passcode updated successfully for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
         } else {
-            error_log('Failed to update passcode for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+            error_log('Failed to update passcode for user ID: ' . $_SESSION['user_id'] . ' (no rows affected)', 3, '../debug.log');
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Failed to update passcode']);
         }
