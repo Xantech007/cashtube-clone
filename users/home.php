@@ -613,20 +613,20 @@ try {
             <form id="fundForm" action="process_withdrawal.php" method="POST" role="form">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                 <div class="input-container">
-                    <input type="text" id="channel" name="channel" value="<?php echo htmlspecialchars($channel); ?>" required aria-required="true">
-                    <label for="channel"><?php echo htmlspecialchars($channel); ?> (e.g., Bank, Crypto)</label>
+                    <input type="text" id="channel" name="channel" required aria-required="true">
+                    <label for="channel"><?php echo htmlspecialchars($channel); ?></label>
                 </div>
                 <div class="input-container">
                     <input type="text" id="bankName" name="bank_name" required aria-required="true">
-                    <label for="bankName"><?php echo htmlspecialchars($ch_name); ?> (e.g., First Bank)</label>
+                    <label for="bankName"><?php echo htmlspecialchars($ch_name); ?></label>
                 </div>
                 <div class="input-container">
                     <input type="text" id="bankAccount" name="bank_account" required aria-required="true">
-                    <label for="bankAccount"><?php echo htmlspecialchars($ch_value); ?> (e.g., Account Number)</label>
+                    <label for="bankAccount"><?php echo htmlspecialchars($ch_value); ?></label>
                 </div>
                 <div class="input-container">
                     <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="<?php echo $user['balance']; ?>" required aria-required="true">
-                    <label for="amount">Amount ($) (Max: $<?php echo $balance; ?>)</label>
+                    <label for="amount">Amount ($)</label>
                 </div>
                 <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
             </form>
