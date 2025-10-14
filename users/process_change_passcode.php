@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Verify old passcode
-        if (!password_verify($old_passcode, $user['passcode'])) {
+        if ($user['passcode'] !== $old_passcode) {
             error_log('Incorrect old passcode for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Incorrect old passcode']);
@@ -86,9 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Update passcode
-        $new_passcode_hash = password_hash($new_passcode, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("UPDATE users SET passcode = ? WHERE id = ?");
-        $success = $stmt->execute([$new_passcode_hash, $_SESSION['user_id']]);
+        $success = $stmt->execute([$new_passcode, $_SESSION['user_id']]);
 
         if ($success) {
             error_log('Passcode updated successfully for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
