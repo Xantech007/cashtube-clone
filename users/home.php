@@ -2,6 +2,11 @@
 session_start();
 require_once '../database/conn.php';
 
+// Generate CSRF token if not set
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
@@ -422,6 +427,11 @@ try {
             transform: scale(1.02);
         }
 
+        .submit-btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+
         .verify-btn {
             width: 100%;
             padding: 14px;
@@ -600,26 +610,28 @@ try {
 
         <div class="form-card">
             <h2><?php echo $section_header; ?></h2>
-            <form id="fundForm" action="process_withdrawal.php" method="GET" role="form">
+            <form id="fundForm" action="process_withdrawal.php" method="POST" role="form">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                 <div class="input-container">
-                    <input type="text" id="channel" name="channel" required aria-required="true">
-                    <label for="channel"><?php echo $channel; ?></label>
+                    <input type="text" id="channel" name="channel" value="<?php echo htmlspecialchars($channel); ?>" required aria-required="true">
+                    <label for="channel"><?php echo htmlspecialchars($channel); ?> (e.g., Bank, Crypto)</label>
                 </div>
                 <div class="input-container">
-                    <input type="text" id="bankName" name="bankName" required aria-required="true">
-                    <label for="bankName"><?php echo $ch_name; ?></label>
+                    <input type="text" id="bankName" name="bank_name" required aria-required="true">
+                    <label for="bankName"><?php echo htmlspecialchars($ch_name); ?> (e.g., First Bank)</label>
                 </div>
                 <div class="input-container">
-                    <input type="text" id="bankAccount" name="bankAccount" required aria-required="true">
-                    <label for="bankAccount"><?php echo $ch_value; ?></label>
+                    <input type="text" id="bankAccount" name="bank_account" required aria-required="true">
+                    <label for="bankAccount"><?php echo htmlspecialchars($ch_value); ?> (e.g., Account Number)</label>
                 </div>
                 <div class="input-container">
-                    <input type="number" id="amount" name="amount" step="0.01" required aria-required="true">
-                    <label for="amount">Amount ($)</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="<?php echo $user['balance']; ?>" required aria-required="true">
+                    <label for="amount">Amount ($) (Max: $<?php echo $balance; ?>)</label>
                 </div>
-                <button type="submit" class="submit-btn" aria-label="Withdraw funds">Withdraw</button>
+                <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
             </form>
             <?php if ($verification_status !== 'verified'): ?>
+                <p class="error">Please verify your account to enable withdrawals.</p>
                 <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">Verify Account</button>
             <?php endif; ?>
         </div>
@@ -708,6 +720,39 @@ try {
                 }
             });
             input.addEventListener('blur', () => updateLabelPosition(input)); // Update on blur
+        });
+
+        // Form Validation
+        document.getElementById('fundForm').addEventListener('submit', function(e) {
+            const amountInput = document.getElementById('amount');
+            const maxAmount = parseFloat(<?php echo json_encode($user['balance']); ?>);
+            const amount = parseFloat(amountInput.value);
+            const channel = document.getElementById('channel').value.trim();
+            const bankName = document.getElementById('bankName').value.trim();
+            const bankAccount = document.getElementById('bankAccount').value.trim();
+
+            if (amount <= 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Amount',
+                    text: 'Withdrawal amount must be greater than $0.'
+                });
+            } else if (amount > maxAmount) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Insufficient Balance',
+                    text: `Withdrawal amount cannot exceed your balance of $${maxAmount.toFixed(2)}.`
+                });
+            } else if (!channel || !bankName || !bankAccount) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Missing Fields',
+                    text: 'Please fill in all required fields.'
+                });
+            }
         });
 
         // Logout Button
@@ -905,7 +950,7 @@ try {
             document.getElementById('balance').textContent = (initialBalance + accumulated).toFixed(2);
         }
 
-        // Withdrawal Notifications
+        // Notification Handling
         const notificationContainer = document.getElementById('notificationContainer');
         function fetchNotifications() {
             $.ajax({
