@@ -9,7 +9,7 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once '../database/conn.php';
 
-// Set time zone to UTC
+// Set time zone to UTC for consistency with history.php
 date_default_timezone_set('UTC');
 
 // Handle withdrawal actions
@@ -26,23 +26,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdrawal_id'], $_PO
         
         if ($withdrawal) {
             if ($action === 'approve') {
-                $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'success' WHERE id = ?");
-                $stmt->execute([$withdrawal_id]);
-                $_SESSION['success'] = "Withdrawal request approved successfully.";
+                $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'approved' WHERE id = ?");
+                $success = $stmt->execute([$withdrawal_id]);
+                if ($success) {
+                    error_log("Withdrawal ID $withdrawal_id approved successfully.", 3, '../debug.log');
+                    $_SESSION['success'] = "Withdrawal request approved successfully.";
+                } else {
+                    error_log("Failed to update withdrawal ID $withdrawal_id to approved.", 3, '../debug.log');
+                    $_SESSION['error'] = "Failed to approve withdrawal request.";
+                }
             } elseif ($action === 'reject') {
-                $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'failed' WHERE id = ?");
-                $stmt->execute([$withdrawal_id]);
-                $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-                $stmt->execute([$withdrawal['amount'], $withdrawal['user_id']]);
-                $_SESSION['success'] = "Withdrawal request rejected and amount refunded.";
+                $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'rejected' WHERE id = ?");
+                $success = $stmt->execute([$withdrawal_id]);
+                if ($success) {
+                    $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
+                    $stmt->execute([$withdrawal['amount'], $withdrawal['user_id']]);
+                    error_log("Withdrawal ID $withdrawal_id rejected and amount {$withdrawal['amount']} refunded to user ID {$withdrawal['user_id']}.", 3, '../debug.log');
+                    $_SESSION['success'] = "Withdrawal request rejected and amount refunded.";
+                } else {
+                    error_log("Failed to update withdrawal ID $withdrawal_id to rejected.", 3, '../debug.log');
+                    $_SESSION['error'] = "Failed to reject withdrawal request.";
+                }
             }
             $pdo->commit();
         } else {
+            error_log("Invalid or already processed withdrawal ID: $withdrawal_id", 3, '../debug.log');
             $_SESSION['error'] = "Invalid or already processed withdrawal request.";
         }
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log('Withdrawal action error: ' . $e->getMessage(), 3, '../debug.log');
+        error_log('Withdrawal action error for ID ' . $withdrawal_id . ': ' . $e->getMessage(), 3, '../debug.log');
         $_SESSION['error'] = "Failed to process withdrawal request: " . $e->getMessage();
     }
     header("Location: manage_withdrawals.php");
@@ -196,7 +209,6 @@ try {
             color: green;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .dashboard-container {
                 margin: 20px;
