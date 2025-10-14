@@ -10,7 +10,7 @@ if (!isset($_SESSION['admin_id'])) {
 require_once '../database/conn.php';
 
 // Set time zone to UTC
-date_default_timezone_set('Africa/Lagos');
+date_default_timezone_set('UTC');
 
 // Handle withdrawal actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdrawal_id'], $_POST['action'])) {
