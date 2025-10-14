@@ -64,6 +64,7 @@ try {
 
 // Fetch activity and withdrawal history
 try {
+    // Fetch activities
     $stmt = $pdo->prepare("
         SELECT action, amount, created_at, NULL AS ref_number, NULL AS status, 
                NULL AS channel, NULL AS bank_name, NULL AS bank_account, 'activity' AS source
@@ -210,15 +211,13 @@ try {
         .table-container {
             max-width: 100%;
             overflow-x: auto;
-            overflow-y: auto;
-            max-height: 400px;
             margin-top: 10px;
         }
 
         .history-table {
             width: 100%;
+            min-width: 1000px;
             border-collapse: collapse;
-            min-width: 800px;
             font-size: 16px;
         }
 
@@ -519,7 +518,7 @@ try {
                                 icon: 'error',
                                 title: 'Server Error',
                                 text: 'An error occurred while logging out.'
-                                });
+                            });
                         }
                     });
                 }
