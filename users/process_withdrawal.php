@@ -2,8 +2,8 @@
 session_start();
 require_once '../database/conn.php';
 
-// Set time zone to WAT
-date_default_timezone_set('Africa/Lagos');
+// Set time zone to UTC for request time
+date_default_timezone_set('UTC');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -50,7 +50,7 @@ if ($verification_status !== 'verified') {
 // Fetch region settings for labels
 try {
     $stmt = $pdo->prepare("
-        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel, currency, rate
+        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel, verify_currency, rate
         FROM region_settings 
         WHERE country = ?
     ");
@@ -62,7 +62,7 @@ try {
         $ch_name = htmlspecialchars($region_settings['ch_name']);
         $ch_value = htmlspecialchars($region_settings['ch_value']);
         $channel_label = htmlspecialchars($region_settings['channel']);
-        $currency_symbol = htmlspecialchars($region_settings['currency']);
+        $currency_symbol = htmlspecialchars($region_settings['verify_currency']);
         $rate = (float)$region_settings['rate'];
     } else {
         // Fallback values if no region settings are found
@@ -91,6 +91,7 @@ $bank_name = filter_var($_POST['bank_name'] ?? '', FILTER_SANITIZE_STRING);
 $bank_account = filter_var($_POST['bank_account'] ?? '', FILTER_SANITIZE_STRING);
 $amount = filter_var($_POST['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
 $error = null;
+$new_balance = $balance; // Default to original balance in case of error
 
 if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount > 0) {
     if ($amount > $balance) {
@@ -104,7 +105,7 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
         try {
             $pdo->beginTransaction();
 
-            // Deduct amount from balance
+            // Deduct raw amount from balance
             $new_balance = $balance - $amount;
             $stmt = $pdo->prepare("UPDATE users SET balance = ? WHERE id = ?");
             $stmt->execute([$new_balance, $_SESSION['user_id']]);
@@ -112,7 +113,7 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
             // Generate unique reference number
             $ref_number = strtoupper(substr(uniqid(), 0, 10));
 
-            // Insert withdrawal record
+            // Insert withdrawal record with converted amount and currency
             $stmt = $pdo->prepare("
                 INSERT INTO withdrawals (user_id, amount, currency, channel, bank_name, bank_account, ref_number, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
@@ -120,11 +121,12 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
             $stmt->execute([$_SESSION['user_id'], $converted_amount, $currency_symbol, $channel, $bank_name, $bank_account, $ref_number]);
 
             $pdo->commit();
-            error_log('Withdrawal request created for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount . ', channel: ' . $channel, 3, '../debug.log');
+            error_log('Withdrawal request created for user ID: ' . $_SESSION['user_id'] . ', raw amount: ' . $amount . ', converted amount: ' . $converted_amount . ', currency: ' . $currency_symbol . ', channel: ' . $channel, 3, '../debug.log');
         } catch (PDOException $e) {
             $pdo->rollBack();
             error_log('Withdrawal error for user ID: ' . $_SESSION['user_id'] . ': ' . $e->getMessage(), 3, '../debug.log');
             $error = 'An error occurred while processing your withdrawal.';
+            $new_balance = $balance; // Reset to original if transaction fails
         }
     }
 } else {
@@ -257,8 +259,7 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
             color: var(--accent-color);
         }
 
-        .receipt-card h2::before {
-            content: '✅';
+        .receipt-card h2 i {
             font-size: 1.2rem;
             margin-right: 8px;
         }
@@ -307,7 +308,8 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.3s ease, transform 0.2s ease;
-            margin-top: 20px;
+            margin-top: 10px;
+            margin-right: 10px;
         }
 
         .back-btn:hover {
@@ -421,6 +423,52 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
             transition: all 0.3s ease;
         }
 
+        .notes-section {
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--subtext-color);
+            text-align: left;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+
+        .notes-section h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .notes-section ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        .print-btn {
+            width: 100%;
+            max-width: 200px;
+            padding: 14px;
+            background: #007bff;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .print-btn:hover {
+            background: #0056b3;
+            transform: scale(1.02);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 16px;
@@ -447,6 +495,15 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
                 right: 10px;
                 top: 10px;
             }
+
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .back-btn, .print-btn {
+                margin-right: 0;
+            }
         }
     </style>
 </head>
@@ -457,8 +514,8 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
             <div style="display: flex; align-items: center;">
                 <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
                 <div class="header-text">
-                    <h1>Withdrawal Receipt</h1>
-                    <p>Details of your withdrawal</p>
+                    <h1>Withdrawal Receipt for <?php echo htmlspecialchars($username); ?></h1>
+                    <p>Detailed summary of your withdrawal request</p>
                 </div>
             </div>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
@@ -469,16 +526,32 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
                 <p class="error"><?php echo htmlspecialchars($error); ?></p>
                 <button class="back-btn" onclick="window.location.href='home.php'">Back to Home</button>
             <?php else: ?>
-                <h2>Withdrawal Request Submitted!</h2>
-                <div class="amount"><?php echo $currency_symbol . number_format($converted_amount, 2); ?></div>
+                <h2><i class="fas fa-check-circle"></i> Withdrawal Request Submitted!</h2>
+                <div class="amount"><?php echo htmlspecialchars($currency_symbol) . number_format($converted_amount, 2); ?></div>
                 <table class="receipt-table">
+                    <tr>
+                        <th>Original Balance (USD)</th>
+                        <td>$<?php echo number_format($balance, 2); ?></td>
+                    </tr>
+                    <tr>
+                        <th>Withdrawn Amount (USD)</th>
+                        <td>$<?php echo number_format($amount, 2); ?></td>
+                    </tr>
+                    <tr>
+                        <th>Amount to Receive</th>
+                        <td><?php echo htmlspecialchars($currency_symbol) . number_format($converted_amount, 2); ?></td>
+                    </tr>
+                    <tr>
+                        <th>New Balance (USD)</th>
+                        <td>$<?php echo number_format($new_balance, 2); ?></td>
+                    </tr>
                     <tr>
                         <th>Ref Number</th>
                         <td><?php echo htmlspecialchars($ref_number); ?></td>
                     </tr>
                     <tr>
                         <th>Request Time</th>
-                        <td><?php echo date('F j, Y, g:i A T'); ?></td>
+                        <td><?php echo gmdate('F j, Y, g:i A'); ?> UTC</td>
                     </tr>
                     <tr>
                         <th><?php echo htmlspecialchars($channel_label); ?></th>
@@ -501,7 +574,19 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
                         <td>Pending</td>
                     </tr>
                 </table>
-                <button class="back-btn" onclick="window.location.href='home.php'">Back to Home</button>
+                <div class="notes-section">
+                    <h3>Important Notes:</h3>
+                    <ul>
+                        <li>Your withdrawal request is pending approval and will be processed within 2 hours.</li>
+                        <li>Please ensure your bank details are correct to avoid delays.</li>
+                        <li>If you have any questions, contact support via our website at <a href="support.php">support.php</a>.</li>
+                        <li>Conversion rates are based on current market values and may vary slightly upon processing.</li>
+                    </ul>
+                </div>
+                <div class="button-group">
+                    <button class="back-btn" onclick="window.location.href='home.php'">Back to Home</button>
+                    <button class="print-btn" onclick="window.print()">Print Receipt</button>
+                </div>
             <?php endif; ?>
         </div>
 
