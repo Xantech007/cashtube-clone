@@ -50,7 +50,7 @@ if ($verification_status !== 'verified') {
 // Fetch region settings for labels
 try {
     $stmt = $pdo->prepare("
-        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel
+        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel, currency, rate
         FROM region_settings 
         WHERE country = ?
     ");
@@ -62,12 +62,16 @@ try {
         $ch_name = htmlspecialchars($region_settings['ch_name']);
         $ch_value = htmlspecialchars($region_settings['ch_value']);
         $channel_label = htmlspecialchars($region_settings['channel']);
+        $currency_symbol = htmlspecialchars($region_settings['currency']);
+        $rate = (float)$region_settings['rate'];
     } else {
         // Fallback values if no region settings are found
         $section_header = 'Withdraw Funds';
         $ch_name = 'Bank Name';
         $ch_value = 'Bank Account';
         $channel_label = 'Bank';
+        $currency_symbol = '$';
+        $rate = 1.0;
         error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
     }
 } catch (PDOException $e) {
@@ -77,6 +81,8 @@ try {
     $ch_name = 'Bank Name';
     $ch_value = 'Bank Account';
     $channel_label = 'Bank';
+    $currency_symbol = '$';
+    $rate = 1.0;
 }
 
 // Process withdrawal
@@ -94,6 +100,7 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
         error_log('Invalid amount for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount, 3, '../debug.log');
         $error = 'Invalid withdrawal amount.';
     } else {
+        $converted_amount = $amount * $rate;
         try {
             $pdo->beginTransaction();
 
@@ -107,10 +114,10 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
 
             // Insert withdrawal record
             $stmt = $pdo->prepare("
-                INSERT INTO withdrawals (user_id, amount, channel, bank_name, bank_account, ref_number, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                INSERT INTO withdrawals (user_id, amount, currency, channel, bank_name, bank_account, ref_number, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
             ");
-            $stmt->execute([$_SESSION['user_id'], $amount, $channel, $bank_name, $bank_account, $ref_number]);
+            $stmt->execute([$_SESSION['user_id'], $converted_amount, $currency_symbol, $channel, $bank_name, $bank_account, $ref_number]);
 
             $pdo->commit();
             error_log('Withdrawal request created for user ID: ' . $_SESSION['user_id'] . ', amount: ' . $amount . ', channel: ' . $channel, 3, '../debug.log');
@@ -463,7 +470,7 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
                 <button class="back-btn" onclick="window.location.href='home.php'">Back to Home</button>
             <?php else: ?>
                 <h2>Withdrawal Request Submitted!</h2>
-                <div class="amount">$<?php echo number_format($amount, 2); ?></div>
+                <div class="amount"><?php echo $currency_symbol . number_format($converted_amount, 2); ?></div>
                 <table class="receipt-table">
                     <tr>
                         <th>Ref Number</th>
