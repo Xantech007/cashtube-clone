@@ -28,7 +28,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT id, country, section_header, channel, ch_name, ch_value, withdraw_currency, 
                verify_ch, vc_value, verify_ch_name, verify_ch_value, verify_medium, vcn_value, 
-               vcv_value, verify_currency, verify_amount, rate
+               vcv_value, verify_currency, verify_amount, rate, account_upgrade
         FROM region_settings
         WHERE id = ?
     ");
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $channel = trim($_POST['channel']);
             $ch_name = trim($_POST['ch_name']);
             $ch_value = trim($_POST['ch_value']);
-            $withdraw_currency = trim($_POST['withdraw_currency']); // New field
+            $withdraw_currency = trim($_POST['withdraw_currency']);
 
             // Validation
             if (empty($country) || empty($section_header) || empty($channel) || empty($ch_name) || empty($ch_value) || empty($withdraw_currency)) {
@@ -90,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $verify_currency = trim($_POST['verify_currency']);
             $verify_amount = floatval($_POST['verify_amount']);
             $rate = floatval($_POST['rate']);
+            $account_upgrade = isset($_POST['account_upgrade']) ? 1 : 0; // Checkbox: 1 for Upgrade, 0 for Verification
 
             // Validation
             if (empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
@@ -101,14 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE region_settings 
                     SET verify_ch = ?, vc_value = ?, verify_ch_name = ?, verify_ch_value = ?, 
                         verify_medium = ?, vcn_value = ?, vcv_value = ?, verify_currency = ?, 
-                        verify_amount = ?, rate = ?
+                        verify_amount = ?, rate = ?, account_upgrade = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
                     $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value, $verify_medium, 
-                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $rate, $id
+                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $rate, $account_upgrade, $id
                 ]);
-                $_SESSION['success'] = "Verification settings updated successfully.";
+                $_SESSION['success'] = "Verification/Upgrade settings updated successfully.";
             }
         }
 
@@ -187,7 +188,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .edit-form input[type="text"],
         .edit-form input[type="number"],
-        .edit-form select {
+        .edit-form select,
+        .edit-form input[type="checkbox"] {
             width: 100%;
             padding: 6px;
             border: 1px solid #ddd;
@@ -199,6 +201,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .edit-form select {
             background-color: #fff;
             cursor: pointer;
+        }
+
+        .edit-form label.checkbox-label {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #555;
+            justify-self: start;
+        }
+
+        .edit-form input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
         }
 
         .edit-form button {
@@ -235,8 +250,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             .edit-form input,
             .edit-form select,
-            .edit-form button {
+            .edit-form button,
+            .edit-form label.checkbox-label {
                 width: 100%;
+            }
+
+            .edit-form input[type="checkbox"] {
+                width: auto;
             }
 
             .back-link {
@@ -284,17 +304,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         <?php elseif ($section === 'verification'): ?>
             <form action="edit_region_setting.php?id=<?php echo $id; ?>&section=verification" method="POST" class="edit-form">
-                <input type="text" name="verify_ch" placeholder="Channel (e.g., Bank)" value="<?php echo htmlspecialchars($setting['verify_ch']); ?>" required>
-                <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" value="<?php echo htmlspecialchars($setting['vc_value']); ?>" required>
-                <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" value="<?php echo htmlspecialchars($setting['verify_ch_name']); ?>" required>
-                <input type="text" name="verify_ch_value" placeholder="Channel Number (e.g., Account Number)" value="<?php echo htmlspecialchars($setting['verify_ch_value']); ?>" required>
+                <input type="text" name="verify_ch" placeholder="Channel (e.g., Bank)" value="<?php echo htmlspecialchars($setting['verify_ch'] ?? ''); ?>" required>
+                <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" value="<?php echo htmlspecialchars($setting['vc_value'] ?? ''); ?>" required>
+                <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" value="<?php echo htmlspecialchars($setting['verify_ch_name'] ?? ''); ?>" required>
+                <input type="text" name="verify_ch_value" placeholder="Channel Number (e.g., Account Number)" value="<?php echo htmlspecialchars($setting['verify_ch_value'] ?? ''); ?>" required>
                 <input type="text" name="verify_medium" placeholder="Verify Medium (e.g., Payment Method)" value="<?php echo htmlspecialchars($setting['verify_medium'] ?? ''); ?>">
-                <input type="text" name="vcn_value" placeholder="Channel Name Value (e.g., MOMO PSB)" value="<?php echo htmlspecialchars($setting['vcn_value']); ?>" required>
-                <input type="text" name="vcv_value" placeholder="Channel Number Value (e.g., 8012345678)" value="<?php echo htmlspecialchars($setting['vcv_value']); ?>" required>
-                <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" value="<?php echo htmlspecialchars($setting['verify_currency']); ?>" required>
-                <input type="number" name="verify_amount" placeholder="Charges (e.g., 15000)" step="0.01" value="<?php echo htmlspecialchars($setting['verify_amount']); ?>" required>
-                <input type="number" name="rate" placeholder="Conversion Rate (e.g., 1000 for 1 USD = 1000 NGN)" step="0.01" value="<?php echo htmlspecialchars($setting['rate']); ?>" required>
-                <button type="submit">Update Verification Settings</button>
+                <input type="text" name="vcn_value" placeholder="Channel Name Value (e.g., MOMO PSB)" value="<?php echo htmlspecialchars($setting['vcn_value'] ?? ''); ?>" required>
+                <input type="text" name="vcv_value" placeholder="Channel Number Value (e.g., 8012345678)" value="<?php echo htmlspecialchars($setting['vcv_value'] ?? ''); ?>" required>
+                <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" value="<?php echo htmlspecialchars($setting['verify_currency'] ?? ''); ?>" required>
+                <input type="number" name="verify_amount" placeholder="Charges (e.g., 15000)" step="0.01" value="<?php echo htmlspecialchars($setting['verify_amount'] ?? ''); ?>" required>
+                <input type="number" name="rate" placeholder="Conversion Rate (e.g., 1000 for 1 USD = 1000 NGN)" step="0.01" value="<?php echo htmlspecialchars($setting['rate'] ?? ''); ?>" required>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="account_upgrade" value="1" <?php echo ($setting['account_upgrade'] ?? 0) == 1 ? 'checked' : ''; ?>> Upgrade (checked) / Verification (unchecked)
+                </label>
+                <button type="submit">Update Verification/Upgrade Settings</button>
             </form>
         <?php endif; ?>
     </div>
