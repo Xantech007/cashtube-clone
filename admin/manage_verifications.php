@@ -20,52 +20,54 @@ require_once '../database/conn.php';
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
-// Handle verification actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'], $_POST['action'], $_POST['csrf_token'])) {
+// Handle request actions (approve/reject for verification or upgrade)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'], $_POST['action'], $_POST['csrf_token'], $_POST['request_type'])) {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         $_SESSION['error'] = "Invalid CSRF token. Please try again.";
         error_log('CSRF validation failed for admin ID: ' . $_SESSION['admin_id'], 3, '../debug.log');
     } else {
         $request_id = filter_var($_POST['request_id'], FILTER_VALIDATE_INT);
         $action = filter_var($_POST['action'], FILTER_SANITIZE_STRING);
-        if ($request_id === false || !in_array($action, ['approve', 'reject'])) {
-            $_SESSION['error'] = "Invalid request ID or action.";
-            error_log('Invalid input: request_id=' . $_POST['request_id'] . ', action=' . $_POST['action'], 3, '../debug.log');
+        $request_type = filter_var($_POST['request_type'], FILTER_SANITIZE_STRING);
+        if ($request_id === false || !in_array($action, ['approve', 'reject']) || !in_array($request_type, ['verification', 'upgrade'])) {
+            $_SESSION['error'] = "Invalid request ID, action, or type.";
+            error_log("Invalid input: request_id=$request_id, action=$action, request_type=$request_type", 3, '../debug.log');
         } else {
             try {
                 $pdo->beginTransaction();
                 
-                // Fetch the verification request
-                $stmt = $pdo->prepare("SELECT user_id FROM verification_requests WHERE id = ? AND status = 'pending'");
+                // Determine table and status column based on request type
+                $table = $request_type === 'verification' ? 'verification_requests' : 'upgrade_requests';
+                $status_column = $request_type === 'verification' ? 'verification_status' : 'upgrade_status';
+                $status_value = $action === 'approve' ? 'verified' : 'not_verified'; // For verification
+                if ($request_type === 'upgrade') {
+                    $status_value = $action === 'approve' ? 'upgraded' : 'not_upgraded';
+                }
+                
+                // Fetch the request
+                $stmt = $pdo->prepare("SELECT user_id FROM $table WHERE id = ? AND status = 'pending'");
                 $stmt->execute([$request_id]);
                 $request = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($request) {
                     $user_id = $request['user_id'];
-                    if ($action === 'approve') {
-                        $stmt = $pdo->prepare("UPDATE verification_requests SET status = 'verified' WHERE id = ?");
-                        $stmt->execute([$request_id]);
-                        $stmt = $pdo->prepare("UPDATE users SET verification_status = 'verified' WHERE id = ?");
-                        $stmt->execute([$user_id]);
-                        $_SESSION['success'] = "Verification request approved successfully.";
-                        error_log("Verification request ID $request_id approved for user ID $user_id by admin ID {$_SESSION['admin_id']}", 3, '../debug.log');
-                    } elseif ($action === 'reject') {
-                        $stmt = $pdo->prepare("UPDATE verification_requests SET status = 'rejected' WHERE id = ?");
-                        $stmt->execute([$request_id]);
-                        $stmt = $pdo->prepare("UPDATE users SET verification_status = 'not_verified' WHERE id = ?");
-                        $stmt->execute([$user_id]);
-                        $_SESSION['success'] = "Verification request rejected successfully.";
-                        error_log("Verification request ID $request_id rejected for user ID $user_id by admin ID {$_SESSION['admin_id']}", 3, '../debug.log');
-                    }
+                    // Update request status
+                    $stmt = $pdo->prepare("UPDATE $table SET status = ? WHERE id = ?");
+                    $stmt->execute([$action === 'approve' ? 'approved' : 'rejected', $request_id]);
+                    // Update user status
+                    $stmt = $pdo->prepare("UPDATE users SET $status_column = ? WHERE id = ?");
+                    $stmt->execute([$status_value, $user_id]);
+                    $_SESSION['success'] = ucfirst($request_type) . " request " . ($action === 'approve' ? 'approved' : 'rejected') . " successfully.";
+                    error_log(ucfirst($request_type) . " request ID $request_id $action for user ID $user_id by admin ID {$_SESSION['admin_id']}", 3, '../debug.log');
                     $pdo->commit();
                 } else {
-                    $_SESSION['error'] = "Invalid or already processed verification request.";
-                    error_log("Invalid or processed request ID: $request_id", 3, '../debug.log');
+                    $_SESSION['error'] = "Invalid or already processed $request_type request.";
+                    error_log("Invalid or processed $request_type request ID: $request_id", 3, '../debug.log');
                 }
             } catch (PDOException $e) {
                 $pdo->rollBack();
-                error_log('Verification action error: ' . $e->getMessage() . ' | SQL: ' . $stmt->queryString, 3, '../debug.log');
-                $_SESSION['error'] = "Failed to process verification request: " . htmlspecialchars($e->getMessage());
+                error_log(ucfirst($request_type) . " action error: " . $e->getMessage(), 3, '../debug.log');
+                $_SESSION['error'] = "Failed to process $request_type request: " . htmlspecialchars($e->getMessage());
             }
         }
     }
@@ -73,20 +75,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'], $_POST[
     exit;
 }
 
-// Fetch all verification requests
+// Fetch all verification and upgrade requests
 try {
     $stmt = $pdo->prepare("
         SELECT vr.id, vr.user_id, vr.payment_amount, vr.name, vr.email, vr.upload_path, vr.file_name, vr.status, 
-               vr.payment_method, vr.currency, vr.created_at
+               vr.payment_method, vr.currency, vr.created_at, u.country, rs.account_upgrade,
+               'verification' AS request_type
         FROM verification_requests vr
-        ORDER BY vr.created_at DESC
+        JOIN users u ON vr.user_id = u.id
+        JOIN region_settings rs ON u.country = rs.country
+        WHERE rs.account_upgrade = 0
+        UNION
+        SELECT ur.id, ur.user_id, ur.payment_amount, ur.name, ur.email, ur.upload_path, ur.file_name, ur.status, 
+               ur.payment_method, ur.currency, ur.created_at, u.country, rs.account_upgrade,
+               'upgrade' AS request_type
+        FROM upgrade_requests ur
+        JOIN users u ON ur.user_id = u.id
+        JOIN region_settings rs ON u.country = rs.country
+        WHERE rs.account_upgrade = 1
+        ORDER BY created_at DESC
     ");
     $stmt->execute();
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log('Verification requests fetch error: ' . $e->getMessage() . ' | SQL: ' . $stmt->queryString, 3, '../debug.log');
+    error_log('Requests fetch error: ' . $e->getMessage(), 3, '../debug.log');
     $requests = [];
-    $error = 'Failed to load verification requests: ' . htmlspecialchars($e->getMessage());
+    $error = 'Failed to load requests: ' . htmlspecialchars($e->getMessage());
 }
 ?>
 
@@ -95,7 +109,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Tube - Manage Verification Requests</title>
+    <title>Task Tube - Manage Verification and Upgrade Requests</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -261,7 +275,7 @@ try {
 </head>
 <body>
     <div class="dashboard-container">
-        <h2>Manage Verification Requests</h2>
+        <h2>Manage Verification and Upgrade Requests</h2>
         <p>Hello, <?php echo htmlspecialchars($_SESSION['admin_email']); ?>!</p>
 
         <?php if (isset($error)): ?>
@@ -278,9 +292,9 @@ try {
             <a href="dashboard.php" class="back-link">Back to Dashboard</a>
         </div>
 
-        <!-- Verification Requests List -->
+        <!-- Combined Requests List -->
         <?php if (empty($requests)): ?>
-            <p>No verification requests available.</p>
+            <p>No verification or upgrade requests available.</p>
         <?php else: ?>
             <div class="table-container">
                 <table class="requests-table">
@@ -289,6 +303,7 @@ try {
                             <th>ID</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Type</th>
                             <th>Payment Amount</th>
                             <th>Payment Method</th>
                             <th>Currency</th>
@@ -304,6 +319,7 @@ try {
                                 <td><?php echo htmlspecialchars($request['id']); ?></td>
                                 <td><?php echo htmlspecialchars($request['name']); ?></td>
                                 <td><?php echo htmlspecialchars($request['email']); ?></td>
+                                <td><?php echo htmlspecialchars(ucfirst($request['request_type'])); ?></td>
                                 <td><?php echo htmlspecialchars($request['currency']); ?> <?php echo number_format($request['payment_amount'], 2); ?></td>
                                 <td><?php echo htmlspecialchars($request['payment_method']); ?></td>
                                 <td><?php echo htmlspecialchars($request['currency']); ?></td>
@@ -324,12 +340,14 @@ try {
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
                                             <input type="hidden" name="action" value="approve">
+                                            <input type="hidden" name="request_type" value="<?php echo $request['request_type']; ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                                             <button type="submit" class="action-btn approve">Approve</button>
                                         </form>
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
                                             <input type="hidden" name="action" value="reject">
+                                            <input type="hidden" name="request_type" value="<?php echo $request['request_type']; ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                                             <button type="submit" class="action-btn reject">Reject</button>
                                         </form>
