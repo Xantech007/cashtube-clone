@@ -2,9 +2,6 @@
 session_start();
 require_once '../database/conn.php';
 
-// Set time zone to WAT
-date_default_timezone_set('Africa/Lagos');
-
 // Generate CSRF token if not set
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -20,7 +17,7 @@ if (!isset($_SESSION['user_id'])) {
 // Fetch user data
 try {
     $stmt = $pdo->prepare("
-        SELECT name, balance, verification_status, upgrade_status, COALESCE(country, '') AS country
+        SELECT name, balance, verification_status, COALESCE(country, '') AS country
         FROM users 
         WHERE id = ?
     ");
@@ -35,7 +32,6 @@ try {
     $username = htmlspecialchars($user['name']);
     $balance = number_format($user['balance'], 2);
     $verification_status = $user['verification_status'];
-    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded';
     $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
@@ -50,8 +46,7 @@ try {
 // Fetch region settings based on user's country
 try {
     $stmt = $pdo->prepare("
-        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel, 
-               account_upgrade, COALESCE(dash_currency, '$') AS dash_currency
+        SELECT section_header, ch_name, ch_value, COALESCE(channel, 'Bank') AS channel, account_upgrade
         FROM region_settings 
         WHERE country = ?
     ");
@@ -63,16 +58,14 @@ try {
         $ch_name = htmlspecialchars($region_settings['ch_name']);
         $ch_value = htmlspecialchars($region_settings['ch_value']);
         $channel = htmlspecialchars($region_settings['channel']);
-        $account_upgrade = $region_settings['account_upgrade'] ?? 0;
-        $dash_currency = $upgrade_status === 'upgraded' ? htmlspecialchars($region_settings['dash_currency']) : '$';
+        $account_upgrade = $region_settings['account_upgrade'] ?? 0; // Default to 0 if not set
     } else {
         // Fallback values if no region settings are found
         $section_header = 'Withdraw Funds';
         $ch_name = 'Bank Name';
         $ch_value = 'Bank Account';
         $channel = 'Bank';
-        $account_upgrade = 0;
-        $dash_currency = '$';
+        $account_upgrade = 0; // Default to verification flow
         error_log('No region settings found for country: ' . $user_country, 3, '../debug.log');
     }
 } catch (PDOException $e) {
@@ -82,8 +75,7 @@ try {
     $ch_name = 'Bank Name';
     $ch_value = 'Bank Account';
     $channel = 'Bank';
-    $account_upgrade = 0;
-    $dash_currency = '$';
+    $account_upgrade = 0; // Default to verification flow
 }
 
 // Check for success or error message
@@ -93,12 +85,12 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
 // Improved function to check if a URL is accessible
 function url_exists($url) {
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_NOBODY, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_NOBODY, true); // HEAD request
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Follow redirects
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Timeout after 10 seconds
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // Connection timeout
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification (use with caution)
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable host verification (use with caution)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -483,25 +475,6 @@ try {
             transform: scale(1.02);
         }
 
-        .currency-btn {
-            width: 100%;
-            padding: 14px;
-            background: #8b5cf6;
-            color: #fff;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
-            margin-top: 20px;
-        }
-
-        .currency-btn:hover {
-            background: #7c3aed;
-            transform: scale(1.02);
-        }
-
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -634,7 +607,7 @@ try {
 
         <div class="balance-card">
             <p>Available Crypto Balance</p>
-            <h2><?php echo $dash_currency; ?><span id="balance"><?php echo $balance; ?></span></h2>
+            <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
         </div>
 
         <div class="video-section">
@@ -651,7 +624,7 @@ try {
                     Your browser does not support the video tag.
                 </video>
                 <button class="play-button" id="playButton" style="display: block;">Play Video</button>
-                <h4 id="video-reward">Earn <span><?php echo $dash_currency; ?><?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span>. The more videos you watch, the more your <span>crypto balance</span> increases</h4>
+                <h4 id="video-reward">Earn <span>$<?php echo number_format($video['reward'], 2); ?></span> by watching <span><?php echo htmlspecialchars($video['title']); ?></span>. The more videos you watch, the more your <span>crypto balance</span> increases</h4>
                 <?php if (isset($video_error)): ?>
                     <p class="error"><?php echo $video_error; ?></p>
                 <?php endif; ?>
@@ -678,18 +651,17 @@ try {
                 </div>
                 <div class="input-container">
                     <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="<?php echo $user['balance']; ?>" required aria-required="true">
-                    <label for="amount">Amount (<?php echo $dash_currency; ?>)</label>
+                    <label for="amount">Amount ($)</label>
                 </div>
                 <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
             </form>
             <?php if ($verification_status !== 'verified'): ?>
-                <p class="error">Please verify your account to enable withdrawals.</p>
+                <p class="error">
+                    <?php echo $account_upgrade == 1 ? 'Please upgrade your account to enable withdrawals.' : 'Please verify your account to enable withdrawals.'; ?>
+                </p>
                 <button class="verify-btn" onclick="window.location.href='<?php echo $account_upgrade == 1 ? 'upgrade_account.php' : 'verify_account.php'; ?>'" aria-label="<?php echo $account_upgrade == 1 ? 'Upgrade account' : 'Verify account'; ?>">
                     <?php echo $account_upgrade == 1 ? 'Upgrade Account' : 'Verify Account'; ?>
                 </button>
-            <?php endif; ?>
-            <?php if ($upgrade_status === 'upgraded'): ?>
-                <button class="currency-btn" onclick="window.location.href='currency_exchange.php'" aria-label="Change currency">Change Currency</button>
             <?php endif; ?>
         </div>
 
@@ -768,15 +740,15 @@ try {
         }
 
         document.querySelectorAll('.input-container input').forEach((input) => {
-            updateLabelPosition(input);
-            input.addEventListener('input', () => updateLabelPosition(input));
+            updateLabelPosition(input); // Initialize on load
+            input.addEventListener('input', () => updateLabelPosition(input)); // Update on input
             input.addEventListener('focus', () => {
                 const label = input.nextElementSibling;
                 if (label && label.tagName === 'LABEL') {
                     label.classList.add('active');
                 }
             });
-            input.addEventListener('blur', () => updateLabelPosition(input));
+            input.addEventListener('blur', () => updateLabelPosition(input)); // Update on blur
         });
 
         // Form Validation
@@ -793,14 +765,14 @@ try {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
-                    text: 'Withdrawal amount must be greater than <?php echo $dash_currency; ?>0.'
+                    text: 'Withdrawal amount must be greater than $0.'
                 });
             } else if (amount > maxAmount) {
                 e.preventDefault();
                 Swal.fire({
                     icon: 'error',
                     title: 'Insufficient Balance',
-                    text: `Withdrawal amount cannot exceed your balance of <?php echo $dash_currency; ?>${maxAmount.toFixed(2)}.`
+                    text: `Withdrawal amount cannot exceed your balance of $${maxAmount.toFixed(2)}.`
                 });
             } else if (!channel || !bankName || !bankAccount) {
                 e.preventDefault();
@@ -930,14 +902,14 @@ try {
                 $.ajax({
                     url: 'process_video_watch.php',
                     type: 'POST',
-                    data: { video_id: videoId, reward: accumulatedReward, currency: '<?php echo $dash_currency; ?>' },
+                    data: { video_id: videoId, reward: accumulatedReward },
                     dataType: 'json',
                     success: function(response) {
                         if (response.success) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Video Watched',
-                                text: `You earned <?php echo $dash_currency; ?>${response.reward.toFixed(2)}!`,
+                                text: `You earned $${response.reward.toFixed(2)}!`,
                                 timer: 2000,
                                 showConfirmButton: false
                             });
@@ -992,7 +964,7 @@ try {
                         videoPlayer.innerHTML = `<source src="${videoUrl}" type="video/mp4">Your browser does not support the video tag.`;
                         videoPlayer.setAttribute('data-video-id', data.id);
                         videoPlayer.setAttribute('data-reward', data.reward);
-                        document.getElementById('video-reward').innerHTML = `Earn <span><?php echo $dash_currency; ?>${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
+                        document.getElementById('video-reward').innerHTML = `Earn <span>$${parseFloat(data.reward).toFixed(2)}</span> by watching <span>${data.title}</span>. The more videos you watch, the more your <span>crypto balance</span> increases`;
                         document.getElementById('no-videos-message')?.remove();
                         videoPlayer.load();
                         accumulatedReward = 0;
@@ -1001,7 +973,7 @@ try {
                             clearInterval(interval);
                             interval = null;
                         }
-                        playButton.style.display = 'block';
+                        playButton.style.display = 'block'; // Show play button for next video
                     } else {
                         const videoSection = document.querySelector('.video-section');
                         videoPlayer?.remove();
