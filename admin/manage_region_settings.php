@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $channel = trim($_POST['channel']);
             $ch_name = trim($_POST['ch_name']);
             $ch_value = trim($_POST['ch_value']);
-            $withdraw_currency = trim($_POST['withdraw_currency']); // New field
+            $withdraw_currency = trim($_POST['withdraw_currency']);
 
             // Validation
             if (empty($country) || empty($section_header) || empty($channel) || empty($ch_name) || empty($ch_value) || empty($withdraw_currency)) {
@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $verify_currency = trim($_POST['verify_currency']);
             $verify_amount = floatval($_POST['verify_amount']);
             $rate = floatval($_POST['rate']);
+            $account_upgrade = isset($_POST['account_upgrade']) ? 1 : 0; // Checkbox: 1 for Upgrade, 0 for Verification
 
             // Validation
             if (empty($country) || empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
@@ -70,12 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     UPDATE region_settings 
                     SET verify_ch = ?, vc_value = ?, verify_ch_name = ?, verify_ch_value = ?, 
                         verify_medium = ?, vcn_value = ?, vcv_value = ?, verify_currency = ?, 
-                        verify_amount = ?, rate = ?
+                        verify_amount = ?, rate = ?, account_upgrade = ?
                     WHERE country = ?
                 ");
                 $result = $stmt->execute([
                     $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value, $verify_medium, 
-                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $rate, $country
+                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $rate, $account_upgrade, $country
                 ]);
                 if ($stmt->rowCount() === 0) {
                     $_SESSION['error'] = "No Dashboard settings found for this country. Add Dashboard settings first.";
@@ -106,7 +107,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT id, country, section_header, channel, ch_name, ch_value, withdraw_currency, 
                verify_ch, vc_value, verify_ch_name, verify_ch_value, verify_medium, vcn_value, 
-               vcv_value, verify_currency, verify_amount, rate
+               vcv_value, verify_currency, verify_amount, rate, account_upgrade
         FROM region_settings
         ORDER BY country
     ");
@@ -245,6 +246,19 @@ try {
             cursor: pointer;
         }
 
+        .add-form label.checkbox-label {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #555;
+            justify-self: start;
+        }
+
+        .add-form input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
         .add-form button {
             width: 200px;
             grid-column: 1 / -1;
@@ -307,8 +321,13 @@ try {
 
             .add-form input,
             .add-form select,
-            .add-form button {
+            .add-form button,
+            .add-form label.checkbox-label {
                 width: 100%;
+            }
+
+            .add-form input[type="checkbox"] {
+                width: auto;
             }
 
             .region-settings-table th,
@@ -413,7 +432,7 @@ try {
         <?php endif; ?>
 
         <!-- Verification Section -->
-        <h3>Verification Section</h3>
+        <h3>Verification/Upgrade Section</h3>
         <form action="manage_region_settings.php" method="POST" class="add-form">
             <select name="country" required>
                 <option value="" disabled selected>Select Country</option>
@@ -431,13 +450,16 @@ try {
             <input type="text" name="verify_currency" placeholder="Currency (e.g., NGN)" required>
             <input type="number" name="verify_amount" placeholder="Charges (e.g., 15000)" step="0.01" required>
             <input type="number" name="rate" placeholder="Conversion Rate (e.g., 1000 for 1 USD = 1000 NGN)" step="0.01" required>
+            <label class="checkbox-label">
+                <input type="checkbox" name="account_upgrade" value="1"> Upgrade (checked) / Verification (unchecked)
+            </label>
             <input type="hidden" name="action" value="add_verification">
-            <button type="submit" class="action-btn add">Add Verification Settings</button>
+            <button type="submit" class="action-btn add">Add Verification/Upgrade Settings</button>
         </form>
 
-        <!-- Verification Settings Table -->
+        <!-- Verification/Upgrade Settings Table -->
         <?php if (empty($region_settings)): ?>
-            <p>No Verification settings available.</p>
+            <p>No Verification/Upgrade settings available.</p>
         <?php else: ?>
             <div class="table-container">
                 <table class="region-settings-table">
@@ -445,6 +467,7 @@ try {
                         <tr>
                             <th>ID</th>
                             <th>Country</th>
+                            <th>Type</th>
                             <th>Channel</th>
                             <th>Name</th>
                             <th>Channel Name</th>
@@ -463,16 +486,17 @@ try {
                             <tr>
                                 <td><?php echo htmlspecialchars($setting['id']); ?></td>
                                 <td><?php echo htmlspecialchars($setting['country']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['verify_ch']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['vc_value']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['verify_ch_name']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['verify_ch_value']); ?></td>
+                                <td><?php echo $setting['account_upgrade'] == 1 ? 'Upgrade' : 'Verification'; ?></td>
+                                <td><?php echo htmlspecialchars($setting['verify_ch'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($setting['vc_value'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($setting['verify_ch_name'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($setting['verify_ch_value'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($setting['verify_medium'] ?? 'Payment Method'); ?></td>
-                                <td><?php echo htmlspecialchars($setting['vcn_value']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['vcv_value']); ?></td>
-                                <td><?php echo htmlspecialchars($setting['verify_currency']); ?></td>
-                                <td><?php echo number_format($setting['verify_amount'], 2); ?></td>
-                                <td><?php echo number_format($setting['rate'], 2); ?></td>
+                                <td><?php echo htmlspecialchars($setting['vcn_value'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($setting['vcv_value'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($setting['verify_currency'] ?? 'N/A'); ?></td>
+                                <td><?php echo isset($setting['verify_amount']) ? number_format($setting['verify_amount'], 2) : 'N/A'; ?></td>
+                                <td><?php echo isset($setting['rate']) ? number_format($setting['rate'], 2) : 'N/A'; ?></td>
                                 <td class="action-buttons">
                                     <a href="edit_region_setting.php?id=<?php echo $setting['id']; ?>&section=verification" class="action-btn edit">Edit</a>
                                     <form method="POST" style="display: inline;">
