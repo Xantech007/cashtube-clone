@@ -892,7 +892,7 @@ try {
                 }
             });
 
-            // Save balance and load next video when video ends
+            // Save balance and prepare for next video when video ends
             videoPlayer.addEventListener('ended', function() {
                 if (interval !== null) {
                     clearInterval(interval);
@@ -915,7 +915,7 @@ try {
                             });
                             initialBalance = parseFloat(document.getElementById('balance').textContent);
                             accumulatedReward = 0;
-                            loadNextVideo();
+                            playButton.style.display = 'block'; // Show play button for next video
                         } else {
                             document.getElementById('balance').textContent = initialBalance.toFixed(2);
                             Swal.fire({
