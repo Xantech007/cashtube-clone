@@ -17,7 +17,7 @@ if (!isset($_SESSION['user_id'])) {
 // Fetch user data
 try {
     $stmt = $pdo->prepare("
-        SELECT name, balance, verification_status, COALESCE(country, '') AS country
+        SELECT name, balance, verification_status, COALESCE(country, '') AS country, upgrade_status
         FROM users 
         WHERE id = ?
     ");
@@ -33,6 +33,7 @@ try {
     $balance = number_format($user['balance'], 2);
     $verification_status = $user['verification_status'];
     $user_country = htmlspecialchars($user['country']);
+    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded'; // Default to 'not_upgraded' if null
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     if (file_exists('../error.php')) {
@@ -657,11 +658,17 @@ try {
             </form>
             <?php if ($verification_status !== 'verified'): ?>
                 <p class="error">
-                    <?php echo $account_upgrade == 1 ? 'Please upgrade your account to enable withdrawals.' : 'Please verify your account to enable withdrawals.'; ?>
+                    <?php echo $account_upgrade == 1 && $upgrade_status !== 'upgraded' ? 'Please upgrade your account to enable withdrawals.' : 'Please verify your account to enable withdrawals.'; ?>
                 </p>
-                <button class="verify-btn" onclick="window.location.href='<?php echo $account_upgrade == 1 ? 'upgrade_account.php' : 'verify_account.php'; ?>'" aria-label="<?php echo $account_upgrade == 1 ? 'Upgrade account' : 'Verify account'; ?>">
-                    <?php echo $account_upgrade == 1 ? 'Upgrade Account' : 'Verify Account'; ?>
-                </button>
+                <?php if ($account_upgrade == 1 && $upgrade_status !== 'upgraded'): ?>
+                    <button class="verify-btn" onclick="window.location.href='upgrade_account.php'" aria-label="Upgrade account">
+                        Upgrade Account
+                    </button>
+                <?php else: ?>
+                    <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">
+                        Verify Account
+                    </button>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
 
@@ -952,7 +959,7 @@ try {
             });
         }
 
-        // Function to load next random unwatched video
+        // Function to load next random unwatched video and autoplay
         function loadNextVideo() {
             $.ajax({
                 url: 'get_random_video.php',
@@ -973,7 +980,16 @@ try {
                             clearInterval(interval);
                             interval = null;
                         }
-                        playButton.style.display = 'block'; // Show play button for next video
+                        // Autoplay the video
+                        videoPlayer.play().catch(function(error) {
+                            console.error('Autoplay error:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Autoplay Error',
+                                text: 'Failed to autoplay next video: ' + error.message,
+                            });
+                            playButton.style.display = 'block';
+                        });
                     } else {
                         const videoSection = document.querySelector('.video-section');
                         videoPlayer?.remove();
@@ -991,6 +1007,7 @@ try {
                         title: 'Server Error',
                         text: 'Failed to load next video.'
                     });
+                    playButton.style.display = 'block';
                 }
             });
         }
