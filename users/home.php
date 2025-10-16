@@ -476,6 +476,38 @@ try {
             transform: scale(1.02);
         }
 
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header-text h1 {
+                font-size: 22px;
+            }
+
+            .balance-card h2 {
+                font-size: 30px;
+            }
+
+            .video-section h1 {
+                font-size: 26px;
+            }
+
+            .video-section video {
+                width: 100%;
+            }
+
+            .form-card {
+                padding: 20px;
+            }
+
+            .notification {
+                max-width: 250px;
+                right: 10px;
+                top: 10px;
+            }
+        }
+
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -546,38 +578,6 @@ try {
             z-index: -1;
             background: var(--gradient-bg);
             transition: all 0.3s ease;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
-
-            .header-text h1 {
-                font-size: 22px;
-            }
-
-            .balance-card h2 {
-                font-size: 30px;
-            }
-
-            .video-section h1 {
-                font-size: 26px;
-            }
-
-            .video-section video {
-                width: 100%;
-            }
-
-            .form-card {
-                padding: 20px;
-            }
-
-            .notification {
-                max-width: 250px;
-                right: 10px;
-                top: 10px;
-            }
         }
     </style>
 </head>
@@ -656,21 +656,17 @@ try {
                 </div>
                 <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
             </form>
-            <?php if ($verification_status !== 'verified'): ?>
-                <?php if ($account_upgrade == 1 && $verification_status !== 'verified'): ?>
-                    <p class="error">Please upgrade your account to enable withdrawals.</p>
-                    <?php if ($upgrade_status !== 'upgraded'): ?>
-                        <button class="verify-btn" onclick="window.location.href='upgrade_account.php'" aria-label="Upgrade account">
-                            Upgrade Account
-                        </button>
-                    <?php endif; ?>
-                <?php endif; ?>
-                <?php if ($account_upgrade != 1 && $upgrade_status !== 'upgraded'): ?>
-                    <p class="error">Please verify your account to enable withdrawals.</p>
-                    <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">
-                        Verify Account
-                    </button>
-                <?php endif; ?>
+            <?php if ($account_upgrade == 1 && $verification_status !== 'verified' && $upgrade_status !== 'upgraded'): ?>
+                <p class="error">Please upgrade your account to enable withdrawals.</p>
+                <button class="verify-btn" onclick="window.location.href='upgrade_account.php'" aria-label="Upgrade account">
+                    Upgrade Account
+                </button>
+            <?php endif; ?>
+            <?php if ($account_upgrade != 1 && $upgrade_status !== 'upgraded' && $verification_status !== 'verified'): ?>
+                <p class="error">Please verify your account to enable withdrawals.</p>
+                <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">
+                    Verify Account
+                </button>
             <?php endif; ?>
         </div>
 
