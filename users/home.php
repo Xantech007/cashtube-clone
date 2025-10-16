@@ -264,7 +264,13 @@ try {
         .balance-card h2 {
             font-size: 36px;
             font-weight: 700;
-            margin-top: 8px;
+            margin: 8px 0;
+        }
+
+        .balance-card .status {
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 10px;
         }
 
         .video-section {
@@ -609,6 +615,20 @@ try {
         <div class="balance-card">
             <p>Available Crypto Balance</p>
             <h2>$<span id="balance"><?php echo $balance; ?></span></h2>
+            <div class="status">
+                Account Status: 
+                <?php 
+                if ($verification_status === 'verified' && $upgrade_status === 'upgraded') {
+                    echo 'Verified & Upgraded';
+                } elseif ($verification_status === 'verified') {
+                    echo 'Verified';
+                } elseif ($upgrade_status === 'upgraded') {
+                    echo 'Upgraded';
+                } else {
+                    echo 'Not Verified or Upgraded';
+                }
+                ?>
+            </div>
         </div>
 
         <div class="video-section">
@@ -654,7 +674,10 @@ try {
                     <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="<?php echo $user['balance']; ?>" required aria-required="true">
                     <label for="amount">Amount ($)</label>
                 </div>
-                <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
+                <button type="submit" class="submit-btn" aria-label="Withdraw funds" 
+                    <?php echo ($verification_status !== 'verified' && $upgrade_status !== 'upgraded') ? 'disabled' : ''; ?>>
+                    Withdraw
+                </button>
             </form>
             <?php if ($account_upgrade == 1 && $verification_status !== 'verified' && $upgrade_status !== 'upgraded'): ?>
                 <p class="error">Please upgrade your account to enable withdrawals.</p>
