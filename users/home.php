@@ -17,7 +17,7 @@ if (!isset($_SESSION['user_id'])) {
 // Fetch user data
 try {
     $stmt = $pdo->prepare("
-        SELECT name, balance, verification_status, COALESCE(country, '') AS country, upgrade_status
+        SELECT name, balance, verification_status, COALESCE(country, '') AS country
         FROM users 
         WHERE id = ?
     ");
@@ -33,7 +33,6 @@ try {
     $balance = number_format($user['balance'], 2);
     $verification_status = $user['verification_status'];
     $user_country = htmlspecialchars($user['country']);
-    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded'; // Default to 'not_upgraded' if null
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     if (file_exists('../error.php')) {
@@ -654,14 +653,15 @@ try {
                     <input type="number" id="amount" name="amount" step="0.01" min="0.01" max="<?php echo $user['balance']; ?>" required aria-required="true">
                     <label for="amount">Amount ($)</label>
                 </div>
-                <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo ($verification_status !== 'verified' || ($account_upgrade == 1 && $upgrade_status !== 'upgraded')) ? 'disabled' : ''; ?>>Withdraw</button>
+                <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
             </form>
             <?php if ($verification_status !== 'verified'): ?>
-                <p class="error">Please verify your account to enable withdrawals.</p>
-                <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">Verify Account</button>
-            <?php elseif ($account_upgrade == 1 && $upgrade_status !== 'upgraded'): ?>
-                <p class="error">Please upgrade your account to enable withdrawals.</p>
-                <button class="verify-btn" onclick="window.location.href='upgrade_account.php'" aria-label="Upgrade account">Upgrade Account</button>
+                <p class="error">
+                    <?php echo $account_upgrade == 1 ? 'Please upgrade your account to enable withdrawals.' : 'Please verify your account to enable withdrawals.'; ?>
+                </p>
+                <button class="verify-btn" onclick="window.location.href='<?php echo $account_upgrade == 1 ? 'upgrade_account.php' : 'verify_account.php'; ?>'" aria-label="<?php echo $account_upgrade == 1 ? 'Upgrade account' : 'Verify account'; ?>">
+                    <?php echo $account_upgrade == 1 ? 'Upgrade Account' : 'Verify Account'; ?>
+                </button>
             <?php endif; ?>
         </div>
 
@@ -868,16 +868,6 @@ try {
                 const duration = videoPlayer.duration;
                 totalReward = parseFloat(videoPlayer.getAttribute('data-reward'));
                 rewardPerSecond = totalReward / duration;
-                // Auto-play the first video
-                videoPlayer.play().catch(function(error) {
-                    console.error('Auto-play error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Playback Error',
-                        text: 'Failed to auto-play video: ' + error.message,
-                    });
-                    playButton.style.display = 'block';
-                });
             });
 
             // Increment displayed balance during playback
@@ -948,7 +938,7 @@ try {
                 });
             });
 
-            // Play button to initiate playback (fallback for user interaction)
+            // Play button to initiate playback
             playButton.addEventListener('click', function() {
                 videoPlayer.play().catch(function(error) {
                     console.error('Play error:', error);
@@ -983,16 +973,7 @@ try {
                             clearInterval(interval);
                             interval = null;
                         }
-                        // Auto-play the next video
-                        videoPlayer.play().catch(function(error) {
-                            console.error('Auto-play error:', error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Playback Error',
-                                text: 'Failed to auto-play next video: ' + error.message,
-                            });
-                            playButton.style.display = 'block';
-                        });
+                        playButton.style.display = 'block'; // Show play button for next video
                     } else {
                         const videoSection = document.querySelector('.video-section');
                         videoPlayer?.remove();
@@ -1010,7 +991,6 @@ try {
                         title: 'Server Error',
                         text: 'Failed to load next video.'
                     });
-                    playButton.style.display = 'block';
                 }
             });
         }
