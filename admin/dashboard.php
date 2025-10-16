@@ -267,7 +267,7 @@ try {
 
         <!-- Management Buttons -->
         <div class="button-container">
-            <a href="manage_verifications.php" class="management-link">Manage Verification Requests</a>
+            <a href="manage_verifications.php" class="management-link">Manage Verification/Upgrade Requests</a>
             <a href="manage_withdrawals.php" class="management-link">Manage Withdrawals</a>
             <a href="manage_users.php" class="management-link">Manage Users</a>
             <a href="manage_region_settings.php" class="management-link">Manage Region Settings</a>
