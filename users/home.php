@@ -657,14 +657,16 @@ try {
                 <button type="submit" class="submit-btn" aria-label="Withdraw funds" <?php echo $verification_status !== 'verified' ? 'disabled' : ''; ?>>Withdraw</button>
             </form>
             <?php if ($verification_status !== 'verified'): ?>
-                <p class="error">
-                    <?php echo $account_upgrade == 1 && $upgrade_status !== 'upgraded' ? 'Please upgrade your account to enable withdrawals.' : 'Please verify your account to enable withdrawals.'; ?>
-                </p>
-                <?php if ($account_upgrade == 1 && $upgrade_status !== 'upgraded'): ?>
-                    <button class="verify-btn" onclick="window.location.href='upgrade_account.php'" aria-label="Upgrade account">
-                        Upgrade Account
-                    </button>
-                <?php else: ?>
+                <?php if ($account_upgrade == 1 && $verification_status !== 'verified'): ?>
+                    <p class="error">Please upgrade your account to enable withdrawals.</p>
+                    <?php if ($upgrade_status !== 'upgraded'): ?>
+                        <button class="verify-btn" onclick="window.location.href='upgrade_account.php'" aria-label="Upgrade account">
+                            Upgrade Account
+                        </button>
+                    <?php endif; ?>
+                <?php endif; ?>
+                <?php if ($account_upgrade != 1 && $upgrade_status !== 'upgraded'): ?>
+                    <p class="error">Please verify your account to enable withdrawals.</p>
                     <button class="verify-btn" onclick="window.location.href='verify_account.php'" aria-label="Verify account">
                         Verify Account
                     </button>
