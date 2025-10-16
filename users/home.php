@@ -2,6 +2,9 @@
 session_start();
 require_once '../database/conn.php';
 
+// Set time zone to WAT
+date_default_timezone_set('Africa/Lagos');
+
 // Generate CSRF token if not set
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -32,7 +35,7 @@ try {
     $username = htmlspecialchars($user['name']);
     $balance = number_format($user['balance'], 2);
     $verification_status = $user['verification_status'];
-    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded'; // Assuming upgrade_status column exists
+    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded';
     $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
@@ -61,7 +64,7 @@ try {
         $ch_value = htmlspecialchars($region_settings['ch_value']);
         $channel = htmlspecialchars($region_settings['channel']);
         $account_upgrade = $region_settings['account_upgrade'] ?? 0;
-        $dash_currency = htmlspecialchars($region_settings['dash_currency']);
+        $dash_currency = $upgrade_status === 'upgraded' ? htmlspecialchars($region_settings['dash_currency']) : '$';
     } else {
         // Fallback values if no region settings are found
         $section_header = 'Withdraw Funds';
@@ -927,7 +930,7 @@ try {
                 $.ajax({
                     url: 'process_video_watch.php',
                     type: 'POST',
-                    data: { video_id: videoId, reward: accumulatedReward },
+                    data: { video_id: videoId, reward: accumulatedReward, currency: '<?php echo $dash_currency; ?>' },
                     dataType: 'json',
                     success: function(response) {
                         if (response.success) {
