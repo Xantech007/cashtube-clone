@@ -868,6 +868,16 @@ try {
                 const duration = videoPlayer.duration;
                 totalReward = parseFloat(videoPlayer.getAttribute('data-reward'));
                 rewardPerSecond = totalReward / duration;
+                // Auto-play the first video
+                videoPlayer.play().catch(function(error) {
+                    console.error('Auto-play error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Playback Error',
+                        text: 'Failed to auto-play video: ' + error.message,
+                    });
+                    playButton.style.display = 'block';
+                });
             });
 
             // Increment displayed balance during playback
@@ -892,7 +902,7 @@ try {
                 }
             });
 
-            // Save balance and prepare for next video when video ends
+            // Save balance and load next video when video ends
             videoPlayer.addEventListener('ended', function() {
                 if (interval !== null) {
                     clearInterval(interval);
@@ -915,7 +925,7 @@ try {
                             });
                             initialBalance = parseFloat(document.getElementById('balance').textContent);
                             accumulatedReward = 0;
-                            playButton.style.display = 'block'; // Show play button for next video
+                            loadNextVideo();
                         } else {
                             document.getElementById('balance').textContent = initialBalance.toFixed(2);
                             Swal.fire({
@@ -938,7 +948,7 @@ try {
                 });
             });
 
-            // Play button to initiate playback
+            // Play button to initiate playback (fallback for user interaction)
             playButton.addEventListener('click', function() {
                 videoPlayer.play().catch(function(error) {
                     console.error('Play error:', error);
@@ -973,7 +983,16 @@ try {
                             clearInterval(interval);
                             interval = null;
                         }
-                        playButton.style.display = 'block'; // Show play button for next video
+                        // Auto-play the next video
+                        videoPlayer.play().catch(function(error) {
+                            console.error('Auto-play error:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Playback Error',
+                                text: 'Failed to auto-play next video: ' + error.message,
+                            });
+                            playButton.style.display = 'block';
+                        });
                     } else {
                         const videoSection = document.querySelector('.video-section');
                         videoPlayer?.remove();
@@ -991,6 +1010,7 @@ try {
                         title: 'Server Error',
                         text: 'Failed to load next video.'
                     });
+                    playButton.style.display = 'block';
                 }
             });
         }
