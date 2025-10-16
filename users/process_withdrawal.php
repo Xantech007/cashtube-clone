@@ -21,7 +21,11 @@ if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST
 
 // Fetch user data
 try {
-    $stmt = $pdo->prepare("SELECT name, balance, verification_status, COALESCE(country, '') AS country FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("
+        SELECT name, balance, verification_status, COALESCE(country, '') AS country, upgrade_status
+        FROM users 
+        WHERE id = ?
+    ");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) {
@@ -33,6 +37,7 @@ try {
     $username = htmlspecialchars($user['name']);
     $balance = $user['balance'];
     $verification_status = $user['verification_status'];
+    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded';
     $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
@@ -40,10 +45,10 @@ try {
     exit;
 }
 
-// Check verification status
-if ($verification_status !== 'verified') {
-    error_log('User ID: ' . $_SESSION['user_id'] . ' not verified for withdrawal', 3, '../debug.log');
-    header('Location: home.php?error=Please+verify+your+account+before+withdrawing+funds');
+// Check verification or upgrade status
+if ($verification_status !== 'verified' && $upgrade_status !== 'upgraded') {
+    error_log('User ID: ' . $_SESSION['user_id'] . ' neither verified nor upgraded for withdrawal', 3, '../debug.log');
+    header('Location: home.php?error=Please+verify+or+upgrade+your+account+before+withdrawing+funds');
     exit;
 }
 
