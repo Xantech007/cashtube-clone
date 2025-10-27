@@ -12,7 +12,7 @@ require_once '../database/conn.php';
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
-// Handle user actions (suspend/unsuspend, delete, update passcode)
+// Handle user actions (suspend/unsuspend, delete, update password)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['action'])) {
     $user_id = intval($_POST['user_id']);
     $action = $_POST['action'];
@@ -31,15 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ac
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
             $stmt->execute([$user_id]);
             $_SESSION['success'] = "User deleted successfully.";
-        } elseif ($action === 'update_passcode') {
-            $passcode = trim($_POST['passcode']);
-            // Validate passcode: exactly 5 digits, numeric
-            if (!preg_match('/^\d{5}$/', $passcode)) {
-                $_SESSION['error'] = "Passcode must be exactly 5 digits.";
+        } elseif ($action === 'update_password') {
+            $password = trim($_POST['password']);
+            // Validate password: minimum 8 characters
+            if (strlen($password) < 8) {
+                $_SESSION['error'] = "Password must be at least 8 characters.";
             } else {
+                // Hash the new password
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("UPDATE users SET passcode = ? WHERE id = ?");
-                $stmt->execute([$passcode, $user_id]);
-                $_SESSION['success'] = "Passcode updated successfully.";
+                $stmt->execute([$hashed_password, $user_id]);
+                $_SESSION['success'] = "Password updated successfully.";
             }
         }
         $pdo->commit();
@@ -151,11 +153,11 @@ try {
             background-color: #c82333;
         }
 
-        .action-btn.update-passcode {
+        .action-btn.update-password {
             background-color: #17a2b8;
         }
 
-        .action-btn.update-passcode:hover {
+        .action-btn.update-password:hover {
             background-color: #138496;
         }
 
@@ -166,26 +168,18 @@ try {
             flex-wrap: wrap;
         }
 
-        .passcode-input {
-            width: 60px;
+        .password-input {
+            width: 120px;
             padding: 5px;
             font-size: 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
 
-        .table-container {
-            max-width: 100%;
-            overflow-x: auto;
-            overflow-y: auto;
-            max-height: 400px;
-            margin-top: 10px;
-        }
-
         .users-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px; /* Adjusted for new column */
+            min-width: 1000px;
         }
 
         .users-table th,
@@ -217,7 +211,14 @@ try {
             color: green;
         }
 
-        /* Responsive Design */
+        .table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 400px;
+            margin-top: 10px;
+        }
+
         @media (max-width: 768px) {
             .dashboard-container {
                 margin: 20px;
@@ -236,9 +237,9 @@ try {
                 font-size: 11px;
             }
 
-            .passcode-input {
+            .password-input {
                 width: 100%;
-                max-width: 100px;
+                max-width: 150px;
             }
 
             .action-buttons {
@@ -281,7 +282,7 @@ try {
                             <th>Balance ($)</th>
                             <th>Verification Status</th>
                             <th>Suspended</th>
-                            <th>Passcode</th>
+                            <th>Password</th>
                             <th>Country</th>
                             <th>Created At</th>
                             <th>Actions</th>
@@ -296,7 +297,7 @@ try {
                                 <td><?php echo number_format($user['balance'], 2); ?></td>
                                 <td><?php echo htmlspecialchars(ucfirst($user['verification_status'])); ?></td>
                                 <td><?php echo $user['is_suspended'] ? 'Yes' : 'No'; ?></td>
-                                <td><?php echo htmlspecialchars($user['passcode'] ?? 'None'); ?></td>
+                                <td>********</td> <!-- Hide hashed password -->
                                 <td><?php echo htmlspecialchars($user['country'] ?? 'None'); ?></td>
                                 <td><?php echo htmlspecialchars($user['created_at']); ?></td>
                                 <td class="action-buttons">
@@ -314,9 +315,9 @@ try {
                                     </form>
                                     <form method="POST" style="display: inline;">
                                         <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                                        <input type="hidden" name="action" value="update_passcode">
-                                        <input type="text" name="passcode" class="passcode-input" placeholder="5-digit passcode" maxlength="5" pattern="\d{5}" required>
-                                        <button type="submit" class="action-btn update-passcode">Update Passcode</button>
+                                        <input type="hidden" name="action" value="update_password">
+                                        <input type="password" name="password" class="password-input" placeholder="New password" minlength="8" required>
+                                        <button type="submit" class="action-btn update-password">Update Password</button>
                                     </form>
                                 </td>
                             </tr>
