@@ -1,5 +1,7 @@
 <?php
-ini_set('display_errors', 0);
+// process_change_password.php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 ob_start();
@@ -9,13 +11,20 @@ session_start([
     'cookie_secure' => isset($_SERVER['HTTPS']),
     'cookie_httponly' => true,
 ]);
-error_log('Session ID in process_change_passcode.php: ' . session_id() . ', User ID: ' . ($_SESSION['user_id'] ?? 'not set'), 3, '../debug.log');
+
+// Prevent caching
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+$response = ['success' => false, 'error' => ''];
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    error_log('No user_id in session, redirecting to signin', 3, '../debug.log');
+    $response['error'] = 'You must be logged in to change your password.';
+    error_log('No user_id in session in process_change_password.php', 3, '../debug.log');
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'Unauthorized access']);
+    echo json_encode($response);
     ob_end_flush();
     exit;
 }
@@ -24,94 +33,64 @@ if (!isset($_SESSION['user_id'])) {
 try {
     require_once '../database/conn.php';
 } catch (Exception $e) {
+    $response['error'] = 'Failed to connect to database.';
     error_log('Failed to include conn.php: ' . $e->getMessage(), 3, '../debug.log');
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'Database connection failed']);
+    echo json_encode($response);
     ob_end_flush();
     exit;
 }
 
-// Handle POST request
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $old_passcode = trim($_POST['old_passcode'] ?? '');
-    $new_passcode = trim($_POST['new_passcode'] ?? '');
-    $confirm_passcode = trim($_POST['confirm_passcode'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['old_password'], $_POST['new_password'], $_POST['confirm_password'])) {
+    $old_password = trim($_POST['old_password']);
+    $new_password = trim($_POST['new_password']);
+    $confirm_password = trim($_POST['confirm_password']);
 
     // Validate inputs
-    if (empty($old_passcode) || !preg_match('/^\d{5}$/', $old_passcode)) {
-        error_log('Invalid old passcode for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Old passcode must be exactly 5 digits']);
-        ob_end_flush();
-        exit;
-    }
+    if (empty($old_password)) {
+        $response['error'] = 'Old password is required.';
+        error_log('Old password missing', 3, '../debug.log');
+    } elseif (strlen($new_password) < 8) {
+        $response['error'] = 'New password must be at least 8 characters.';
+        error_log('New password too short: ' . strlen($new_password), 3, '../debug.log');
+    } elseif ($new_password !== $confirm_password) {
+        $response['error'] = 'New password and confirm password do not match.';
+        error_log('Password mismatch', 3, '../debug.log');
+    } else {
+        try {
+            // Fetch current password hash
+            $stmt = $pdo->prepare("SELECT passcode FROM users WHERE id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (empty($new_passcode) || !preg_match('/^\d{5}$/', $new_passcode)) {
-        error_log('Invalid new passcode for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'New passcode must be exactly 5 digits']);
-        ob_end_flush();
-        exit;
-    }
+            if ($user && password_verify($old_password, $user['passcode'])) {
+                // Hash new password
+                $new_password_hash = password_hash($new_password, PASSWORD_DEFAULT);
 
-    if ($new_passcode !== $confirm_passcode) {
-        error_log('Passcodes do not match for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'New passcode and confirm passcode must match']);
-        ob_end_flush();
-        exit;
-    }
+                // Update password in database
+                $stmt = $pdo->prepare("UPDATE users SET passcode = ? WHERE id = ?");
+                $stmt->execute([$new_password_hash, $_SESSION['user_id']]);
 
-    try {
-        // Fetch current passcode
-        $stmt = $pdo->prepare("SELECT passcode FROM users WHERE id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$user) {
-            error_log('User not found for ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => 'User not found']);
-            ob_end_flush();
-            exit;
+                // Update session with new password hash
+                $_SESSION['passcode'] = $new_password_hash;
+                error_log('Password changed successfully for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+                $response['success'] = true;
+            } else {
+                $response['error'] = 'Incorrect old password.';
+                error_log('Incorrect old password for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
+            }
+        } catch (PDOException $e) {
+            $response['error'] = 'Database error: ' . $e->getMessage();
+            error_log('Database error in process_change_password.php: ' . $e->getMessage(), 3, '../debug.log');
         }
-
-        // Verify old passcode
-        if ($user['passcode'] !== $old_passcode) {
-            error_log('Incorrect old passcode for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => 'Incorrect old passcode']);
-            ob_end_flush();
-            exit;
-        }
-
-        // Update passcode
-        $stmt = $pdo->prepare("UPDATE users SET passcode = ? WHERE id = ?");
-        $success = $stmt->execute([$new_passcode, $_SESSION['user_id']]);
-
-        if ($success && $stmt->rowCount() > 0) {
-            // Update session passcode
-            $_SESSION['passcode'] = $new_passcode;
-            error_log('Passcode updated successfully for user ID: ' . $_SESSION['user_id'], 3, '../debug.log');
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true]);
-        } else {
-            error_log('Failed to update passcode for user ID: ' . $_SESSION['user_id'] . ' (no rows affected)', 3, '../debug.log');
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => 'Failed to update passcode']);
-        }
-    } catch (PDOException $e) {
-        error_log('Database error in process_change_passcode.php: ' . $e->getMessage() . ' | Code: ' . $e->getCode() . ' | Line: ' . $e->getLine(), 3, '../debug.log');
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Database error occurred: ' . $e->getMessage()]);
-        ob_end_flush();
-        exit;
     }
 } else {
-    error_log('Invalid request method in process_change_passcode.php', 3, '../debug.log');
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'Invalid request method']);
+    $response['error'] = 'Invalid request.';
+    error_log('Invalid request in process_change_password.php', 3, '../debug.log');
 }
 
+header('Content-Type: application/json');
+echo json_encode($response);
 ob_end_flush();
+exit;
 ?>
