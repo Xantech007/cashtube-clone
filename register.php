@@ -19,6 +19,11 @@ function detectCountryFromIp() {
 
 $response = ['success' => false, 'error' => ''];
 
+// Prevent caching to avoid redirect issues
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     $data = json_decode($_POST['registerData'], true);
     if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender']) && !empty($data['country']) && !empty($data['password'])) {
@@ -54,9 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                     $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode, country) VALUES (?, ?, ?, ?, ?)");
                     $stmt->execute([$name, $email, $gender, $hashedPassword, $country]);
 
+                    // Get the inserted user's ID
+                    $userId = $pdo->lastInsertId();
+
                     // Log user in
-                    $_SESSION['user_email'] = $email;
-                    $_SESSION['user_name'] = $name;
+                    $_SESSION['user_id'] = $userId;
+                    $_SESSION['email'] = $email;
+                    $_SESSION['passcode'] = $hashedPassword; // Store hashed password for consistency
+                    file_put_contents('debug.log', 'Registration successful, session: ' . print_r($_SESSION, true) . "\n", FILE_APPEND);
 
                     $response['success'] = true;
                 }
@@ -368,113 +378,36 @@ $detected_country = detectCountryFromIp();
         }
 
         @media (max-width: 1024px) {
-            .hero-section h1 {
-                font-size: 36px;
-            }
-
-            .hero-section p {
-                font-size: 16px;
-            }
-
-            .section-title {
-                font-size: 30px;
-            }
-
-            .register-content {
-                padding: 20px;
-            }
+            .hero-section h1 { font-size: 36px; }
+            .hero-section p { font-size: 16px; }
+            .section-title { font-size: 30px; }
+            .register-content { padding: 20px; }
         }
 
         @media (max-width: 768px) {
-            body {
-                padding-top: 70px;
-                padding-bottom: 80px;
-            }
-
-            .hero-section {
-                padding: 80px 20px;
-            }
-
-            .hero-section h1 {
-                font-size: 32px;
-            }
-
-            .hero-section p {
-                font-size: 15px;
-            }
-
-            .section-title {
-                font-size: 28px;
-            }
-
-            .register-content {
-                padding: 20px;
-                margin: 0 20px;
-            }
-
-            .input-field, .country-select {
-                height: 45px;
-                font-size: 15px;
-            }
-
-            .submit-btn {
-                padding: 12px;
-                font-size: 16px;
-            }
-
-            .cta-banner h2 {
-                font-size: 28px;
-            }
+            body { padding-top: 70px; padding-bottom: 80px; }
+            .hero-section { padding: 80px 20px; }
+            .hero-section h1 { font-size: 32px; }
+            .hero-section p { font-size: 15px; }
+            .section-title { font-size: 28px; }
+            .register-content { padding: 20px; margin: 0 20px; }
+            .input-field, .country-select { height: 45px; font-size: 15px; }
+            .submit-btn { padding: 12px; font-size: 16px; }
+            .cta-banner h2 { font-size: 28px; }
         }
 
         @media (max-width: 480px) {
-            body {
-                padding-top: 60px;
-                padding-bottom: 60px;
-            }
-
-            .hero-section {
-                padding: 60px 15px;
-            }
-
-            .hero-section h1 {
-                font-size: 28px;
-            }
-
-            .hero-section p {
-                font-size: 14px;
-            }
-
-            .section-title {
-                font-size: 24px;
-            }
-
-            .register-content {
-                padding: 15px;
-                margin: 0 15px;
-            }
-
-            .gender-options {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .gender-options label {
-                font-size: 14px;
-            }
-
-            .cta-banner {
-                padding: 40px 15px;
-            }
-
-            .cta-banner h2 {
-                font-size: 24px;
-            }
-
-            .cta-banner .btn {
-                padding: 12px 30px;
-                font-size: 16px;
-            }
+            body { padding-top: 60px; padding-bottom: 60px; }
+            .hero-section { padding: 60px 15px; }
+            .hero-section h1 { font-size: 28px; }
+            .hero-section p { font-size: 14px; }
+            .section-title { font-size: 24px; }
+            .register-content { padding: 15px; margin: 0 15px; }
+            .gender-options { flex-direction: column; gap: 10px; }
+            .gender-options label { font-size: 14px; }
+            .cta-banner { padding: 40px 15px; }
+            .cta-banner h2 { font-size: 24px; }
+            .cta-banner .btn { padding: 12px 30px; font-size: 16px; }
         }
     </style>
 </head>
@@ -632,6 +565,7 @@ $detected_country = detectCountryFromIp();
                 data: { registerData: JSON.stringify(data) },
                 contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
                 dataType: 'json',
+                cache: false,
                 success: function(response) {
                     console.log('AJAX success:', response);
                     if (response.success) {
@@ -642,6 +576,7 @@ $detected_country = detectCountryFromIp();
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
+                            console.log('Redirecting to users/home.php');
                             window.location.href = './users/home.php';
                         });
                     } else {
