@@ -1,41 +1,32 @@
 <?php
 // register.php
+session_start(); // Start session for login
 require_once 'database/conn.php';
-require_once 'inc/countries.php'; // Include countries list
+require_once 'inc/countries.php';
 
-// Function to generate a unique 5-digit passcode
-function generatePasscode($pdo) {
-    do {
-        $passcode = str_pad(mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE passcode = ?");
-        $stmt->execute([$passcode]);
-        $count = $stmt->fetchColumn();
-    } while ($count > 0);
-    return $passcode;
-}
-
-// Function to detect country from IP (using ipapi.co)
+// Function to detect country from IP
 function detectCountryFromIp() {
     $ip = $_SERVER['REMOTE_ADDR'];
     $url = "https://ipapi.co/{$ip}/country_name/";
-    $response = @file_get_contents($url); // Use @ to suppress warnings
+    $response = @file_get_contents($url);
     if ($response === false) {
         file_put_contents('debug.log', "Failed to fetch country from ipapi.co for IP: {$ip}\n", FILE_APPEND);
-        return 'Nigeria'; // Fallback country
+        return 'Nigeria';
     }
     $country = trim($response);
-    return in_array($country, $GLOBALS['countries']) ? $country : 'Nigeria'; // Ensure valid country
+    return in_array($country, $GLOBALS['countries']) ? $country : 'Nigeria';
 }
 
 $response = ['success' => false, 'error' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     $data = json_decode($_POST['registerData'], true);
-    if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender']) && !empty($data['country'])) {
+    if (!empty($data['name']) && !empty($data['email']) && !empty($data['gender']) && !empty($data['country']) && !empty($data['password'])) {
         $name = trim($data['name']);
         $email = trim($data['email']);
         $gender = $data['gender'];
         $country = trim($data['country']);
+        $password = $data['password'];
 
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -44,6 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
         } elseif (!in_array($country, $countries)) {
             $response['error'] = "Invalid country selected.";
             file_put_contents('debug.log', 'Invalid country: ' . $country . "\n", FILE_APPEND);
+        } elseif (strlen($password) < 8) {
+            $response['error'] = "Password must be at least 8 characters long.";
+            file_put_contents('debug.log', 'Invalid password length: ' . strlen($password) . "\n", FILE_APPEND);
         } else {
             try {
                 // Check if email already exists
@@ -53,15 +47,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
                     $response['error'] = "Email already registered.";
                     file_put_contents('debug.log', 'Duplicate email: ' . $email . "\n", FILE_APPEND);
                 } else {
-                    // Generate unique passcode
-                    $passcode = generatePasscode($pdo);
+                    // Hash the password
+                    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
                     // Insert user into database
                     $stmt = $pdo->prepare("INSERT INTO users (name, email, gender, passcode, country) VALUES (?, ?, ?, ?, ?)");
-                    $stmt->execute([$name, $email, $gender, $passcode, $country]);
+                    $stmt->execute([$name, $email, $gender, $hashedPassword, $country]);
+
+                    // Log user in
+                    $_SESSION['user_email'] = $email;
+                    $_SESSION['user_name'] = $name;
 
                     $response['success'] = true;
-                    $response['email'] = $email;
                 }
             } catch (PDOException $e) {
                 $response['error'] = "Database error: " . $e->getMessage();
@@ -77,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerData'])) {
     exit;
 }
 
-// Get detected country for pre-selection
 $detected_country = detectCountryFromIp();
 ?>
 
@@ -108,11 +104,10 @@ $detected_country = detectCountryFromIp();
             display: flex;
             flex-direction: column;
             color: #333;
-            padding-top: 80px; /* Matches header height */
-            padding-bottom: 100px; /* Matches footer height */
+            padding-top: 80px;
+            padding-bottom: 100px;
         }
 
-        /* Hero Section */
         .hero-section {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -152,7 +147,6 @@ $detected_country = detectCountryFromIp();
             z-index: 1;
         }
 
-        /* Main Container */
         .index-container {
             max-width: 1200px;
             margin: 40px auto;
@@ -195,7 +189,6 @@ $detected_country = detectCountryFromIp();
             font-weight: 500;
         }
 
-        /* Form Styles */
         .input-field, .country-select {
             width: 100%;
             height: 50px;
@@ -241,7 +234,6 @@ $detected_country = detectCountryFromIp();
             accent-color: #6e44ff;
         }
 
-        /* Button Styles */
         .btn {
             padding: 12px 30px;
             font-size: 16px;
@@ -289,7 +281,6 @@ $detected_country = detectCountryFromIp();
             text-decoration: underline;
         }
 
-        /* CTA Banner */
         .cta-banner {
             background: linear-gradient(135deg, #6e44ff, #b5179e);
             color: #fff;
@@ -319,7 +310,6 @@ $detected_country = detectCountryFromIp();
             background-color: #f0f0f0;
         }
 
-        /* Notice Popup */
         .notice {
             position: fixed;
             top: 50%;
@@ -377,7 +367,6 @@ $detected_country = detectCountryFromIp();
             background-color: #5a00b5;
         }
 
-        /* Responsive Design */
         @media (max-width: 1024px) {
             .hero-section h1 {
                 font-size: 36px;
@@ -508,6 +497,7 @@ $detected_country = detectCountryFromIp();
             <form id="register-form" method="POST">
                 <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required aria-label="Full Name">
                 <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required aria-label="Email Address">
+                <input type="password" id="password" name="password" class="input-field" placeholder="Password (minimum 8 characters)" required aria-label="Password">
                 <select id="country" name="country" class="country-select" required aria-label="Country">
                     <option value="" disabled>Select your country</option>
                     <?php foreach ($countries as $country): ?>
@@ -596,11 +586,12 @@ $detected_country = detectCountryFromIp();
             // Get form values
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
             const country = document.getElementById('country').value;
             const gender = document.querySelector('input[name="gender"]:checked')?.value;
 
             // Client-side validation
-            if (!name || !email || !country || !gender) {
+            if (!name || !email || !password || !country || !gender) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Oops...',
@@ -620,8 +611,18 @@ $detected_country = detectCountryFromIp();
                 return;
             }
 
+            // Validate password length
+            if (password.length < 8) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Password must be at least 8 characters long.',
+                });
+                return;
+            }
+
             // Prepare data
-            const data = { name, email, country, gender };
+            const data = { name, email, password, country, gender };
             console.log('Form data prepared:', data);
 
             // Send data via AJAX
@@ -641,7 +642,7 @@ $detected_country = detectCountryFromIp();
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = './register-finish.php?email=' + encodeURIComponent(response.email);
+                            window.location.href = './users/home.php';
                         });
                     } else {
                         Swal.fire({
