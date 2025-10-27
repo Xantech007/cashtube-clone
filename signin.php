@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
         }
 
         .input-field {
-            width: 0%;
+            width: 100%;
             height: 50px;
             font-size: 16px;
             padding: 10px 15px;
@@ -470,7 +470,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                             title: 'Good job!',
                             text: 'Sign In successful',
                             timer: 2000,
-                            showConfirmButton: true
+                            showConfirmButton: false
                         }).then(() => {
                             console.log('Redirecting to users/home.php');
                             window.location.href = 'users/home.php';
