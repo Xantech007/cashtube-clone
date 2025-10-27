@@ -65,10 +65,10 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Change your Cash Tube account passcode.">
-    <meta name="keywords" content="Cash Tube, change passcode, user settings">
-    <meta name="author" content="Cash Tube">
-    <title>Change Passcode | Cash Tube</title>
+    <meta name="description" content="Change your Task Tube account password.">
+    <meta name="keywords" content="Task Tube, change password, user settings">
+    <meta name="author" content="Task Tube">
+    <title>Change Password | Task Tube</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -402,10 +402,10 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
     <div class="container" role="main">
         <div class="header">
             <div style="display: flex; align-items: center;">
-                <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
+                <img src="img/top.png" alt="Task Tube Logo" aria-label="Task Tube Logo">
                 <div class="header-text">
                     <h1>Hello, <?php echo $username; ?>!</h1>
-                    <p>Change your account passcode.</p>
+                    <p>Change your account password.</p>
                 </div>
             </div>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
@@ -423,24 +423,24 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
         <?php endif; ?>
 
         <div class="passcode-card">
-            <h2>Change Passcode</h2>
-            <form id="passcodeForm" action="process_change_passcode.php" method="POST" role="form">
+            <h2>Change Password</h2>
+            <form id="passwordForm" action="process_change_password.php" method="POST" role="form">
                 <div class="input-container">
-                    <input type="password" id="old_passcode" name="old_passcode" placeholder=" " required aria-required="true" aria-describedby="passcodeHelp">
-                    <label for="old_passcode">Old Passcode</label>
-                    <small id="passcodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Enter your current 5-digit passcode.</small>
+                    <input type="password" id="old_password" name="old_password" placeholder=" " required aria-required="true" aria-describedby="oldPasswordHelp">
+                    <label for="old_password">Old Password</label>
+                    <small id="oldPasswordHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Enter your current password.</small>
                 </div>
                 <div class="input-container">
-                    <input type="password" id="new_passcode" name="new_passcode" placeholder=" " required aria-required="true" aria-describedby="newPasscodeHelp">
-                    <label for="new_passcode">New Passcode</label>
-                    <small id="newPasscodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">New passcode must be 5 digits.</small>
+                    <input type="password" id="new_password" name="new_password" placeholder=" " required aria-required="true" aria-describedby="newPasswordHelp">
+                    <label for="new_password">New Password</label>
+                    <small id="newPasswordHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">New password must be at least 8 characters.</small>
                 </div>
                 <div class="input-container">
-                    <input type="password" id="confirm_passcode" name="confirm_passcode" placeholder=" " required aria-required="true" aria-describedby="confirmPasscodeHelp">
-                    <label for="confirm_passcode">Confirm Passcode</label>
-                    <small id="confirmPasscodeHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Re-enter your new 5-digit passcode.</small>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder=" " required aria-required="true" aria-describedby="confirmPasswordHelp">
+                    <label for="confirm_password">Confirm Password</label>
+                    <small id="confirmPasswordHelp" class="form-text" style="color: var(--subtext-color); font-size: 12px;">Re-enter your new password.</small>
                 </div>
-                <button type="submit" class="submit-btn" aria-label="Change passcode">Change Passcode</button>
+                <button type="submit" class="submit-btn" aria-label="Change password">Change Password</button>
             </form>
         </div>
 
@@ -569,61 +569,61 @@ $error_message = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null
             });
         });
 
-        // Passcode Form Submission
-        document.getElementById('passcodeForm').addEventListener('submit', function(event) {
+        // Password Form Submission
+        document.getElementById('passwordForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            const oldPasscode = document.getElementById('old_passcode').value.trim();
-            const newPasscode = document.getElementById('new_passcode').value.trim();
-            const confirmPasscode = document.getElementById('confirm_passcode').value.trim();
+            const oldPassword = document.getElementById('old_password').value.trim();
+            const newPassword = document.getElementById('new_password').value.trim();
+            const confirmPassword = document.getElementById('confirm_password').value.trim();
 
-            if (!oldPasscode || !/^\d{5}$/.test(oldPasscode)) {
+            if (!oldPassword) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Invalid Old Passcode',
-                    text: 'Old passcode must be exactly 5 digits.'
+                    title: 'Invalid Old Password',
+                    text: 'Please enter your current password.'
                 });
                 return;
             }
 
-            if (!newPasscode || !/^\d{5}$/.test(newPasscode)) {
+            if (!newPassword || newPassword.length < 8) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Invalid New Passcode',
-                    text: 'New passcode must be exactly 5 digits.'
+                    title: 'Invalid New Password',
+                    text: 'New password must be at least 8 characters.'
                 });
                 return;
             }
 
-            if (newPasscode !== confirmPasscode) {
+            if (newPassword !== confirmPassword) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Passcodes Do Not Match',
-                    text: 'New passcode and confirm passcode must match.'
+                    title: 'Passwords Do Not Match',
+                    text: 'New password and confirm password must match.'
                 });
                 return;
             }
 
             $.ajax({
-                url: 'process_change_passcode.php',
+                url: 'process_change_password.php',
                 type: 'POST',
-                data: { old_passcode: oldPasscode, new_passcode: newPasscode, confirm_passcode: confirmPasscode },
+                data: { old_password: oldPassword, new_password: newPassword, confirm_password: confirmPassword },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'Passcode Changed',
-                            text: 'Your passcode has been updated successfully!',
+                            title: 'Password Changed',
+                            text: 'Your password has been updated successfully!',
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = 'change_passcode.php?success=Passcode updated successfully';
+                            window.location.href = 'change_passcode.php?success=Password updated successfully';
                         });
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: response.error || 'Failed to change passcode. Please try again.'
+                            text: response.error || 'Failed to change password. Please try again.'
                         });
                     }
                 },
