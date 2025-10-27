@@ -10,30 +10,30 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['passcode'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['password'])) {
     $email = trim($_POST['email']);
-    $passcode = trim($_POST['passcode']);
+    $password = trim($_POST['password']);
     
-    if (empty($email) || empty($passcode)) {
-        $response['error'] = "Email and passcode are required.";
-        file_put_contents('debug.log', 'Missing email or passcode' . "\n", FILE_APPEND);
-    } elseif (strlen($passcode) !== 5) {
-        $response['error'] = "Passcode must be 5 digits.";
-        file_put_contents('debug.log', 'Invalid passcode length: ' . $passcode . "\n", FILE_APPEND);
+    if (empty($email) || empty($password)) {
+        $response['error'] = "Email and password are required.";
+        file_put_contents('debug.log', 'Missing email or password' . "\n", FILE_APPEND);
+    } elseif (strlen($password) < 8) {
+        $response['error'] = "Password must be at least 8 characters long.";
+        file_put_contents('debug.log', 'Invalid password length: ' . strlen($password) . "\n", FILE_APPEND);
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT id, email FROM users WHERE email = ? AND passcode = ?");
-            $stmt->execute([$email, $passcode]);
+            $stmt = $pdo->prepare("SELECT id, email, passcode FROM users WHERE email = ?");
+            $stmt->execute([$email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($user) {
+            if ($user && password_verify($password, $user['passcode'])) {
                 $response['success'] = true;
-                $_SESSION['passcode'] = $passcode;
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['email'] = $user['email'];
+                $_SESSION['passcode'] = $user['passcode']; // Store hashed password
                 file_put_contents('debug.log', 'Sign-in successful, session: ' . print_r($_SESSION, true) . "\n", FILE_APPEND);
             } else {
-                $response['error'] = "Invalid email or passcode.";
-                file_put_contents('debug.log', 'Invalid email or passcode: ' . $email . ', ' . $passcode . "\n", FILE_APPEND);
+                $response['error'] = "Invalid email or password.";
+                file_put_contents('debug.log', 'Invalid email or password: ' . $email . "\n", FILE_APPEND);
             }
         } catch (PDOException $e) {
             $response['error'] = "Database error: " . $e->getMessage();
@@ -52,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sign in to Task Tube with your email and 5-digit passcode to start earning by watching video ads.">
-    <meta name="keywords" content="Task Tube, sign in, earn money, watch ads, passcode">
+    <meta name="description" content="Sign in to Task Tube with your email and password to start earning by watching video ads.">
+    <meta name="keywords" content="Task Tube, sign in, earn money, watch ads, password">
     <meta name="author" content="Task Tube">
     <title>Task Tube - Sign In</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
         }
 
         .input-field {
-            width: 100%;
+            width: 0%;
             height: 50px;
             font-size: 16px;
             padding: 10px 15px;
@@ -176,75 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             box-shadow: 0 0 5px rgba(110, 68, 255, 0.3);
         }
 
-        #passcode {
-            font-size: 24px;
-            text-align: center;
-        }
-
-        .keypad {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(5, auto);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .key {
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 15px;
-            font-size: 18px;
-            font-weight: 500;
-            text-align: center;
-            cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
-        }
-
-        .key:hover {
-            background: #6e44ff;
-            color: #fff;
-            transform: scale(1.05);
-        }
-
-        .key.action {
-            background: #6e44ff;
-            color: #fff;
-            border: none;
-        }
-
-        .key.action:hover {
-            background: #5a00b5;
-        }
-
-        .key.zero {
-            grid-column: 2 / 3;
-            grid-row: 4 / 5;
-        }
-
-        .key.action.signup {
-            grid-column: 1 / 2;
-            grid-row: 5 / 6;
-        }
-
-        .key.action.clear {
-            grid-column: 2 / 3;
-            grid-row: 5 / 6;
-        }
-
-        .key.action.enter {
-            grid-column: 3 / 4;
-            grid-row: 5 / 6;
-        }
-
-        .key.action.signup a {
-            color: #fff;
-            text-decoration: none;
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
         .btn {
             padding: 12px 30px;
             font-size: 16px;
@@ -254,6 +185,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             transition: all 0.3s ease;
             cursor: pointer;
             display: inline-block;
+        }
+
+        .submit-btn {
+            background: #6e44ff;
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            background: #5a00b5;
+            transform: translateY(-2px);
         }
 
         .signin-link {
@@ -374,10 +323,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             .hero-section p { font-size: 15px; }
             .section-title { font-size: 28px; }
             .signin-content { padding: 20px; margin: 0 20px; }
-            .keypad { gap: 8px; }
-            .key { padding: 10px; font-size: 16px; }
             .input-field { height: 45px; font-size: 15px; }
-            #passcode { font-size: 20px; }
+            .submit-btn { padding: 12px; font-size: 16px; }
             .cta-banner h2 { font-size: 28px; }
         }
 
@@ -388,10 +335,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             .hero-section p { font-size: 14px; }
             .section-title { font-size: 24px; }
             .signin-content { padding: 15px; margin: 0 15px; }
-            .keypad { gap: 6px; }
-            .key { padding: 8px; font-size: 14px; }
             .input-field { height: 40px; font-size: 14px; }
-            #passcode { font-size: 18px; }
+            .submit-btn { padding: 12px; font-size: 16px; }
             .cta-banner { padding: 40px 15px; }
             .cta-banner h2 { font-size: 24px; }
             .cta-banner .btn { padding: 12px 30px; font-size: 16px; }
@@ -404,32 +349,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
 
     <section class="hero-section">
         <h1>Sign In to Task Tube</h1>
-        <p>Enter your email and 5-digit passcode to access your account and start earning by watching video ads.</p>
+        <p>Enter your email and password to access your account and start earning by watching video ads.</p>
     </section>
 
     <div class="index-container">
         <h2 class="section-title">Sign In</h2>
         <div class="signin-content">
             <h1>Welcome to <span>Task Tube</span></h1>
-            <p>Enter your email and 5-digit passcode</p>
-            <input type="email" id="email" class="input-field" placeholder="Enter your email" aria-label="Email input">
-            <input type="password" id="passcode" readonly class="input-field" placeholder="Enter 5-digit code" aria-label="Passcode input">
-            <div class="keypad">
-                <div class="key">1</div>
-                <div class="key">2</div>
-                <div class="key">3</div>
-                <div class="key">4</div>
-                <div class="key">5</div>
-                <div class="key">6</div>
-                <div class="key">7</div>
-                <div class="key">8</div>
-                <div class="key">9</div>
-                <div class="key zero">0</div>
-                <div class="key action signup"><a href="register.php">Sign Up</a></div>
-                <div class="key action clear" id="clear">Clear</div>
-                <div class="key action enter" id="enter">Sign In</div>
-            </div>
-            <p class="signin-link">Log in with passcode only? <a href="login.php">Log In</a></p>
+            <p>Enter your email and password</p>
+            <form id="signin-form" method="POST">
+                <input type="email" id="email" name="email" class="input-field" placeholder="Enter your email" required aria-label="Email input">
+                <input type="password" id="password" name="password" class="input-field" placeholder="Enter your password" required aria-label="Password input">
+                <button type="submit" class="submit-btn btn">Sign In</button>
+            </form>
+            <p class="signin-link">Don't have an account? <a href="register.php">Sign Up</a></p>
         </div>
     </div>
 
@@ -441,7 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
     <div class="notice" id="notice">
         <span class="close-btn" onclick="closeNotice()" aria-label="Close notice">×</span>
         <h2>Sign In to Task Tube</h2>
-        <p>Use your email and 5-digit passcode to access your account. Don’t have one? Sign up today!</p>
+        <p>Use your email and password to access your account. Don’t have one? Sign up today!</p>
         <a href="register.php" class="btn" onclick="console.log('Notice button clicked')">Sign Up Now</a>
     </div>
 
@@ -490,35 +423,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
 
         window.addEventListener('load', showNotice);
 
-        const emailInput = document.getElementById("email");
-        const passcodeInput = document.getElementById("passcode");
-        const keys = document.querySelectorAll(".key:not(.action)");
-        const clearButton = document.getElementById("clear");
-        const enterButton = document.getElementById("enter");
+        document.getElementById('signin-form').addEventListener('submit', function(e) {
+            e.preventDefault();
 
-        keys.forEach(key => {
-            key.addEventListener("click", () => {
-                if (passcodeInput.value.length < 5) {
-                    passcodeInput.value += key.textContent;
-                }
-            });
-        });
-
-        clearButton.addEventListener("click", () => {
-            passcodeInput.value = "";
-        });
-
-        enterButton.addEventListener("click", validateSignIn);
-
-        passcodeInput.addEventListener("input", () => {
-            if (passcodeInput.value.length === 5) {
-                validateSignIn();
-            }
-        });
-
-        function validateSignIn() {
-            const email = emailInput.value.trim();
-            const passcode = passcodeInput.value;
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
 
             if (!email) {
                 Swal.fire({
@@ -529,11 +438,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                 return;
             }
 
-            if (passcode.length !== 5) {
+            if (!password) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Oops...',
-                    text: 'Please enter a 5-digit passcode.',
+                    text: 'Please enter your password.',
+                });
+                return;
+            }
+
+            if (password.length < 8) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Password must be at least 8 characters long.',
                 });
                 return;
             }
@@ -541,7 +459,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
             $.ajax({
                 url: './signin.php',
                 type: 'POST',
-                data: { email: email, passcode: passcode },
+                data: { email: email, password: password },
                 dataType: 'json',
                 cache: false,
                 success: function(response) {
@@ -552,7 +470,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                             title: 'Good job!',
                             text: 'Sign In successful',
                             timer: 2000,
-                            showConfirmButton: false
+                            showConfirmButton: true
                         }).then(() => {
                             console.log('Redirecting to users/home.php');
                             window.location.href = 'users/home.php';
@@ -561,10 +479,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                         Swal.fire({
                             icon: 'error',
                             title: 'Oops...',
-                            text: response.error || 'Invalid email or passcode!',
+                            text: response.error || 'Invalid email or password!',
                             footer: '<a href="register.php">Sign Up</a>'
                         });
-                        passcodeInput.value = "";
+                        document.getElementById('password').value = '';
                     }
                 },
                 error: function(xhr, status, error) {
@@ -575,10 +493,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'], $_POST['pass
                         text: 'Server error. Please try again.',
                         footer: '<a href="register.php">Sign Up</a>'
                     });
-                    passcodeInput.value = "";
+                    document.getElementById('password').value = '';
                 }
             });
-        }
+        });
 
         document.addEventListener('contextmenu', e => {
             if (!e.target.closest('a')) {
