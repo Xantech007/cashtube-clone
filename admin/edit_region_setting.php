@@ -13,6 +13,11 @@ require_once '../inc/countries.php'; // Include the countries file
 // Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
+// Define upload directory
+$uploadDir = '../images/';
+$allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+$maxFileSize = 5 * 1024 * 1024; // 5MB
+
 // Check if ID and section are provided
 if (!isset($_GET['id']) || !isset($_GET['section']) || !in_array($_GET['section'], ['dashboard', 'verification'])) {
     $_SESSION['error'] = "Invalid request. Please select a valid region setting and section.";
@@ -28,7 +33,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT id, country, section_header, channel, ch_name, ch_value, withdraw_currency, 
                verify_ch, vc_value, verify_ch_name, verify_ch_value, verify_medium, vcn_value, 
-               vcv_value, verify_currency, verify_amount, rate, account_upgrade
+               vcv_value, verify_currency, verify_amount, rate, account_upgrade, images
         FROM region_settings
         WHERE id = ?
     ");
@@ -49,8 +54,36 @@ try {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $imageName = $setting['images']; // Keep old image by default
+
     try {
         $pdo->beginTransaction();
+
+        // Handle image upload
+        if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['image'];
+            $fileType = mime_content_type($file['tmp_name']);
+            $fileSize = $file['size'];
+
+            if (!in_array($fileType, $allowedTypes)) {
+                throw new Exception("Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.");
+            }
+            if ($fileSize > $maxFileSize) {
+                throw new Exception("File is too large. Maximum size is 5MB.");
+            }
+
+            // Delete old image if exists
+            if ($imageName && file_exists($uploadDir . $imageName)) {
+                unlink($uploadDir . $imageName);
+            }
+
+            $imageName = uniqid('img_', true) . '_' . basename($file['name']);
+            $destination = $uploadDir . $imageName;
+
+            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                throw new Exception("Failed to upload image.");
+            }
+        }
 
         if ($section === 'dashboard') {
             $country = trim($_POST['country']);
@@ -72,10 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $stmt = $pdo->prepare("
                         UPDATE region_settings 
-                        SET country = ?, section_header = ?, channel = ?, ch_name = ?, ch_value = ?, withdraw_currency = ?
+                        SET country = ?, section_header = ?, channel = ?, ch_name = ?, 
+                            ch_value = ?, withdraw_currency = ?, images = ?
                         WHERE id = ?
                     ");
-                    $stmt->execute([$country, $section_header, $channel, $ch_name, $ch_value, $withdraw_currency, $id]);
+                    $stmt->execute([$country, $section_header, $channel, $ch_name, $ch_value, $withdraw_currency, $imageName, $id]);
                     $_SESSION['success'] = "Dashboard settings updated successfully.";
                 }
             }
@@ -90,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $verify_currency = trim($_POST['verify_currency']);
             $verify_amount = floatval($_POST['verify_amount']);
             $rate = floatval($_POST['rate']);
-            $account_upgrade = isset($_POST['account_upgrade']) ? 1 : 0; // Checkbox: 1 for Upgrade, 0 for Verification
+            $account_upgrade = isset($_POST['account_upgrade']) ? 1 : 0;
 
             // Validation
             if (empty($verify_ch) || empty($vc_value) || empty($verify_ch_name) || 
@@ -102,12 +136,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE region_settings 
                     SET verify_ch = ?, vc_value = ?, verify_ch_name = ?, verify_ch_value = ?, 
                         verify_medium = ?, vcn_value = ?, vcv_value = ?, verify_currency = ?, 
-                        verify_amount = ?, rate = ?, account_upgrade = ?
+                        verify_amount = ?, rate = ?, account_upgrade = ?, images = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
                     $verify_ch, $vc_value, $verify_ch_name, $verify_ch_value, $verify_medium, 
-                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $rate, $account_upgrade, $id
+                    $vcn_value, $vcv_value, $verify_currency, $verify_amount, $rate, $account_upgrade,
+                    $imageName, $id
                 ]);
                 $_SESSION['success'] = "Verification/Upgrade settings updated successfully.";
             }
@@ -116,8 +151,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
         header("Location: manage_region_settings.php");
         exit;
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         $pdo->rollBack();
+        // Clean up new file if upload failed
+        if (isset($imageName) && $imageName !== $setting['images'] && file_exists($uploadDir . $imageName)) {
+            unlink($uploadDir . $imageName);
+        }
         error_log('Region setting update error: ' . $e->getMessage(), 3, '../debug.log');
         $_SESSION['error'] = "Failed to update region setting: " . $e->getMessage();
     }
@@ -180,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .edit-form {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 10px;
+            gap: 12px;
             max-width: 100%;
             margin-left: auto;
             margin-right: auto;
@@ -188,14 +227,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .edit-form input[type="text"],
         .edit-form input[type="number"],
+        .edit-form input[type="file"],
         .edit-form select,
         .edit-form input[type="checkbox"] {
             width: 100%;
-            padding: 6px;
+            padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 13px;
             box-sizing: border-box;
+        }
+
+        .edit-form input[type="file"] {
+            padding: 5px;
         }
 
         .edit-form select {
@@ -219,23 +263,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .edit-form button {
             width: 200px;
             justify-self: center;
-            padding: 7px 14px;
+            padding: 10px;
             color: #fff;
             background-color: #28a745;
             border: none;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 14px;
             cursor: pointer;
             transition: background-color 0.3s ease;
+            font-weight: bold;
         }
 
         .edit-form button:hover {
             background-color: #218838;
         }
 
+        .current-image {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .current-image img {
+            max-width: 120px;
+            max-height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: block;
+        }
+
         .error, .success {
             color: red;
             margin-bottom: 15px;
+            font-weight: bold;
         }
 
         .success {
@@ -251,12 +314,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .edit-form input,
             .edit-form select,
             .edit-form button,
-            .edit-form label.checkbox-label {
+            .edit-form input[type="file"] {
                 width: 100%;
             }
 
-            .edit-form input[type="checkbox"] {
-                width: auto;
+            .current-image img {
+                max-width: 80px;
+                max-height: 80px;
             }
 
             .back-link {
@@ -286,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <?php if ($section === 'dashboard'): ?>
-            <form action="edit_region_setting.php?id=<?php echo $id; ?>&section=dashboard" method="POST" class="edit-form">
+            <form action="edit_region_setting.php?id=<?php echo $id; ?>&section=dashboard" method="POST" class="edit-form" enctype="multipart/form-data">
                 <select name="country" required>
                     <option value="" disabled>Select Country</option>
                     <?php foreach ($countries as $country): ?>
@@ -300,10 +364,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="text" name="ch_name" placeholder="Channel Name (e.g., Bank Name)" value="<?php echo htmlspecialchars($setting['ch_name']); ?>" required>
                 <input type="text" name="ch_value" placeholder="Channel Number (e.g., Account Number)" value="<?php echo htmlspecialchars($setting['ch_value']); ?>" required>
                 <input type="text" name="withdraw_currency" placeholder="Currency (e.g., NGN)" value="<?php echo htmlspecialchars($setting['withdraw_currency'] ?? ''); ?>" required>
+
+                <!-- Current Image -->
+                <?php if (!empty($setting['images'])): ?>
+                    <div class="current-image">
+                        <strong>Current Image:</strong><br>
+                        <img src="../images/<?php echo htmlspecialchars($setting['images']); ?>" alt="Current Image">
+                    </div>
+                <?php else: ?>
+                    <div class="current-image">No image uploaded.</div>
+                <?php endif; ?>
+
+                <input type="file" name="image" accept="image/*">
+                <small style="color: #666; font-size: 11px;">Leave empty to keep current image.</small>
+
                 <button type="submit">Update Dashboard Settings</button>
             </form>
+
         <?php elseif ($section === 'verification'): ?>
-            <form action="edit_region_setting.php?id=<?php echo $id; ?>&section=verification" method="POST" class="edit-form">
+            <form action="edit_region_setting.php?id=<?php echo $id; ?>&section=verification" method="POST" class="edit-form" enctype="multipart/form-data">
                 <input type="text" name="verify_ch" placeholder="Channel (e.g., Bank)" value="<?php echo htmlspecialchars($setting['verify_ch'] ?? ''); ?>" required>
                 <input type="text" name="vc_value" placeholder="Name (e.g., Obi Mikel)" value="<?php echo htmlspecialchars($setting['vc_value'] ?? ''); ?>" required>
                 <input type="text" name="verify_ch_name" placeholder="Channel Name (e.g., Bank Name)" value="<?php echo htmlspecialchars($setting['verify_ch_name'] ?? ''); ?>" required>
@@ -317,6 +396,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="checkbox-label">
                     <input type="checkbox" name="account_upgrade" value="1" <?php echo ($setting['account_upgrade'] ?? 0) == 1 ? 'checked' : ''; ?>> Upgrade (checked) / Verification (unchecked)
                 </label>
+
+                <!-- Current Image -->
+                <?php if (!empty($setting['images'])): ?>
+                    <div class="current-image">
+                        <strong>Current Image:</strong><br>
+                        <img src="../images/<?php echo htmlspecialchars($setting['images']); ?>" alt="Current Image">
+                    </div>
+                <?php else: ?>
+                    <div class="current-image">No image uploaded.</div>
+                <?php endif; ?>
+
+                <input type="file" name="image" accept="image/*">
+                <small style="color: #666; font-size: 11px;">Leave empty to keep current image.</small>
+
                 <button type="submit">Update Verification/Upgrade Settings</button>
             </form>
         <?php endif; ?>
