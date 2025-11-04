@@ -2,16 +2,13 @@
 session_start();
 require_once '../database/conn.php';
 
-// Set time zone to WAT
 date_default_timezone_set('Africa/Lagos');
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../signin.php');
     exit;
 }
 
-// Fetch user verification status, details, and country
 try {
     $stmt = $pdo->prepare("SELECT name, email, verification_status, country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
@@ -31,18 +28,24 @@ try {
     exit;
 }
 
-// Fetch dynamic verification settings from region_settings based on user's country
+// === FETCH SETTINGS + IMAGE ===
+$region_image = '';
 try {
     $stmt = $pdo->prepare("
         SELECT crypto, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
                COALESCE(verify_medium, 'Payment Method') AS verify_medium, 
-               vcn_value, vcv_value, verify_currency, verify_amount
+               vcn_value, vcv_value, verify_currency, verify_amount,
+               images
         FROM region_settings 
         WHERE country = ?
     ");
     $stmt->execute([$user_country]);
     $settings = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    if ($settings && !empty($settings['images'])) {
+        $region_image = htmlspecialchars(trim($settings['images']));
+    }
+
     if (!$settings) {
         $error = 'Verification settings not found for your country. Please contact support.';
         $crypto = 0;
@@ -90,33 +93,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
         $error = 'Please upload a payment receipt.';
     } else {
-        // Validate file
         $allowed_types = ['image/jpeg', 'image/png'];
-        $max_size = 5 * 1024 * 1024; // 5MB
+        $max_size = 5 * 1024 * 1024;
         if (!in_array($proof_file['type'], $allowed_types) || $proof_file['size'] > $max_size) {
             $error = 'Invalid file type or size. Please upload a JPG or PNG file (max 5MB).';
         } else {
-            // Create upload directory if it doesn't exist
             $upload_dir = '../users/proofs/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
 
-            // Generate a unique filename to prevent overwrites
             $file_ext = pathinfo($proof_file['name'], PATHINFO_EXTENSION);
             $file_name = 'proof_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_ext;
             $upload_path = $upload_dir . $file_name;
 
             if (move_uploaded_file($proof_file['tmp_name'], $upload_path)) {
                 try {
-                    // Start transaction
                     $pdo->beginTransaction();
-
-                    // Update verification status to 'pending'
                     $stmt = $pdo->prepare("UPDATE users SET verification_status = 'pending' WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
 
-                    // Insert into verification_requests table
                     $stmt = $pdo->prepare("
                         INSERT INTO verification_requests 
                         (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency)
@@ -127,19 +123,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $upload_path, $file_name, $verify_ch, $verify_currency
                     ]);
 
-                    // Commit transaction
                     $pdo->commit();
-
                     header('Location: home.php?success=Verification+request+submitted+successfully');
                     exit;
                 } catch (PDOException $e) {
                     $pdo->rollBack();
                     error_log('Verification error: ' . $e->getMessage(), 3, '../debug.log');
                     $error = 'An error occurred while submitting your verification request. Please try again.';
-                    // Delete the uploaded file if database operation fails
-                    if (file_exists($upload_path)) {
-                        unlink($upload_path);
-                    }
+                    if (file_exists($upload_path)) unlink($upload_path);
                 }
             } else {
                 $error = 'Failed to upload payment receipt. Please try again.';
@@ -265,16 +256,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             animation: slideIn 0.5s ease-out 0.6s backwards;
         }
 
+        /* ONLY LOCK ICON + "Account Verification" */
         .form-card h2 {
             font-size: 24px;
             margin-bottom: 20px;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .form-card h2::before {
-            content: '🔒';
-            font-size: 1.2rem;
+        .form-card h2 i {
             margin-right: 8px;
+            font-size: 1.2rem;
+            color: var(--accent-color);
         }
 
         .instructions {
@@ -318,6 +313,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .copyable:hover {
             background-color: var(--border-color);
+        }
+
+        /* PAYMENT IMAGE STYLING */
+        .payment-image {
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .payment-image img {
+            max-width: 100%;
+            width: 300px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease;
+        }
+
+        .payment-image img:hover {
+            transform: scale(1.02);
         }
 
         .input-container {
@@ -428,7 +443,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .notification::before {
-            content: '🔒';
+            content: 'Lock';
             font-size: 1.2rem;
             margin-right: 12px;
             color: var(--accent-color);
@@ -440,21 +455,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         @keyframes fadeOut {
-            to {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
+            to { opacity: 0; transform: translateY(-20px); }
         }
 
         .bottom-menu {
@@ -501,31 +507,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
-
-            .header-text h1 {
-                font-size: 22px;
-            }
-
-            .form-card {
-                padding: 20px;
-            }
-
-            .notification {
-                max-width: 250px;
-                right: 10px;
-                top: 10px;
-            }
-
-            .instructions {
-                font-size: 14px;
-            }
-
-            .instructions h3 {
-                font-size: 16px;
-            }
+            .container { padding: 16px; }
+            .header-text h1 { font-size: 22px; }
+            .form-card { padding: 20px; }
+            .notification { max-width: 250px; right: 10px; top: 10px; }
+            .instructions { font-size: 14px; }
+            .instructions h3 { font-size: 16px; }
+            .payment-image img { width: 100%; max-width: 280px; }
         }
     </style>
 </head>
@@ -544,7 +532,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-card">
-            <h2>Account Verification</h2>
+            <!-- ONLY LOCK ICON + "Account Verification" -->
+            <h2><i class="fas fa-lock"></i>Account Verification</h2>
+
             <?php if ($verification_status === 'verified'): ?>
                 <p class="success">Your account is already verified!</p>
                 <p style="text-align: center;"><a href="home.php">Return to Dashboard</a></p>
@@ -555,9 +545,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if (isset($error)): ?>
                     <p class="error"><?php echo htmlspecialchars($error); ?></p>
                 <?php endif; ?>
+
                 <div class="instructions">
                     <h3>Verification Instructions</h3>
                     <p>To verify your account, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($verify_ch); ?></strong> using the details below:</p>
+
+                    <!-- PAYMENT IMAGE HERE -->
+                    <?php if (!empty($region_image) && file_exists("../images/{$region_image}")): ?>
+                        <div class="payment-image">
+                            <img src="../images/<?php echo $region_image; ?>" alt="Payment Instructions">
+                        </div>
+                    <?php endif; ?>
+
                     <p><strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> <?php echo htmlspecialchars($vcn_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> <span class="copyable" data-copy="<?php echo htmlspecialchars($vcv_value); ?>" title="Tap to copy on mobile, press and hold on desktop"><?php echo htmlspecialchars($vcv_value); ?></span></p>
@@ -580,6 +579,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </ul>
                     <?php endif; ?>
                 </div>
+
                 <form action="verify_account.php" method="POST" enctype="multipart/form-data">
                     <div class="input-container">
                         <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png" required placeholder=" ">
@@ -746,13 +746,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
 
             if (isMobile) {
-                // Mobile: Single tap to copy
                 element.addEventListener('click', (event) => {
-                    event.preventDefault(); // Prevent default touch behavior
+                    event.preventDefault();
                     copyText();
                 });
             } else {
-                // Desktop: Press and hold for 500ms
                 const startCopy = () => {
                     pressTimer = setTimeout(copyText, 500);
                 };
