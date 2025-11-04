@@ -23,7 +23,7 @@ try {
     }
     $username = htmlspecialchars($user['name']);
     $email = htmlspecialchars($user['email']);
-    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded'; // Assuming a column 'upgrade_status' in users table
+    $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded';
     $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
@@ -32,17 +32,24 @@ try {
 }
 
 // Fetch dynamic upgrade settings from region_settings based on user's country
+$region_image = ''; // Initialize image variable
 try {
     $stmt = $pdo->prepare("
         SELECT crypto, account_upgrade, verify_ch, vc_value, verify_ch_name, verify_ch_value, 
                COALESCE(verify_medium, 'Payment Method') AS verify_medium, 
-               vcn_value, vcv_value, verify_currency, verify_amount
+               vcn_value, vcv_value, verify_currency, verify_amount,
+               images  -- Fetch image column
         FROM region_settings 
         WHERE country = ?
     ");
     $stmt->execute([$user_country]);
     $settings = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    // Extract image if exists
+    if ($settings && !empty($settings['images'])) {
+        $region_image = htmlspecialchars(trim($settings['images']));
+    }
+
     if (!$settings || empty($settings['account_upgrade'])) {
         $error = 'Account upgrade settings not found for your country. Please contact support.';
         $crypto = 0;
@@ -119,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt = $pdo->prepare("UPDATE users SET upgrade_status = 'pending' WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
 
-                    // Insert into upgrade_requests table (assumes a similar table exists)
+                    // Insert into upgrade_requests table
                     $stmt = $pdo->prepare("
                         INSERT INTO upgrade_requests 
                         (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency)
@@ -139,7 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->rollBack();
                     error_log('Upgrade error: ' . $e->getMessage(), 3, '../debug.log');
                     $error = 'An error occurred while submitting your upgrade request. Please try again.';
-                    // Delete the uploaded file if database operation fails
                     if (file_exists($upload_path)) {
                         unlink($upload_path);
                     }
@@ -229,6 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 64px;
             margin-right: 16px;
             border-radius: 8px;
+            object-fit: cover;
         }
 
         .header-text h1 {
@@ -275,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .form-card h2::before {
-            content: '🔓';
+            content: 'Unlock';
             font-size: 1.2rem;
             margin-right: 8px;
         }
@@ -431,7 +438,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .notification::before {
-            content: '🔓';
+            content: 'Unlock';
             font-size: 1.2rem;
             margin-right: 12px;
             color: var(--accent-color);
@@ -537,7 +544,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container" role="main">
         <div class="header">
             <div style="display: flex; align-items: center;">
-                <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
+                <?php if (!empty($region_image) && file_exists("../images/{$region_image}")): ?>
+                    <img src="../images/<?php echo $region_image; ?>" alt="Payment Method Image" style="width:64px;height:64px;border-radius:8px;object-fit:cover;">
+                <?php else: ?>
+                    <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
+                <?php endif; ?>
                 <div class="header-text">
                     <h1>Upgrade Account</h1>
                     <p>Unlock Currency Exchange feature</p>
@@ -749,13 +760,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
 
             if (isMobile) {
-                // Mobile: Single tap to copy
                 element.addEventListener('click', (event) => {
-                    event.preventDefault(); // Prevent default touch behavior
+                    event.preventDefault();
                     copyText();
                 });
             } else {
-                // Desktop: Press and hold for 500ms
                 const startCopy = () => {
                     pressTimer = setTimeout(copyText, 500);
                 };
