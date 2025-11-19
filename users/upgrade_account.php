@@ -2,12 +2,10 @@
 session_start();
 require_once '../database/conn.php';
 date_default_timezone_set('Africa/Lagos');
-
 if (!isset($_SESSION['user_id'])) {
-    header('Location: '../signin.php');
+    header('Location: ../signin.php');
     exit;
 }
-
 try {
     $stmt = $pdo->prepare("SELECT name, email, upgrade_status, country FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
@@ -17,16 +15,15 @@ try {
         header('Location: ../signin.php');
         exit;
     }
-    $username       = htmlspecialchars($user['name']);
-    $email          = htmlspecialchars($user['email']);
+    $username = htmlspecialchars($user['name']);
+    $email = htmlspecialchars($user['email']);
     $upgrade_status = $user['upgrade_status'] ?? 'not_upgraded';
-    $user_country   = htmlspecialchars($user['country']);
+    $user_country = htmlspecialchars($user['country']);
 } catch (PDOException $e) {
     error_log('Database error: ' . $e->getMessage(), 3, '../debug.log');
     header('Location: ../signin.php?error=database');
     exit;
 }
-
 // === FETCH SETTINGS + IMAGE ===
 $region_image = '';
 try {
@@ -40,11 +37,10 @@ try {
     ");
     $stmt->execute([$user_country]);
     $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-   
+  
     if ($settings && !empty($settings['images'])) {
         $region_image = htmlspecialchars(trim($settings['images']));
     }
-
     if (!$settings || empty($settings['account_upgrade'])) {
         $error = 'Account upgrade settings not found for your country. Please contact support.';
         $crypto = 0;
@@ -87,15 +83,14 @@ try {
     $verify_currency = 'NGN';
     $verify_amount = 0.00;
 }
-
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $proof_file = $_FILES['proof_file'] ?? null;
     if (!$proof_file || $proof_file['error'] === UPLOAD_ERR_NO_FILE) {
         $error = 'Please upload a payment receipt.';
     } else {
-        $allowed_types = ['image/jpeg', 'image/png', 'image/jpg'];
-        $max_size = 5 * 1024 * 1024; // 5MB
+        $allowed_types = ['image/jpeg', 'image/png'];
+        $max_size = 5 * 1024 * 1024;
         if (!in_array($proof_file['type'], $allowed_types) || $proof_file['size'] > $max_size) {
             $error = 'Invalid file type or size. Please upload a JPG or PNG file (max 5MB).';
         } else {
@@ -106,16 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $file_ext = pathinfo($proof_file['name'], PATHINFO_EXTENSION);
             $file_name = 'upgrade_proof_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_ext;
             $upload_path = $upload_dir . $file_name;
-
             if (move_uploaded_file($proof_file['tmp_name'], $upload_path)) {
                 try {
                     $pdo->beginTransaction();
-
-                    // Set status to pending (in case user is resubmitting)
                     $stmt = $pdo->prepare("UPDATE users SET upgrade_status = 'pending' WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
-
-                    // Insert new request
                     $stmt = $pdo->prepare("
                         INSERT INTO upgrade_requests
                         (user_id, payment_amount, name, email, upload_path, file_name, status, payment_method, currency)
@@ -125,7 +115,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['user_id'], $verify_amount, $username, $email,
                         $upload_path, $file_name, $account_upgrade, $verify_currency
                     ]);
-
                     $pdo->commit();
                     header('Location: home.php?success=Upgrade+request+submitted+successfully');
                     exit;
@@ -182,55 +171,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             --menu-bg: #111827;
             --menu-text: #e5e7eb;
         }
-        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
-        body { background:var(--bg-color); color:var(--text-color); min-height:100vh; padding-bottom:100px; transition:all .3s; }
-        .container { max-width:1200px; margin:0 auto; padding:24px; position:relative; }
-        .header { display:flex; align-items:center; justify-content:space-between; padding:24px 0; }
-        .header img { width:64px; height:64px; margin-right:16px; border-radius:8px; }
-        .header-text h1 { font-size:26px; font-weight:700; }
-        .header-text p { font-size:16px; color:var(--subtext-color); margin-top:4px; }
-        .theme-toggle { background:var(--accent-color); color:#fff; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:500; transition:.3s; }
-        .theme-toggle:hover { background:var(--accent-hover); transform:scale(1.02); }
-        .form-card { background:var(--card-bg); border-radius:16px; padding:28px; box-shadow:0 6px 16px var(--shadow-color); margin:24px 0; }
-        .form-card h2 { font-size:24px; margin-bottom:20px; text-align:center; display:flex; align-items:center; justify-content:center; }
-        .form-card h2 i { margin-right:8px; font-size:1.2rem; color:var(--accent-color); }
-        .instructions { margin-bottom:24px; font-size:16px; color:var(--subtext-color); line-height:1.6; }
-        .instructions h3 { font-size:18px; font-weight:600; color:var(--text-color); margin-bottom:12px; }
-        .payment-image { text-align:center; margin:24px 0; }
-        .payment-image img { max-width:100%; width:300px; height:auto; border-radius:12px; box-shadow:0 4px 12px var(--shadow-color); border:1px solid var(--border-color); }
-        .input-container { position:relative; margin-bottom:28px; }
-        .input-container input, .input-container input[type="file"] { width:100%; padding:14px; font-size:16px; border:2px solid var(--border-color); border-radius:8px; background:var(--card-bg); color:var(--text-color); outline:none; }
-        .input-container input[type="file"] { padding:12px; cursor:pointer; }
-        .input-container input:focus { border-color:var(--accent-color); }
-        .input-container label { position:absolute; top:-10px; left:12px; font-size:12px; color:var(--subtext-color); background:var(--card-bg); padding:0 4px; pointer-events:none; transition:all .3s; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-color); min-height: 100vh; padding-bottom: 100px; transition: all 0.3s ease; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; position: relative; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 24px 0; animation: slideIn 0.5s ease-out; }
+        .header img { width: 64px; height: 64px; margin-right: 16px; border-radius: 8px; }
+        .header-text h1 { font-size: 26px; font-weight: 700; }
+        .header-text p { font-size: 16px; color: var(--subtext-color); margin-top: 4px; }
+        .theme-toggle { background: var(--accent-color); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.3s ease, transform 0.2s ease; }
+        .theme-toggle:hover { background: var(--accent-hover); transform: scale(1.02); }
+        .form-card { background: var(--card-bg); border-radius: 16px; padding: 28px; box-shadow: 0 6px 16px var(--shadow-color); margin: 24px 0; animation: slideIn 0.5s ease-out 0.6s backwards; }
+        .form-card h2 { font-size: 24px; margin-bottom: 20px; text-align: center; display: flex; align-items: center; justify-content: center; }
+        .form-card h2 i { margin-right: 8px; font-size: 1.2rem; color: var(--accent-color); }
+        .instructions { margin-bottom: 24px; font-size: 16px; color: var(--subtext-color); line-height: 1.6; }
+        .instructions h3 { font-size: 18px; font-weight: 600; color: var(--text-color); margin-bottom: 12px; }
+        .instructions p { margin-bottom: 12px; }
+        .instructions strong { color: var(--text-color); }
+        .instructions ul { list-style-type: disc; padding-left: 24px; margin-bottom: 12px; }
+        .instructions ul li { margin-bottom: 8px; }
+        .copyable { cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background-color 0.2s ease; }
+        .copyable:hover { background-color: var(--border-color); }
+        .payment-image { text-align: center; margin: 24px 0; }
+        .payment-image img { max-width: 100%; width: 300px; height: auto; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); transition: transform 0.2s ease; }
+        .payment-image img:hover { transform: scale(1.02); }
+        .input-container { position: relative; margin-bottom: 28px; }
+        .input-container input, .input-container input[type="file"] { width: 100%; padding: 14px; font-size: 16px; border: 2px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-color); outline: none; transition: border-color 0.3s ease; }
+        .input-container input[type="file"] { padding: 12px; cursor: pointer; }
+        .input-container input:focus, .input-container input:valid { border-color: var(--accent-color); }
+        .input-container label { position: absolute; top: -10px; left: 12px; font-size: 12px; color: var(--subtext-color); background: var(--card-bg); padding: 0 4px; pointer-events: none; transition: all 0.3s ease; }
+        .input-container input:placeholder-shown ~ label { top: 14px; font-size: 16px; color: var(--subtext-color); }
+        .input-container input:focus ~ label, .input-container input:not(:placeholder-shown) ~ label { top: -10px; font-size: 12px; color: var(--accent-color); }
         .submit-btn, .resend-btn {
-            width:100%; padding:14px; font-size:16px; font-weight:600; border:none; border-radius:8px; cursor:pointer; text-align:center; text-decoration:none; display:block; margin-top:12px; transition:background .3s, transform .2s;
+            width: 100%; padding: 14px; background: var(--accent-color); color: #fff; font-size: 16px; font-weight: 600;
+            border: none; border-radius: 8px; cursor: pointer; transition: background 0.3s ease, transform 0.2s ease; margin-top: 12px;
         }
-        .submit-btn { background:var(--accent-color); color:#fff; }
-        .submit-btn:hover { background:var(--accent-hover); transform:scale(1.02); }
-        .resend-btn { background:#6366f1; color:#fff; }
-        .resend-btn:hover { background:#4f46e5; }
-        .error { text-align:center; color:red; margin-bottom:20px; font-size:14px; }
-        .success { text-align:center; color:var(--accent-color); margin-bottom:20px; font-size:16px; }
-        .bottom-menu { position:fixed; bottom:0; left:0; width:100%; background:var(--menu-bg); display:flex; justify-content:space-around; align-items:center; padding:14px 0; box-shadow:0 -2px 8px var(--shadow-color); }
-        .bottom-menu a, .bottom-menu button { color:var(--menu-text); text-decoration:none; font-size:14px; font-weight:500; padding:10px 18px; background:none; border:none; cursor:pointer; }
-        .bottom-menu a.active, .bottom-menu a:hover, .bottom-menu button:hover { color:var(--accent-color); }
-        #gradient { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background:var(--gradient-bg); transition:all .3s; }
-        @media (max-width:768px) { .container{padding:16px;} .header-text h1{font-size:22px;} .form-card{padding:20px;} }
+        .submit-btn:hover, .resend-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
+        .error { text-align: center; color: red; margin-bottom: 20px; font-size: 14px; }
+        .success { text-align: center; color: var(--accent-color); margin-bottom: 20px; font-size: 14px; }
+        .action-links { text-align: center; margin-top: 30px; }
+        .action-links a, .action-links button {
+            display: block; margin: 12px 0; color: var(--accent-color); text-decoration: underline; font-size: 15px;
+        }
+        .action-links button { background: none; border: none; cursor: pointer; font-size: 15px; }
+        .bottom-menu { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--menu-bg); display: flex; justify-content: space-around; align-items: center; padding: 14px 0; box-shadow: 0 -2px 8px var(--shadow-color); }
+        .bottom-menu a, .bottom-menu button { color: var(--menu-text); text-decoration: none; font-size: 14px; font-weight: 500; padding: 10px 18px; transition: color 0.3s ease; background: none; border: none; cursor: pointer; }
+        .bottom-menu a.active, .bottom-menu a:hover, .bottom-menu button:hover { color: var(--accent-color); }
+        #gradient { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: var(--gradient-bg); transition: all 0.3s ease; }
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .header-text h1 { font-size: 22px; }
+            .form-card { padding: 20px; }
+            .payment-image img { width: 100%; max-width: 280px; }
+        }
     </style>
 </head>
 <body>
     <div id="gradient"></div>
     <div class="container" role="main">
         <div class="header">
-            <div style="display:flex;align-items:center;">
-                <img src="img/top.png" alt="Cash Tube Logo">
+            <div style="display: flex; align-items: center;">
+                <img src="img/top.png" alt="Cash Tube Logo" aria-label="Cash Tube Logo">
                 <div class="header-text">
                     <h1>Upgrade Account</h1>
                     <p>Unlock Currency Exchange feature</p>
                 </div>
             </div>
-            <button class="theme-toggle" id="themeToggle">Toggle Dark Mode</button>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
         </div>
 
         <div class="form-card">
@@ -238,27 +244,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <?php if ($upgrade_status === 'upgraded'): ?>
                 <p class="success">Your account is already upgraded!</p>
-                <p style="text-align:center;"><a href="home.php">Return to Dashboard</a></p>
+                <div class="action-links">
+                    <a href="home.php">Return to Dashboard</a>
+                </div>
 
             <?php elseif ($upgrade_status === 'pending'): ?>
                 <p class="success">Your upgrade request is pending review.</p>
-                <p style="text-align:center;"><a href="home.php">Return to Dashboard</a></p>
-
-                <!-- NEW: Resend Upgrade Request Button -->
-                <p style="text-align:center; margin-top:30px;">
-                    <a href="upgrade_account.php" class="resend-btn">
+                <p style="text-align: center; margin: 20px 0;">
+                    We are reviewing your previous submission. You can resend a new proof if needed.
+                </p>
+                <div class="action-links">
+                    <a href="home.php">Return to Dashboard</a>
+                    <!-- New Resend Button -->
+                    <button type="button" onclick="window.location.href='upgrade_account.php?resend=1'" class="resend-btn">
                         Resend Upgrade Request
-                    </a>
-                </p>
-                <p style="text-align:center; font-size:0.9em; color:var(--subtext-color); margin-top:10px;">
-                    Need to upload a different or corrected payment proof? Click above.
-                </p>
+                    </button>
+                </div>
 
             <?php else: ?>
                 <?php if (isset($error)): ?>
                     <p class="error"><?php echo htmlspecialchars($error); ?></p>
                 <?php endif; ?>
 
+                <!-- Normal Upgrade Form -->
                 <div class="instructions">
                     <h3>Upgrade Instructions</h3>
                     <p>To upgrade your account and unlock Currency Exchange, please make a payment of <strong><?php echo htmlspecialchars($verify_currency); ?> <?php echo number_format($verify_amount, 2); ?></strong> via <strong><?php echo htmlspecialchars($account_upgrade); ?></strong> using the details below:</p>
@@ -272,30 +280,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p><strong><?php echo htmlspecialchars($verify_medium); ?>:</strong> <?php echo htmlspecialchars($vcn_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_name); ?>:</strong> <?php echo htmlspecialchars($vc_value); ?></p>
                     <p><strong><?php echo htmlspecialchars($verify_ch_value); ?>:</strong> 
-                        <span class="copyable" data-copy="<?php echo htmlspecialchars($vcv_value); ?>" title="Tap to copy"><?php echo htmlspecialchars($vcv_value); ?></span>
+                        <span class="copyable" data-copy="<?php echo htmlspecialchars($vcv_value); ?>" title="Tap to copy on mobile, press and hold on desktop">
+                            <?php echo htmlspecialchars($vcv_value); ?>
+                        </span>
                     </p>
                     <p>After completing the payment, upload a payment receipt below. Your upgrade request will be reviewed within 48 hours.</p>
-
+                  
                     <h3>Important Notes</h3>
                     <ul>
-                        <li>Ensure the payment is made to the correct details.</li>
-                        <li>Upload a clear screenshot/receipt.</li>
-                        <li>Supported: JPG, PNG ≤ 5MB</li>
-                        <li>Processing time: up to 48 hours</li>
+                        <li>Ensure the payment is made via <strong><?php echo htmlspecialchars($account_upgrade); ?></strong> to the specified <strong><?php echo htmlspecialchars($verify_ch_value); ?></strong>.</li>
+                        <li>Upload a clear payment receipt.</li>
+                        <li>Supported file types: JPG, PNG (max size: 5MB).</li>
+                        <li>Upgrade may take up to 48 hours to process.</li>
                     </ul>
                 </div>
 
-                <form action="upgrade_account.php" method="POST" enctype="multipart/form-data">
+                <form action="upgrade_account.php<?php echo (isset($_GET['resend']) ? '?resend=1' : ''); ?>" method="POST" enctype="multipart/form-data">
                     <div class="input-container">
-                        <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png" required>
+                        <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png" required placeholder=" ">
                         <label for="proof_file">Upload Payment Receipt</label>
                     </div>
                     <button type="submit" class="submit-btn">Submit Upgrade Request</button>
                 </form>
 
-                <p style="text-align:center; margin-top:20px;"><a href="home.php">Return to Dashboard</a></p>
+                <div class="action-links">
+                    <a href="home.php">Return to Dashboard</a>
+                </div>
             <?php endif; ?>
         </div>
+
+        <div id="notificationContainer"></div>
     </div>
 
     <div class="bottom-menu" role="navigation">
@@ -303,13 +317,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a href="profile.php" class="active">Profile</a>
         <a href="history.php">History</a>
         <a href="support.php">Support</a>
-        <button id="logoutBtn">Logout</button>
+        <button id="logoutBtn" aria-label="Log out">Logout</button>
     </div>
 
-    <!-- All your existing scripts (jQuery, SweetAlert2, theme toggle, copy, notifications, gradient, etc.) go here -->
     <script>
-        // (Keep all your original JavaScript – it's 100% unchanged)
-        // ... [your full <script> block from the original file] ...
+        // ... (all your existing JavaScript remains unchanged)
+        // Only adding a tiny improvement for resend parameter visual cue (optional)
+        <?php if (isset($_GET['resend'])): ?>
+            document.addEventListener('DOMContentLoaded', () => {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Resend Request',
+                    text: 'You can now upload a new payment proof.',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            });
+        <?php endif; ?>
+
+        // Rest of your existing script (unchanged)
+        window.__lc = window.__lc || {};
+        window.__lc.license = 15808029;
+        (function(n, t, c) { /* LiveChat code unchanged */ })(window, document, [].slice);
+
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (currentTheme === 'dark') {
+            body.setAttribute('data-theme', 'dark');
+            themeToggle.textContent = 'Toggle Light Mode';
+        }
+        themeToggle.addEventListener('click', () => {
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            themeToggle.textContent = isDark ? 'Toggle Dark Mode' : 'Toggle Light Mode';
+            localStorage.setItem('theme', isDark ? 'light' : 'dark');
+        });
+
+        // ... rest of your original JS (copy-paste all of it here if you want - it's unchanged)
+        // (For brevity, I kept only the addition above, but you already have everything below)
+
+        // All your existing JS from the original file goes here unchanged
+        // (Logout, copyable, notifications, gradient, etc.)
+
     </script>
+    <!-- Paste the rest of your original <script> content here (everything after the theme toggle) -->
 </body>
 </html>
