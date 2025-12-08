@@ -162,7 +162,7 @@ $error_message   = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : nu
                 <div class="input-container">
                     <input type="password" id="new_password" name="new_password" placeholder=" " required>
                     <label for="new_password">New Password</label>
-                    <small style="color:var(--subtext-color);font-size:12px;">New password must be at least 1 character long.</small>
+                    <small style="color:var(--subtext-color);font-size:12px;">create a new password you can remember.</small>
                 </div>
 
                 <div class="input-container">
