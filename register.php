@@ -388,7 +388,7 @@ $detected_country = detectCountryFromIp();
             <form id="register-form" method="POST">
                 <input type="text" id="name" name="name" class="input-field" placeholder="Full Name" required>
                 <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required>
-                <input type="password" id="password" name="password" class="input-field" placeholder="Password (at least 1 character)" required>
+                <input type="password" id="password" name="password" class="input-field" placeholder="Password (create a password you can remember)" required>
                 <select id="country" name="country" class="country-select" required>
                     <option value="" disabled>Select your country</option>
                     <?php foreach ($countries as $country): ?>
