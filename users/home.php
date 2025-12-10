@@ -120,7 +120,7 @@ try {
     $video = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($video) {
         // Force correct InfinityFree path (htdocs is the real public root)
-        $video['url'] = 'http://tasktube.gt.tc/users/videos/' . basename($video['url']);
+        $video['url'] = 'https://tasktube.gt.tc/users/videos/' . basename($video['url']);
         $url_check = url_exists($video['url']);
         if (!$url_check['status']) {
             error_log('Video file not accessible: ' . $video['url'] . ' (' . $url_check['error'] . ')', 3, '../debug.log');
@@ -989,7 +989,7 @@ try {
                 dataType: 'json',
                 success: function(data) {
                     if (data) {
-                        const videoUrl = 'http://tasktube.gt.tc/' + data.url;
+                        const videoUrl = 'https://tasktube.gt.tc/' + data.url;
                         videoPlayer.innerHTML = `<source src="${videoUrl}" type="video/mp4">Your browser does not support the video tag.`;
                         videoPlayer.setAttribute('data-video-id', data.id);
                         videoPlayer.setAttribute('data-reward', data.reward);
