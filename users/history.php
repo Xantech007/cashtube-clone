@@ -85,6 +85,8 @@ try {
 }
 ?>
 
+<?php include('inc/translate.php'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
