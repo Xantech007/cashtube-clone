@@ -140,6 +140,8 @@ try {
 }
 ?>
 
+<?php include('inc/translate.php'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -599,7 +601,7 @@ try {
                     <p>Start Earning Crypto Today!</p>
                 </div>
             </div>
-            <?php include('inc/header-actions.php'); ?>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
         </div>
 
         <?php if ($success_message): ?>
