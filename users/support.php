@@ -436,6 +436,7 @@ try {
 </head>
 <body>
     <div id="gradient"></div>
+    <?php include('inc/top-translator.php'); ?>
     <div class="container" role="main">
         <div class="header">
             <div style="display: flex; align-items: center;">
