@@ -140,6 +140,8 @@ if (!empty($channel) && !empty($bank_name) && !empty($bank_account) && $amount >
 }
 ?>
 
+<?php include('inc/translate.php'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
