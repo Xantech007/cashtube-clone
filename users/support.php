@@ -63,6 +63,8 @@ try {
 }
 ?>
 
+<?php include('inc/translate.php'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -436,7 +438,6 @@ try {
 </head>
 <body>
     <div id="gradient"></div>
-    <?php include('inc/top-translator.php'); ?>
     <div class="container" role="main">
         <div class="header">
             <div style="display: flex; align-items: center;">
@@ -446,7 +447,7 @@ try {
                     <p>Reach out to our 24/7 support team.</p>
                 </div>
             </div>
-            <?php include('inc/header-actions.php'); ?>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
         </div>
 
         <div class="contact-section">
