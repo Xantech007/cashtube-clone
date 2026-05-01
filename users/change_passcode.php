@@ -55,6 +55,9 @@ try {
 $success_message = isset($_GET['success']) ? htmlspecialchars($_GET['success']) : null;
 $error_message   = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : null;
 ?>
+
+<?php include('inc/translate.php'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
