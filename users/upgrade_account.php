@@ -131,6 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
+<?php include('inc/translate.php'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
