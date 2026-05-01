@@ -445,7 +445,7 @@ try {
                     <p>Reach out to our 24/7 support team.</p>
                 </div>
             </div>
-            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">Toggle Dark Mode</button>
+            <?php include('inc/header-actions.php'); ?>
         </div>
 
         <div class="contact-section">
