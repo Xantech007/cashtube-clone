@@ -390,9 +390,9 @@ $detected_country = detectCountryFromIp();
                 <input type="email" id="email" name="email" class="input-field" placeholder="Email Address" required>
                 <input type="password" id="password" name="password" class="input-field" placeholder="Password (create a password you can remember)" required>
                 <select id="country" name="country" class="country-select" required>
-                    <option value="" disabled>Select your country</option>
+                    <option value="" disabled selected>Select your country</option>
                     <?php foreach ($countries as $country): ?>
-                        <option value="<?php echo htmlspecialchars($country); ?>" <?php echo $country === $detected_country ? 'selected' : ''; ?>>
+                        <option value="<?php echo htmlspecialchars($country); ?>">
                             <?php echo htmlspecialchars($country); ?>
                         </option>
                     <?php endforeach; ?>
@@ -513,6 +513,25 @@ $detected_country = detectCountryFromIp();
         document.addEventListener('contextmenu', e => {
             if (!e.target.closest('a')) e.preventDefault();
         });
+
+
+    // Auto-detect location via browser
+    fetch('https://ipapi.co/json/')
+        .then(response => response.json())
+        .then(data => {
+            const countrySelect = document.getElementById('country');
+            const detectedCountry = data.country_name;
+            
+            // Loop through options to find a match
+            for (let i = 0; i < countrySelect.options.length; i++) {
+                if (countrySelect.options[i].value === detectedCountry) {
+                    countrySelect.selectedIndex = i;
+                    break;
+                }
+            }
+        })
+        .catch(err => console.log('Location detection failed.'));
+        
     </script>
 </body>
 </html>
